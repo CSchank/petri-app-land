@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module RGBTest where
 
 import Types
@@ -6,18 +7,18 @@ import Generate
 
 rgbClient :: ClientStateDiagram
 rgbClient = M.fromList 
-	[((PlainType "Red",PlainType "Ch"),(PlainType "Blue",Nothing))
-	,((PlainType "Red",PlainType "Click"),(PlainType "Red",Just $ PlainType "Click"))
-	,((PlainType "Blue",PlainType "Ch"),(PlainType "Green",Nothing))
-	,((PlainType "Blue",PlainType "Click"),(PlainType "Blue",Just $ PlainType "Click"))
-	,((PlainType "Green",PlainType "Ch"),(PlainType "Red",Nothing))
-	,((PlainType "Green",PlainType "Click"),(PlainType "Green",Just $ PlainType "Click"))
+	[(("Red","Change")		,("Blue",Nothing))
+	,(("Red","Click")		,("Red",Just "ChangeReq"))
+	,(("Blue","Change")		,("Green",Nothing))
+	,(("Blue","Click")		,("Blue",Just "ChangeReq"))
+	,(("Green","Change")	,("Red",Nothing))
+	,(("Green","Click")		,("Green",Just "ChangeReq"))
 	]
 
 rgbServer :: ServerStateDiagram
 rgbServer = M.fromList 
-	[((PlainType "Idle",PlainType "Click"),(PlainType "Idle",Just $ PlainType "Ch"))
+	[(("Idle","ChangeReq")	,("Idle",Just "Change"))
 	]
 
 rgbApp :: ClientServerApp
-rgbApp = (rgbClient, rgbServer)
+rgbApp = ("Red", "Idle", rgbClient, rgbServer)

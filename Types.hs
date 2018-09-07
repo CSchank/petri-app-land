@@ -1,6 +1,7 @@
 module Types where
 
 import Data.Map as M
+import Data.String
 
 data BasicTypes =
 	  PlainType String
@@ -11,6 +12,8 @@ instance Show BasicTypes where
 	show (PlainType st) = st
 	show (IntType st) = st ++ " Int"
 	show (DoubleType st) = st ++ " Double"
+instance IsString BasicTypes where
+	fromString s = PlainType s
 
 
 type ClientState = BasicTypes
@@ -25,4 +28,4 @@ type ServerStateDiagram =
 	M.Map (ServerState, ServerTransition) (ClientState, Maybe ClientTransition)
 
 type ClientServerApp =
-	(ClientStateDiagram, ServerStateDiagram)
+	(ClientState, ServerState, ClientStateDiagram, ServerStateDiagram)
