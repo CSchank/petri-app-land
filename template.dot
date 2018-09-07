@@ -16,6 +16,4 @@ digraph G {
 	}
 *COMMD
 *START
-
-	start [shape=Mdiamond];
 }

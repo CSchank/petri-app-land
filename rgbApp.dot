@@ -6,17 +6,17 @@ digraph G {
 		node [style=filled,color=white];
 		Blue->Green [label="Change"];
 		Blue->fakeBlueBlue [label="Click",arrowhead=none];
-		fakeBlueBlue [shape=point, width=0, height=0]
+		fakeBlueBlue [shape=point, width=0, height=0];
 		fakeBlueBlue->Blue;
 
 		Green->Red [label="Change"];
 		Green->fakeGreenGreen [label="Click",arrowhead=none];
-		fakeGreenGreen [shape=point, width=0, height=0]
+		fakeGreenGreen [shape=point, width=0, height=0];
 		fakeGreenGreen->Green;
 
 		Red->Blue [label="Change"];
 		Red->fakeRedRed [label="Click",arrowhead=none];
-		fakeRedRed [shape=point, width=0, height=0]
+		fakeRedRed [shape=point, width=0, height=0];
 		fakeRedRed->Red;
 
 
@@ -26,7 +26,7 @@ digraph G {
 	subgraph cluster_1 {
 		node [style=filled];
 		Idle->fakeIdleIdle [label="ChangeReq",arrowhead=none];
-		fakeIdleIdle [shape=point, width=0, height=0]
+		fakeIdleIdle [shape=point, width=0, height=0];
 		fakeIdleIdle->Idle;
 
 
@@ -38,9 +38,7 @@ digraph G {
 	fakeRedRed->Idle [label="ChangeReq",lhead=cluster_1,style=dashed];
 	fakeIdleIdle->Blue[label="Change",lhead=cluster_0,style=dashed];
 
-	start->Red;
-	start->Idle;
+Red[peripheries=2];
+Idle[peripheries=2];
 
-
-	start [shape=Mdiamond];
 }
