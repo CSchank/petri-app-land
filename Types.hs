@@ -3,11 +3,33 @@ module Types where
 import Data.Map as M
 import Data.String
 
+-- paper 1 will stick to messages arriving in order (websockets)
+-- paper 2 will allow messages out of order (webrtc)
+
+type ElmDocType = (ElmType,String,String) -- type and name for pattern matching and documentation
+                                          -- doc string can be empty, but name string has to be legal Elm name
+
+data ElmType = ElmInt
+		     | ElmIntRange Int Int -- upper and lower bounds (used for optimizing messages, etc.) 
+			 | ElmFloat
+			 | ElmFloatRange Float Float Int -- upper and lower bounds, and 
+			 | ElmString -- a unicode string
+			 | ElmSizedString -- string with maximum size, and restricted character set TBD
+			 | ElmPair ElmDocType ElmDocType
+			 | ElmTriple ElmDocType ElmDocType ElmDocType
+			 | ElmList ElmDocType
+			 | ElmType ElmCustom
+
+data ElmCustom = ElmCustom String            -- name of the type 
+						[	(String      -- constructor name
+						,[ElmDocType])] -- constructor arguments
+
 data BasicTypes =
 	  PlainType String
 	| IntType String
 	| DoubleType String
   deriving (Ord,Eq)
+
 instance Show BasicTypes where
 	show (PlainType st) = st
 	show (IntType st) = st ++ " Int"
@@ -16,10 +38,10 @@ instance IsString BasicTypes where
 	fromString s = PlainType s
 
 
-type ClientState = BasicTypes
-type ServerState = BasicTypes
-type ClientTransition = BasicTypes
-type ServerTransition = BasicTypes
+type ClientState = ElmCustom
+type ServerState = ElmCustom
+type ClientTransition = ElmCustom
+type ServerTransition = ElmCustom
 
 type ClientStateDiagram =
 	M.Map (ClientState, ClientTransition) (ClientState, Maybe ServerTransition)
