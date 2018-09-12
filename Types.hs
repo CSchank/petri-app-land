@@ -21,10 +21,12 @@ data ElmType = ElmInt
 			 | ElmTriple ElmDocType ElmDocType ElmDocType
 			 | ElmList ElmDocType
 			 | ElmType ElmCustom
+  deriving (Ord,Eq,Show)
 
 data ElmCustom = ElmCustom String          	-- name of the type 
 						[	(String      	-- constructor name
 						,[ElmDocType])] 	-- constructor arguments
+  deriving (Ord,Eq,Show)
 
 data BasicTypes =
 	  PlainType String

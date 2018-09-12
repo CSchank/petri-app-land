@@ -26,7 +26,7 @@ testBinTree = ElmCustom "BinTree" [("Branch",
 						 			]
 						  	)
 						  , ("Leaf", 
-									[ (ElmInt, "n", "the value of the leaf")
+									[ (ElmType $ testRGB, "n", "the value of the leaf")
 						 			]
 						  	)
 						  ]
