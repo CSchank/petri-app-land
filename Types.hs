@@ -20,7 +20,7 @@ data ElmType = ElmInt
 			 | ElmPair ElmDocType ElmDocType
 			 | ElmTriple ElmDocType ElmDocType ElmDocType
 			 | ElmList ElmDocType
-			 | ElmType ElmCustom
+			 | ElmType String --the type referenced must be included in the map
   deriving (Ord,Eq,Show)
 
 data ElmCustom = ElmCustom String          	-- name of the type 
