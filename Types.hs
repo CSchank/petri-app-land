@@ -11,9 +11,7 @@ import Data.String
 type ElmDocType = (ElmType,String,String) -- type and name for pattern matching and documentation
                                           -- doc string can be empty, but name string has to be legal Elm name
 
-data ElmType = ElmInt
-		     | ElmIntRange Int Int -- upper and lower bounds (used for optimizing messages, etc.) 
-			 | ElmFloat
+data ElmType = ElmIntRange Int Int -- upper and lower bounds (used for optimizing messages, etc.)
 			 | ElmFloatRange Float Float Int -- upper and lower bounds, and 
 			 | ElmString -- a unicode string
 			 | ElmSizedString Int -- string with maximum size, and restricted character set TBD

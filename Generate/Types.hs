@@ -19,9 +19,7 @@ elmCustomToClientType commentsEnabled (ElmCustom typeName constrs) =
 
         edt2Txt (et, n, d) = T.concat [et2Txt et, if commentsEnabled then T.concat [" {-", T.pack n, "-}"] else ""]
 
-        et2Txt ElmInt                       = "Int"
         et2Txt (ElmIntRange _ _)            = "Int"
-        et2Txt ElmFloat                     = "Float"
         et2Txt (ElmFloatRange _ _ _)        = "Float"
         et2Txt ElmString                    = "String"
         et2Txt (ElmSizedString _)           = "String"
@@ -41,9 +39,7 @@ elmCustomToServerType commentsEnabled (ElmCustom typeName constrs) =
 
         edt2Txt (et, n, d) = T.concat [et2Txt et, if commentsEnabled then T.concat [" {-", T.pack n, "-}"] else ""]
 
-        et2Txt ElmInt                       = "Int"
         et2Txt (ElmIntRange _ _)            = "Int"
-        et2Txt ElmFloat                     = "Double"
         et2Txt (ElmFloatRange _ _ _)        = "Double"
         et2Txt ElmString                    = "String"
         et2Txt (ElmSizedString _)           = "String"
