@@ -14,11 +14,13 @@ encodeInt n =
         if n == 0 then ""
         else (String.fromChar <| fromCode <| r + 48) ++ encodeInt m
 
-decodeInt : String -> Int
-decodeInt s =
+decodeInt : Int -> Int -> String -> Result String Int
+decodeInt low high s =
     let 
-        decodeInt_ n s_ = case s_ of
-                            f::rest -> (toCode f - 48) * n + decodeInt_ (n*64) rest
+        decodeInt_ m s_ = case s_ of
+                            f::rest -> (toCode f - 48) * m + decodeInt_ (m*64) rest
                             []      -> 0
+        n = decodeInt_ 1 <| toList s
     in
-        decodeInt_ 1 (toList s)
+        if n >= low && n <= high then  Ok <| n
+        else                            Err <| "Could not decode " ++ String.fromInt n ++ " as it is outside the range [" ++ String.fromInt low ++ "," ++ String.fromInt high ++ "]."

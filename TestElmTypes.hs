@@ -13,23 +13,23 @@ testRGB = ElmCustom "Colour" [("RGB",
 						 			]
 						  	)
 						  , ("HSL", 
-									[ (ElmFloatRange 0 1 14, "hue", "defines the hue value of the HSL colour")
-									, (ElmFloatRange 0 1 14, "saturation", "defines the saturation value of the HSL colour")
-									, (ElmFloatRange 0 1 14, "light", "defines the light value of the HSL colour")
+									[ (ElmFloatRange 0 1 7, "hue", "defines the hue value of the HSL colour")
+									, (ElmFloatRange 0 1 7, "saturation", "defines the saturation value of the HSL colour")
+									, (ElmFloatRange 0 1 7, "light", "defines the light value of the HSL colour")
 						 			]
 						  	)
 						  , ("RGBA", 
 									[ (ElmIntRange 0 255, "red", "defines the red value of the RGBA colour")
 									, (ElmIntRange 0 255, "green", "defines the green value of the RGBA colour")
 									, (ElmIntRange 0 255, "blue", "defines the blue value of the RGBA colour")
-									, (ElmFloatRange 0 1 14, "alpha", "defines the alpha value of the RGBA colour")
+									, (ElmFloatRange 0 1 7, "alpha", "defines the alpha value of the RGBA colour")
 						 			]
 						  	)
 						  , ("HSLA", 
-									[ (ElmFloatRange 0 1 14, "hue", "defines the hue value of the HSL colour")
-									, (ElmFloatRange 0 1 14, "saturation", "defines the saturation value of the HSL colour")
-									, (ElmFloatRange 0 1 14, "light", "defines the light value of the HSL colour")
-									, (ElmFloatRange 0 1 14, "alpha", "defines the alpha value of the HSLA colour")
+									[ (ElmFloatRange 0 1 7, "hue", "defines the hue value of the HSL colour")
+									, (ElmFloatRange 0 1 7, "saturation", "defines the saturation value of the HSL colour")
+									, (ElmFloatRange 0 1 7, "light", "defines the light value of the HSL colour")
+									, (ElmFloatRange 0 1 7, "alpha", "defines the alpha value of the HSLA colour")
 						 			]
 						  	)
 						  ]
