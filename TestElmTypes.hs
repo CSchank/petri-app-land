@@ -47,4 +47,16 @@ testBinTree = ElmCustom "BinTree" [("Branch",
 						  	)
 						  ]
 
+testPoint :: ElmCustom
+testPoint = ElmCustom "Point" [("Point",
+										[(ElmPair (ElmFloatRange (-1) 1 7,"x","") (ElmFloatRange (-1) 1 7,"y",""),"point","")
+										]
+							  )]
+
+testPoint3D :: ElmCustom
+testPoint3D = ElmCustom "Point3D" [("Point3D",
+										[(ElmTriple (ElmFloatRange (-1) 1 7,"x","") (ElmFloatRange (-1) 1 7,"y","") (ElmFloatRange (-1) 1 7,"z",""),"point","")
+										]
+							  )]
+
 test = M.fromList [("Colour", testRGB), ("BinTree", testBinTree)]
