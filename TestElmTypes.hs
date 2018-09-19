@@ -59,4 +59,10 @@ testPoint3D = ElmCustom "Point3D" [("Point3D",
 										]
 							  )]
 
+testList :: ElmCustom
+testList = ElmCustom "Byte" [("Byte",[(ElmList (ElmIntRange 0 255, "byte", ""), "listBytes", "")])]
+
+testPoint2D :: ElmCustom
+testPoint2D = ElmCustom "Point2D" [("Point2D",[(ElmIntRange 0 255, "x", ""),(ElmIntRange 0 255, "y", "")])]
+
 test = M.fromList [("Colour", testRGB), ("BinTree", testBinTree)]

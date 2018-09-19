@@ -12,12 +12,13 @@ type ElmDocType = (ElmType,String,String) -- type and name for pattern matching 
                                           -- doc string can be empty, but name string has to be legal Elm name
 
 data ElmType = ElmIntRange Int Int -- upper and lower bounds (used for optimizing messages, etc.)
-			 | ElmFloatRange Float Float Int -- upper and lower bounds, and 
+			 | ElmFloatRange Double Double Int -- upper and lower bounds, and 
 			 | ElmString -- a unicode string
 			 | ElmSizedString Int -- string with maximum size, and restricted character set TBD
 			 | ElmPair ElmDocType ElmDocType
 			 | ElmTriple ElmDocType ElmDocType ElmDocType
 			 | ElmList ElmDocType
+			 | ElmDict ElmDocType ElmDocType
 			 | ElmType String --the type referenced must be included in the map
   deriving (Ord,Eq,Show)
 

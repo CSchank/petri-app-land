@@ -26,6 +26,7 @@ elmCustomToClientType commentsEnabled (ElmCustom typeName constrs) =
         et2Txt (ElmPair edt0 edt1)          = T.concat ["(",edt2Txt edt0,", ",edt2Txt edt1,")"]
         et2Txt (ElmTriple edt0 edt1 edt2)   = T.concat ["(",edt2Txt edt0,", ",edt2Txt edt1,", ",edt2Txt edt2,")"]
         et2Txt (ElmList edt)                = T.concat ["(List ",edt2Txt edt,")"]
+        et2Txt (ElmDict edt0 edt1)          = T.concat ["(Dict ",edt2Txt edt0," ",edt2Txt edt1,")"]
         et2Txt (ElmType name)               = T.pack name
     in
         T.concat [ "type ", T.pack typeName, " =\n\t  "
@@ -46,6 +47,7 @@ elmCustomToServerType commentsEnabled (ElmCustom typeName constrs) =
         et2Txt (ElmPair edt0 edt1)          = T.concat ["(",edt2Txt edt0,", ",edt2Txt edt1,")"]
         et2Txt (ElmTriple edt0 edt1 edt2)   = T.concat ["(",edt2Txt edt0,", ",edt2Txt edt1,", ",edt2Txt edt2,")"]
         et2Txt (ElmList edt)                = T.concat ["(List ",edt2Txt edt,")"]
+        et2Txt (ElmDict edt0 edt1)          = T.concat ["(M.Map ",edt2Txt edt0," ",edt2Txt edt1,")"]
         et2Txt (ElmType name)               = T.pack name
     in
         T.concat [ "data ", T.pack typeName, " =\n\t  "

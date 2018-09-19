@@ -18,12 +18,7 @@ generateClientEncoders (ElmCustom name edts) =
 
         encodeEt :: Int -> ElmDocType -> [T.Text]
         encodeEt indt (ElmIntRange low high,n,_) = 
-            indtTxts indt $ [T.concat[T.pack n, "Txt ="]
-                            ,"    let"
-                            ,T.concat["        low  = ", T.pack $ show low]
-                            ,T.concat["        high = ", T.pack $ show high]
-                            ,"    in" 
-                            ,T.concat["        encodeInt (",T.pack n,"-low)"]
+            indtTxts indt $ [T.concat[T.pack n, "Txt = encodeInt ",T.pack $ show low," ",T.pack $ show high," ",T.pack n]
                             ]
         encodeEt indt (ElmFloatRange low high precision,n,_) = 
             indtTxts indt $ [T.concat[T.pack $ n ++ "Txt"," ="]
@@ -59,15 +54,18 @@ generateClientEncoders (ElmCustom name edts) =
         encodeEt indt (ElmList (et, etn, etd), n, _) =
             indtTxts indt $ [T.concat[T.pack n, "Txt ="]
                             ,"    let"
-                            ,T.concat["        encode",T.pack n," ",T.pack n,"List ="]
+                            ,T.concat["        encode",T.pack n,"_ _ (str",T.pack $ show indt,",",T.pack n,"List) ="]
                             ,T.concat["            case ",T.pack n,"List of"]
-                            ,T.concat["                h::rest ->",T.pack n]
-                            ,"                let"
-                            ,T.unlines $ encodeEt (indt+5) (et, etn, etd)
-                            ,"                in"
-                            ,T.concat["                    ",T.pack etn,"Txt ++ encode",T.pack n," rest"]
+                            ,T.concat["                ",T.pack etn,"::rest ->"]
+                            ,"                    let"
+                            ,T.unlines $ encodeEt (indt+2) (et, etn, etd)
+                            ,"                    in"
+                            ,T.concat["                        (str",T.pack $ show indt," ++ \"",elmDelim,"\" ++ ",T.pack etn,"Txt, rest)"]
+                            ,T.concat["                [] -> (str",T.pack $ show indt,",",T.pack n,"List)"]
+                            ,T.concat["        encode",T.pack n," ls ="]
+                            ,T.concat["            List.foldl encode",T.pack n,"_ (\"\",ls) (List.range 0 (List.length ",T.pack n,"))"]
                             ,"    in"
-                            ,T.concat ["encode",T.pack n," ",T.pack n,"Txt"]
+                            ,T.concat ["        (encodeInt 0 262143 <| List.length ",T.pack n,") ++ (Tuple.first <| encode",T.pack n," ",T.pack n,")"]
                             ]
         encodeEt indt (ElmType name, n, _) =
             indtTxts indt $ [T.concat[T.pack n,"Txt = encode",T.pack name," ",T.pack n]
@@ -153,21 +151,24 @@ generateClientDecoders (ElmCustom name edts) =
                             ,T.concat["                [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[])"]
                             ,T.concat["    in (Result.map3 (\\rff",T.pack $ show indt," rss",T.pack $ show indt," rtt",T.pack $ show indt," -> (rff",T.pack $ show indt,",rss",T.pack $ show indt,",rtt",T.pack $ show indt,")) ", T.pack n0," ",T.pack n1," ",T.pack n2,",lt",T.pack $ show indt,"))"]
                             ]
-        decodeEt indt (ElmList (et, etn, etd), n, _) =
-            indtTxts indt $ [
+        decodeEt indt (ElmList etd, n, _) =
+            indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
+                            ,T.concat["    decodeList l",T.pack $ show indt," <|"]
+                            ,T.unlines $ decodeEt (indt+2) etd,")"
                             ]
         decodeEt indt (ElmType name, n, _) =
-            indtTxts indt $ [T.concat[T.pack n," = decode",T.pack name," ",T.pack n,"Txt"]
+            indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"] 
+                            ,T.concat["    decode",T.pack name," (r",T.pack $ show (indt-1),",l",T.pack $ show indt,")"]
                             ]
         cases = map (\(constrName,edt) -> T.concat [ T.pack "        (\"",T.pack constrName, T.pack "\"", T.pack "::rest) ->"
-                                                   ,"\n            (\"\",rest) |> \n"
+                                                   ,"\n            (Err \"\",rest) |> \n"
                                                    ,T.unlines $ concat $ map (\(n,et) -> (decodeEt (4+n) et) ++ indtTxts (4+n) [" |>"]) $ zip [0..] edt
                                                    ,indtTxt (5 + length edt) $ T.concat ["(\\(r"
                                                                                         ,T.pack $ show $ length edt + 3,",l",T.pack $ show $ length edt + 4,") -> (Result.map",if length edt > 1 then T.pack $ show $ length edt else ""," ",T.pack constrName," ",T.intercalate " " $ map (\n -> T.pack $ "r" ++ show (n+4)) [0..length edt-1],",l",T.pack $ show $ length edt + 4,"))"]
                                                    ]) edts
     in
-        T.unlines [T.concat["decode",T.pack name," : ","List String -> (Result String ",T.pack name,",List String)"]
-                  ,T.concat["decode",T.pack name," ",T.toLower $ T.pack name,"Txts = "]
+        T.unlines [T.concat["decode",T.pack name," : ","(Result String ",T.pack name,", List String) -> (Result String ",T.pack name,", List String)"]
+                  ,T.concat["decode",T.pack name," (lastRes,",T.toLower $ T.pack name,"Txts) = "]
                   ,T.concat["    case ",T.toLower $ T.pack name, "Txts of"]
                   ,T.unlines cases
                   ,T.concat["        _ -> (Err <| \"Incorrect input, could not decode value of type ",T.pack name," from string \\\"\" ++ String.concat ", T.toLower $ T.pack name,"Txts ++ \"\\\"\",[])"]
