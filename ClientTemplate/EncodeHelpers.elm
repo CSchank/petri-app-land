@@ -40,7 +40,7 @@ decodeList ls decodeFn =
             Result.map2 (\a la -> la ++ [a]) aRes laRes
         n =
             Result.withDefault 0 <| case ls of 
-                nTxt :: rest -> decodeInt 0 262143 nTxt
+                nTxt :: rest -> decodeInt 0 16777215 nTxt
                 []           -> Err "Could not decode number of items in list."
 
         decodeList_ n_ (resL, mainLs) = 

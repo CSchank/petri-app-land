@@ -65,4 +65,7 @@ testList = ElmCustom "Byte" [("Byte",[(ElmList (ElmIntRange 0 255, "byte", ""), 
 testPoint2D :: ElmCustom
 testPoint2D = ElmCustom "Point2D" [("Point2D",[(ElmIntRange 0 255, "x", ""),(ElmIntRange 0 255, "y", "")])]
 
+testDict :: ElmCustom
+testDict = ElmCustom "Usernames" [("Usernames",[(ElmDict (ElmString, "user","") (ElmString, "pass", ""), "userDict", "")])]
+
 test = M.fromList [("Colour", testRGB), ("BinTree", testBinTree)]

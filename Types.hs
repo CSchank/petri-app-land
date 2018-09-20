@@ -12,7 +12,7 @@ type ElmDocType = (ElmType,String,String) -- type and name for pattern matching 
                                           -- doc string can be empty, but name string has to be legal Elm name
 
 data ElmType = ElmIntRange Int Int -- upper and lower bounds (used for optimizing messages, etc.)
-			 | ElmFloatRange Double Double Int -- upper and lower bounds, and 
+			 | ElmFloatRange Double Double Int -- upper and lower bounds, and number of decimal places of precision
 			 | ElmString -- a unicode string
 			 | ElmSizedString Int -- string with maximum size, and restricted character set TBD
 			 | ElmPair ElmDocType ElmDocType
@@ -22,35 +22,21 @@ data ElmType = ElmIntRange Int Int -- upper and lower bounds (used for optimizin
 			 | ElmType String --the type referenced must be included in the map
   deriving (Ord,Eq,Show)
 
-data ElmCustom = ElmCustom String          	-- name of the type 
-						[	(String      	-- constructor name
-						,[ElmDocType])] 	-- constructor arguments
+type Constructor = (String,[ElmDocType]) -- (name, arguments)
+
+data ElmCustom = ElmCustom String [Constructor] -- name of the type 
   deriving (Ord,Eq,Show)
 
-data BasicTypes =
-	  PlainType String
-	| IntType String
-	| DoubleType String
-  deriving (Ord,Eq)
-
-instance Show BasicTypes where
-	show (PlainType st) = st
-	show (IntType st) = st ++ " Int"
-	show (DoubleType st) = st ++ " Double"
-instance IsString BasicTypes where
-	fromString s = PlainType s
-
-
-type ClientState = ElmCustom
-type ServerState = ElmCustom
-type ClientTransition = ElmCustom
-type ServerTransition = ElmCustom
+type ClientState 	  	= Constructor
+type ServerState 		= Constructor
+type ClientTransition 	= Constructor
+type ServerTransition 	= Constructor
 
 type ClientStateDiagram =
-	M.Map (ClientState, ClientTransition) (ClientState, Maybe ServerTransition)
+	M.Map (String, ClientTransition) (String, Maybe ServerTransition)
 
 type ServerStateDiagram =
-	M.Map (ServerState, ServerTransition) (ClientState, Maybe ClientTransition)
+	M.Map (String, ServerTransition) (String, Maybe ClientTransition)
 
 type ClientServerApp =
-	(ClientState, ServerState, ClientStateDiagram, ServerStateDiagram)
+	(String, String, [ClientState], [ServerState], ClientStateDiagram, ServerStateDiagram) --(clientStart,serverStart,clientStates,serverStates,clientStateDiagram,serverStateDiagram)
