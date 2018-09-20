@@ -28,8 +28,8 @@ generateType haskell commentsEnabled (ElmCustom typeName constrs) =
         et2Txt (ElmDict edt0 edt1)          = T.concat ["(Dict ",edt2Txt edt0," ",edt2Txt edt1,")"]
         et2Txt (ElmType name)               = T.pack name
     in
-        T.concat [ typ, " ", T.pack typeName, " =\n\t  "
-                 , T.intercalate "\n\t| " constrs2Txt
+        T.concat [ typ, " ", T.pack typeName, " =\n      "
+                 , T.intercalate "\n    | " constrs2Txt
                  ]
 
 generatePattern :: Bool -> Bool -> ElmCustom -> T.Text
@@ -42,6 +42,6 @@ generatePattern haskell commentsEnabled (ElmCustom typeName constrs) =
 
         edt2Txt (et, n, d) = T.pack n
     in
-        T.concat [ typ, " ", T.pack typeName, " =\n\t  "
-                 , T.intercalate "\n\t| " constrs2Txt
+        T.concat [ typ, " ", T.pack typeName, " =\n    "
+                 , T.intercalate "\n    | " constrs2Txt
                  ]

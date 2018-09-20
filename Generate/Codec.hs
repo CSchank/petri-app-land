@@ -11,17 +11,17 @@ import qualified Data.Text as T
 elmDelim = T.pack "\\u{0000}"
 
 
-generateClientEncoders :: Bool -> ElmCustom -> T.Text
-generateClientEncoders h (ElmCustom name edts) =
+generateEncoder :: Bool -> ElmCustom -> T.Text
+generateEncoder h (ElmCustom name edts) =
     let
         indtTxts indt txts = map (indtTxt indt) txts
         indtTxt indt txt = T.concat [T.replicate (4*indt) " ", txt]
 
-        (.:.) :: String -> String -> T.Text
-        (.:.)  a b = T.pack $ a ++ if h then ":" else "::" ++ b
+        (.:.) :: T.Text -> T.Text -> T.Text
+        (.:.)  a b = T.concat [a, if h then ":" else "::", b]
 
-        (.::.) :: String -> String -> T.Text
-        (.::.) a b = T.pack $ a ++ if h then "::" else ":" ++ b
+        (.::.) :: T.Text -> T.Text -> T.Text
+        (.::.) a b = T.concat [a, if h then " :: " else " : ", b]
 
         encodeEt :: Int -> ElmDocType -> [T.Text]
         encodeEt indt (ElmIntRange low high,n,_) = 
@@ -85,13 +85,13 @@ generateClientEncoders h (ElmCustom name edts) =
             indtTxts indt $ [T.concat[T.pack n,"Txt = encode",T.pack name," ",T.pack n]
                             ]
         cases = map (\(constrName,edt) -> T.concat ["        ",T.pack constrName,T.concat $ map (\(et,name,desc) -> T.pack $ " " ++ name) edt," -> "
-                                                    ,"\n            let\n"
+                                                    ,if length edt > 0 then T.concat ["\n            let\n"
                                                     ,T.unlines $ concat $ map (encodeEt 4) edt
-                                                    ,"            in\n"
-                                                    ,"                \"",T.pack constrName,elmDelim,"\"++",T.intercalate (T.concat["++\"",elmDelim,"\"++"]) $ map (\(et,name,desc) -> T.pack $ name ++ "Txt") edt
+                                                    ,"            in\n"] else ""
+                                                    ,"                \"",T.pack constrName,elmDelim,if length edt > 0 then "\" ++ " else "\"",T.intercalate (T.concat["++\"",elmDelim,"\"++"]) $ map (\(et,name,desc) -> T.pack $ name ++ "Txt") edt
                                                     ]) edts
         fullTxt = T.unlines 
-                    [T.concat["encode",name .::. name," -> String"]
+                    [T.concat["encode",T.pack name .::. T.pack name," -> String"]
                     ,T.concat["encode",T.pack name," ",T.toLower $ T.pack name," = "]
                     ,T.concat["    case ",T.toLower $ T.pack name, " of"]
                     ,T.unlines cases
@@ -99,8 +99,8 @@ generateClientEncoders h (ElmCustom name edts) =
     in
         fullTxt
 
-generateClientDecoders :: Bool -> ElmCustom -> T.Text
-generateClientDecoders h (ElmCustom name edts) =
+generateDecoder :: Bool -> ElmCustom -> T.Text
+generateDecoder h (ElmCustom name edts) =
     let
         typeSig = T.concat["decode",T.pack name, " " .::. " (Result String ",T.pack name,", List String) -> (Result String ",T.pack name,", List String)"]
 
@@ -111,7 +111,7 @@ generateClientDecoders h (ElmCustom name edts) =
         (.:.)  a b = T.concat [a, if h then ":" else "::", b]
 
         (.::.) :: T.Text -> T.Text -> T.Text
-        (.::.) a b = T.concat [a, if h then "::" else ":", b]
+        (.::.) a b = T.concat [a, if h then " :: " else " : ", b]
 
         decodeEt :: Int -> ElmDocType -> [T.Text]
         decodeEt indt (ElmIntRange low high,n,_) = 
@@ -188,12 +188,12 @@ generateClientDecoders h (ElmCustom name edts) =
                                                    ,"\n            (Err \"\",rest) |> \n"
                                                    ,T.unlines $ concat $ map (\(n,et) -> (decodeEt (4+n) et) ++ indtTxts (4+n) [" |>"]) $ zip [0..] edt
                                                    ,indtTxt (5 + length edt) $ T.concat ["(\\(r"
-                                                                                        ,T.pack $ show $ length edt + 3,",l",T.pack $ show $ length edt + 4,") -> (rMap",if length edt > 1 then T.pack $ show $ length edt else ""," ",T.pack constrName," ",T.intercalate " " $ map (\n -> T.pack $ "r" ++ show (n+4)) [0..length edt-1],",l",T.pack $ show $ length edt + 4,"))"]
+                                                                                        ,T.pack $ show $ length edt + 3,",l",T.pack $ show $ length edt + 4,") -> (",if length edt > 1 then T.concat ["rMap",T.pack $ show $ length edt] else "Ok <|"," ",T.pack constrName," ",T.intercalate " " $ map (\n -> T.pack $ "r" ++ show (n+4)) [0..length edt-1],",l",T.pack $ show $ length edt + 4,"))"]
                                                    ]) edts
     in
         T.unlines [typeSig
                   ,T.concat["decode",T.pack name," (lastRes,",T.toLower $ T.pack name,"Txts) = "]
                   ,T.concat["    case ",T.toLower $ T.pack name, "Txts of"]
                   ,T.unlines cases
-                  ,T.concat["        _ -> (Err <| \"Incorrect input, could not decode value of type ",T.pack name," from string \\\"\" ++ String.concat ", T.toLower $ T.pack name,"Txts ++ \"\\\"\",[])"]
+                  ,T.concat["        _ -> (Err <| \"Incorrect input, could not decode value of type ",T.pack name," from string \\\"\" ++ sConcat ", T.toLower $ T.pack name,"Txts ++ \"\\\"\",[])"]
                   ]

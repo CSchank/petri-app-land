@@ -19,30 +19,42 @@ import                  ServerTemplate.Decode
 generateServer :: FilePath -> ClientServerApp -> IO ()
 generateServer fp (startCs,startSs,cStates,sStates,cDiagram,sDiagram) = 
     let
-        types date = T.unlines ["{-"
+        disclaimer date = T.unlines ["{-"
                                 ,T.concat["    THIS FILE WAS AUTOMATICALLY GENERATED AT ", T.pack $ show date,"."]
                                 , "    IMPORTANT: USE THIS FILE FOR REFERENCE ONLY. YOU SHOULD NOT MODIFY THIS FILE. INSTEAD, MODIFY THE STATE DIAGRAM AND REGENERATE THIS FILE."
                                 , "    MODIFYING ANY FILES INSIDE THE static DIRECTORY COULD LEAD TO UNEXPECTED ERRORS IN YOUR APP."
                                 ,"-}"
-                                ,"-- Server States"
-                                , serverStateType, ""
-                                ,"-- Server Messages"
-                                ,serverMsgType,""
-                                ,"-- Input Types"
-                                ,inputTypes
-                                ,"-- Return Types"
-                                ,returnTypes
                                 ]
-        serverStateType =
+        serverStateTypeTxt =
             generateType True True $ ElmCustom "Model" $ sStates
-
         serverMsgs = S.toList $ serverTransFromClient `S.union` serverTransitions
-        serverMsgType = generateType True True $ ElmCustom "Message" serverMsgs
+        serverMsgType = ElmCustom "Message" serverMsgs
+        serverMsgTypeTxt = generateType True True $ serverMsgType
         serverTransFromClient = S.fromList $ mapMaybe (\(_,(_,trans)) -> trans) $ M.toList cDiagram
         serverTransitions = S.fromList $ map (\((_,trans),_) -> trans) $ M.toList sDiagram
+        inputTypesTxt = T.unlines $ map (\(name,constrs) -> generateType True True $ ElmCustom ("I"++name) [("I"++name,constrs)]) serverMsgs
+        returnTypesTxt = T.unlines $ map (\(name,constrs) -> generateType True True $ ElmCustom ("R"++name) [("R"++name,constrs)]) sStates
+        typesHs = [
+                 "module Static.Types where\n"
+                ,"-- Server States"
+                , serverStateTypeTxt, ""
+                ,"-- Server Messages"
+                ,serverMsgTypeTxt,""
+                ,"-- Input Types"
+                ,inputTypesTxt
+                ,"-- Return Types"
+                ,returnTypesTxt
+                ]
 
-        inputTypes = T.unlines $ map (\(name,constrs) -> generateType True True $ ElmCustom ("I"++name) [("I"++name,constrs)]) serverMsgs
-        returnTypes = T.unlines $ map (\(name,constrs) -> generateType True True $ ElmCustom ("R"++name) [("R"++name,constrs)]) sStates
+        encoder = generateEncoder True serverMsgType
+        encoderHs = [encoder]
+
+        decoder = generateDecoder True serverMsgType
+        decoderHs = ["module Static.Decode where\n"
+                    ,"import Utils.Decode"
+                    ,"import Static.Types\n"
+                    ,decoder]
+
 
 
     in do
@@ -51,6 +63,8 @@ generateServer fp (startCs,startSs,cStates,sStates,cDiagram,sDiagram) =
         createDirectoryIfMissing True $ fp </> "src" </> "static"
         createDirectoryIfMissing True $ fp </> "src" </> "userApp"
         currentTime <- getCurrentTime
-        TIO.writeFile (fp </> "src" </> "static" </> "Types" <.> "hs") $ (types currentTime)
-        TIO.writeFile (fp </> "src" </> "utils" </> "Decode" <.> "hs") decodeHs
+        TIO.writeFile (fp </> "src" </> "static" </> "Types" <.> "hs") $ T.unlines $ disclaimer currentTime : typesHs
+        TIO.writeFile (fp </> "src" </> "utils" </> "Decode" <.> "hs") $ T.unlines $ disclaimer currentTime : [decodeHs]
+        TIO.writeFile (fp </> "src" </> "static" </> "Encode" <.> "hs")      $ T.unlines $ disclaimer currentTime : encoderHs
+        TIO.writeFile (fp </> "src" </> "static" </> "Decode" <.> "hs")      $ T.unlines $ disclaimer currentTime : decoderHs
         putStrLn $ show serverTransitions
