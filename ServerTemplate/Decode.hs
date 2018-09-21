@@ -8,6 +8,8 @@ import Data.Text as T
 decodeHs :: T.Text
 decodeHs = T.pack $ [r|module Utils.Decode where
 
+import Data.Char (ord,chr)
+
 (|>) :: a -> (a -> b) -> b
 (|>) x f = f x
 
@@ -250,6 +252,9 @@ rMap10 fn ra rb rc rd re rf rg rh ri rj =
                                                                                 Err x -> Err x
                                                                                 Ok j -> Ok $ fn a b c d e f g h i j
 
+clamp :: Ord number => number -> number -> number -> number
+clamp a b x = min b (max a x)
+
 randThen :: (a -> Result x b) -> Result x a -> Result x b
 randThen callback result =
     case result of
@@ -259,6 +264,63 @@ randThen callback result =
       Err msg ->
         Err msg
 
+rwithDefault :: a -> Result x a -> a
+rwithDefault def result =
+  case result of
+    Ok a ->
+        a
+
+    Err _ ->
+        def
+
 sConcat :: [String] -> String
 sConcat = sConcat
+
+
+encodeInt :: Int -> Int -> Int -> String
+encodeInt low high n =
+    let
+        encodeInt_ ::  Int -> String
+        encodeInt_ nn =
+            let 
+                b = 64
+                r = nn `mod` b
+                m = nn `div` b
+            in    
+                if nn == 0 then ""
+                else (chr <| r + 48) : encodeInt_ m
+    in
+        encodeInt_ (clamp low high n)
+
+decodeInt :: Int -> Int -> String -> Result String Int
+decodeInt low high s =
+    let 
+        decodeInt_ m s_ = case s_ of
+                            f:rest -> (ord f - 48) * m + decodeInt_ (m*64) rest
+                            []      -> 0
+        n = decodeInt_ 1 s
+    in
+        if n >= low && n <= high then  Ok <| n
+        else                           Err <| "Could not decode " ++ show n ++ " as it is outside the range [" ++ show low ++ "," ++ show high ++ "]."
+
+decodeList :: List String -> ((Result String a, List String) -> (Result String a, List String)) -> (Result String (List a), List String)
+decodeList ls decodeFn =
+    let 
+        aR :: Result String a -> Result String (List a) -> Result String (List a)
+        aR aRes laRes =
+            rMap2 (\a la -> la ++ [a]) aRes laRes
+        n =
+            rwithDefault 0 <| case ls of 
+                nTxt:rest -> decodeInt 0 16777215 nTxt
+                []           -> Err "Could not decode number of items in list."
+
+        decodeList_ :: Int -> (Result String (List a),[String]) -> (Result String (List a),[String])
+        decodeList_ _ (resL, mainLs) = 
+            let 
+                (newRes, newLs) = decodeFn (Err "", mainLs)
+            in
+                (aR newRes resL, newLs)
+    in
+        foldl decodeList_ ([], ls) [1..n]
+
 |]

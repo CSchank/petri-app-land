@@ -16,3 +16,4 @@ AppHome/
 			Init.hs		--user specified initial state
 			Update.hs	--update functions (stubs are generated, user fills them out)
 			View.hs		--user-specified functions for logging messages and / or server state
+			Types.hs    --internal user types not included in the state diagram

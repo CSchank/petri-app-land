@@ -12,14 +12,14 @@ type ElmDocType = (ElmType,String,String) -- type and name for pattern matching 
                                           -- doc string can be empty, but name string has to be legal Elm name
 
 data ElmType = ElmIntRange Int Int -- upper and lower bounds (used for optimizing messages, etc.)
-			 | ElmFloatRange Double Double Int -- upper and lower bounds, and number of decimal places of precision
-			 | ElmString -- a unicode string
-			 | ElmSizedString Int -- string with maximum size, and restricted character set TBD
-			 | ElmPair ElmDocType ElmDocType
-			 | ElmTriple ElmDocType ElmDocType ElmDocType
-			 | ElmList ElmDocType
-			 | ElmDict ElmDocType ElmDocType
-			 | ElmType String --the type referenced must be included in the map
+             | ElmFloatRange Double Double Int -- upper and lower bounds, and number of decimal places of precision
+             | ElmString -- a unicode string
+             | ElmSizedString Int -- string with maximum size, and restricted character set TBD
+             | ElmPair ElmDocType ElmDocType
+             | ElmTriple ElmDocType ElmDocType ElmDocType
+             | ElmList ElmDocType
+             | ElmDict ElmDocType ElmDocType
+             | ElmType String --the type referenced must be included in the map
   deriving (Ord,Eq,Show)
 
 type Constructor = (String,[ElmDocType]) -- (name, arguments)
@@ -27,16 +27,36 @@ type Constructor = (String,[ElmDocType]) -- (name, arguments)
 data ElmCustom = ElmCustom String [Constructor] -- name of the type 
   deriving (Ord,Eq,Show)
 
-type ClientState 	  	= Constructor
-type ServerState 		= Constructor
-type ClientTransition 	= Constructor
-type ServerTransition 	= Constructor
+type ClientState       	= Constructor
+type ServerState        = Constructor
+type ClientTransition   = Constructor
+type ServerTransition   = Constructor
 
 type ClientStateDiagram =
-	M.Map (String, ClientTransition) (String, Maybe ServerTransition)
+    M.Map (String, ClientTransition) (String, Maybe ServerTransition)
 
 type ServerStateDiagram =
-	M.Map (String, ServerTransition) (String, Maybe ClientTransition)
+    M.Map (String, ServerTransition) (String, Maybe ClientTransition)
+
+type ExtraClientTypes =
+    M.Map String ElmCustom
+
+type ExtraServerTypes =
+    M.Map String ElmCustom
+
+type ClientStates =
+	M.Map String Constructor
+
+type ServerStates =
+	M.Map String Constructor
 
 type ClientServerApp =
-	(String, String, [ClientState], [ServerState], ClientStateDiagram, ServerStateDiagram) --(clientStart,serverStart,clientStates,serverStates,clientStateDiagram,serverStateDiagram)
+    ( String               	--starting state of client
+    , String                --starting state of server
+    , ClientStates          --all possible client states
+    , ServerStates          --all possible server states
+    , ExtraClientTypes		--extra client types used in states or messages
+    , ExtraServerTypes		--extra server types used in states or messages
+    , ClientStateDiagram    --the client state diagram
+    , ServerStateDiagram    --the client state diagram
+    )
