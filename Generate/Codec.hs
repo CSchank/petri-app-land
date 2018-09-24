@@ -8,12 +8,13 @@ import qualified Data.Text as T
 
 --generateCodec :: ClientServerApp -> 
 
-elmDelim = T.pack "\\u{0000}"
 
 
 generateEncoder :: Bool -> ElmCustom -> T.Text
 generateEncoder h (ElmCustom name edts) =
     let
+        elmDelim = if h then T.pack "\\0" else T.pack "\\u{0000}"
+
         indtTxts indt txts = map (indtTxt indt) txts
         indtTxt indt txt = T.concat [T.replicate (4*indt) " ", txt]
 
@@ -27,13 +28,13 @@ generateEncoder h (ElmCustom name edts) =
         encodeEt indt (ElmIntRange low high,n,_) = 
             indtTxts indt $ [T.concat[T.pack n, "Txt = encodeInt ",T.pack $ show low," ",T.pack $ show high," ",T.pack n]
                             ]
-        encodeEt indt (ElmFloatRange low high precision,n,_) = 
-            indtTxts indt $ [T.concat[T.pack $ n ++ "Txt"," ="]
-                            ,"    let"
-                            ,T.concat["        low  = ", T.pack $ show low]
-                            ,T.concat["        high = ", T.pack $ show high]
-                            ,"    in" 
-                            ,T.concat["        encodeInt <| round (",T.pack n,"-low)*",T.pack $ show $ 10^precision]
+        encodeEt indt (ElmFloatRange low high precision,n,_) =
+            let
+                pLow = T.pack $ show (round $ low*10^precision)
+                pHigh = T.pack $ show (round $ high*10^precision)
+                pPrec = T.pack $ show (10^precision)
+            in
+                indtTxts indt $ [T.concat[T.pack $ n ++ "Txt"," = encodeInt ",pLow," ",pHigh," (round <| (",T.pack n,"-",pLow,")*",pPrec ,")"]
                             ]
         encodeEt indt (ElmString, n, _) =
             indtTxts indt $ [T.concat [T.pack n, "Txt = ",T.pack n]]
@@ -46,7 +47,7 @@ generateEncoder h (ElmCustom name edts) =
                             encodeEt (indt+2) (et0,n0,d0) ++
                             encodeEt (indt+2) (et1,n1,d1) ++
             indtTxts indt   ["    in"
-                            ,T.concat ["        ",T.pack n0,"Txt","++\"",elmDelim,"\"++",T.pack n1,"Txt"]
+                            ,T.concat ["        tConcat [",T.pack n0,"Txt",",",elmDelim,",",T.pack n1,"Txt]"]
                             ]
         encodeEt indt (ElmTriple (et0,n0,d0) (et1,n1,d1) (et2,n2,d2), n, _) =
             indtTxts indt $ [T.concat[T.pack n, "Txt ="]
@@ -56,7 +57,7 @@ generateEncoder h (ElmCustom name edts) =
                             ,T.unlines $ encodeEt (indt+2) (et1,n1,d1)
                             ,T.unlines $ encodeEt (indt+2) (et2,n2,d2)
                             ,"    in"
-                            ,T.concat ["        ",T.pack n0,"Txt","++\"",elmDelim,"\"++",T.pack n1,"Txt","++\"",elmDelim,"\"++",T.pack n2,"Txt"]
+                            ,T.concat ["        tConcat[",T.pack n0,"Txt,",elmDelim,",",T.pack n1,"Txt,",elmDelim,",",T.pack n2,"Txt]"]
                             ]
         encodeEt indt (ElmList (et, etn, etd), n, _) =
             indtTxts indt   [T.concat[T.pack n, "Txt ="]
@@ -72,7 +73,7 @@ generateEncoder h (ElmCustom name edts) =
                             ,T.concat["        encode",T.pack n," ls ="]
                             ,T.concat["            List.foldl encode",T.pack n,"_ (\"\",ls) (List.range 0 (List.length ",T.pack n,"))"]
                             ,"    in"
-                            ,T.concat ["        (encodeInt 0 16777216 <| List.length ",T.pack n,") ++ (Tuple.first <| encode",T.pack n," ",T.pack n,")"]
+                            ,T.concat ["        tConcat [encodeInt 0 16777216 <| List.length ",T.pack n,", Tuple.first <| encode",T.pack n," ",T.pack n,"]"]
                             ]
         encodeEt indt (ElmDict etd0 etd1, n, _) =
             error "Dictionaries aren't supported yet."
@@ -88,10 +89,10 @@ generateEncoder h (ElmCustom name edts) =
                                                     ,if length edt > 0 then T.concat ["\n            let\n"
                                                     ,T.unlines $ concat $ map (encodeEt 4) edt
                                                     ,"            in\n"] else ""
-                                                    ,"                \"",T.pack constrName,elmDelim,if length edt > 0 then "\" ++ " else "\"",T.intercalate (T.concat["++\"",elmDelim,"\"++"]) $ map (\(et,name,desc) -> T.pack $ name ++ "Txt") edt
+                                                    ,"                tConcat [\"",T.pack constrName,elmDelim,if length edt > 0 then "\", " else "\"",T.intercalate (T.concat[",\"",elmDelim,"\","]) $ map (\(et,name,desc) -> T.pack $ name ++ "Txt") edt, "]"
                                                     ]) edts
         fullTxt = T.unlines 
-                    [T.concat["encode",T.pack name .::. T.pack name," -> String"]
+                    [T.concat["encode",T.pack name .::. T.pack name,if h then " -> T.Text" else " -> String"]
                     ,T.concat["encode",T.pack name," ",T.toLower $ T.pack name," = "]
                     ,T.concat["    case ",T.toLower $ T.pack name, " of"]
                     ,T.unlines cases
@@ -102,7 +103,9 @@ generateEncoder h (ElmCustom name edts) =
 generateDecoder :: Bool -> ElmCustom -> T.Text
 generateDecoder h (ElmCustom name edts) =
     let
-        typeSig = T.concat["decode",T.pack name, " " .::. " (Result String ",T.pack name,", List String) -> (Result String ",T.pack name,", List String)"]
+        typeSig = if h then T.concat["decode",T.pack name, " " .::. " (Result T.Text ",T.pack name,", [T.Text]) -> (Result T.Text ",T.pack name,", [T.Text])"]
+                  else      T.concat["decode",T.pack name, " " .::. " (Result String ",T.pack name,", List String) -> (Result String ",T.pack name,", List String)"]
+
 
         indtTxts indt txts = map (indtTxt indt) txts
         indtTxt indt txt = T.concat [T.replicate (4*indt) " ", txt]
@@ -195,5 +198,5 @@ generateDecoder h (ElmCustom name edts) =
                   ,T.concat["decode",T.pack name," (lastRes,",T.toLower $ T.pack name,"Txts) = "]
                   ,T.concat["    case ",T.toLower $ T.pack name, "Txts of"]
                   ,T.unlines cases
-                  ,T.concat["        _ -> (Err <| \"Incorrect input, could not decode value of type ",T.pack name," from string \\\"\" ++ sConcat ", T.toLower $ T.pack name,"Txts ++ \"\\\"\",[])"]
+                  ,T.concat["        _ -> (Err <| tConcat [\"Incorrect input, could not decode value of type ",T.pack name," from string \\\"\", tConcat ", T.toLower $ T.pack name,"Txts, \"\\\"\"],[])"]
                   ]

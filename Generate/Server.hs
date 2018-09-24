@@ -15,6 +15,10 @@ import                  System.FilePath.Posix   ((</>),(<.>))
 import                  Data.Maybe              (mapMaybe)
 import                  Data.Time               (getCurrentTime)
 import                  ServerTemplate.Decode
+import                  ServerTemplate.ServerLogic
+import                  ServerTemplate.Lib
+import                  ServerTemplate.ServerTypes
+import                  ServerTemplate.Main
 
 generateServer :: FilePath -> ClientServerApp -> IO ()
 generateServer fp (startCs
@@ -41,13 +45,14 @@ generateServer fp (startCs
         serverTransFromClient = S.fromList $ mapMaybe (\(_,(_,trans)) -> trans) $ M.toList cDiagram
         serverTransitions = S.fromList $ map (\((_,trans),_) -> trans) $ M.toList sDiagram
 
-        clientMsgType = ElmCustom "OutgoingMessage" clientMsgs
+        clientTransFromServer = S.toList $ S.fromList $ mapMaybe (\(_,(_,trans)) -> trans) $ M.toList sDiagram
+        clientMsgType = ElmCustom "OutgoingMessage" $ clientTransFromServer
         clientMsgTypeTxt = generateType True True $ clientMsgType
         clientMsgs = S.toList $ S.fromList $ map (\((_,trans),(_,_)) -> trans) $ M.toList cDiagram
 
-        inputTypesTxt = T.unlines $ map (\(name,constrs) -> generateType True True $ ElmCustom ("I"++name) [("I"++name,constrs)]) serverMsgs
-        returnTypesTxt = T.unlines $ map (\(name,constrs) -> generateType True True $ ElmCustom ("R"++name) [("R"++name,constrs)]) $ M.elems sStates
-        returnMsgTypesTxt = T.unlines $ map (\(name,constrs) -> generateType True True $ ElmCustom ("M"++name) [("M"++name,constrs)]) clientMsgs
+        inputTypesTxt = T.unlines $ map (\(name,constrs) -> generateType True True $ ElmCustom ("M"++name) [("M"++name,constrs)]) serverMsgs
+        returnTypesTxt = T.unlines $ map (\(name,constrs) -> generateType True True $ ElmCustom ("S"++name) [("S"++name,constrs)]) $ M.elems sStates
+        returnMsgTypesTxt = T.unlines $ map (\(name,constrs) -> generateType True True $ ElmCustom ("M"++name) [("M"++name,constrs)]) clientTransFromServer
 
         extraTypes    = map snd $ M.toList sExtraT
         extraTypesTxt = T.unlines $ map (generateType True True) $ extraTypes
@@ -77,14 +82,22 @@ generateServer fp (startCs
                 ]
 
         encoder = generateEncoder True serverMsgType
+        outgoingEncoder = generateEncoder True $ ElmCustom "OutgoingMessage" clientTransFromServer
         extraTypesEncoder = T.unlines $ map (generateEncoder True) extraTypes
-        encoderHs = [encoder
+        encoderHs = ["{-# LANGUAGE OverloadedStrings #-}\n"
+                    ,"module Static.Encode where\n"
+                    ,"import Static.Types"
+                    ,"import Utils.Decode"
+                    ,"import qualified Data.Text as T"
+                    ,outgoingEncoder
                     ,extraTypesEncoder]
 
         decoder = generateDecoder True serverMsgType
         extraTypesDecoder = T.unlines $ map (generateDecoder True) extraTypes
-        decoderHs = ["module Static.Decode where\n"
+        decoderHs = ["{-# LANGUAGE OverloadedStrings #-}\n"
+                    ,"module Static.Decode where\n"
                     ,"import Utils.Decode"
+                    ,"import qualified Data.Text as T"
                     ,"import Static.Types\n"
                     ,decoder
                     ,extraTypesDecoder]
@@ -99,8 +112,10 @@ generateServer fp (startCs
                             Just constr -> constr
                             Nothing -> error $ "State" ++ s0 ++ " does not exist in the map."
                 name = T.concat ["update", T.pack s0, T.pack tn, T.pack s1]
-                typE = T.concat [name, " :: ", "M", T.pack tn, " -> Model -> R",T.pack s1]
-                decl = T.concat [name, " ", generatePattern ("M"++tn,tetd), generatePattern s0Cons, " = error \"Update function ",name," not defined. Please define it in userApp/Update.hs.\""]
+                typE = case mCt of 
+                        Just (ctn,ct) -> T.concat [name, " :: IncomingMessage -> Model -> (S",T.pack s1,", M",T.pack ctn,")"]
+                        Nothing -> T.concat [name, " :: OutgoingMessage -> Model -> S",T.pack s1]
+                decl = T.concat [name, " ", generatePattern (tn,tetd), generatePattern s0Cons, " = error \"Update function ",name," not defined. Please define it in userApp/Update.hs.\""]
             in
                 T.unlines
                     [
@@ -131,6 +146,7 @@ generateServer fp (startCs
                       ,"    Define your own types for internal use here. Note that any types used in the state or messages should be defined in the state"
                       ,"    diagram and generated for use in your program. These types can be used within update / view functions only."
                       ,"-}"
+                      ,"module Types where"
                       ]
 
         userInitHs = ["module Init where"
@@ -142,9 +158,83 @@ generateServer fp (startCs
                      ,"    the same arguments. This \"R\"-type will be unwrapped for you in the background. This ensures consistency with your state diagram."
                      ,"-}\n"
                      ,"-- Hint: replace error with the return value of your initial state"
-                     ,T.concat["init :: R",T.pack $ startSs]
+                     ,T.concat["init :: S",T.pack $ startSs]
                      ,"init = error \"Initial server state not defined. Please define it in userApp/Init.hs.\""
                      ]
+
+        hiddenUpdateHs = ["module Static.Update where"
+                         ,"import Static.Types"
+                         ,"import Update\n"
+                         ,"--Server state unwrappers"
+                         ,T.concat $ map (createUnwrap "Model" "S") $ M.elems sStates
+                         ,"--Client message wrappers"
+                         ,T.concat $ map (createMsgWrap "IncomingMessage" "M") $ serverMsgs
+                         ,"--Client message unwrappers"
+                         ,T.concat $ map (createUnwrap "OutgoingMessage" "M") $ clientTransFromServer
+                         ,"update :: Int -> IncomingMessage -> Model -> IO (Model, Maybe OutgoingMessage)"
+                         ,"update clientId msg model ="
+                         ,"    case (msg, model) of"
+                         ,T.concat $ map createUpdateCase $ M.toList sDiagram
+                         ]
+
+        createUnwrap :: String -> String -> Constructor -> T.Text
+        createUnwrap outputType inputPrefix (n,args) =
+            let
+                name = T.concat ["unwrap", T.pack n]
+                typE = T.concat [name, " :: ", T.pack inputPrefix, T.pack n, " -> ", T.pack outputType]
+                decl = T.concat [name," ",generatePattern (inputPrefix++n,args)," = ",generatePattern (n,args)]
+            in
+                T.unlines
+                    [
+                        typE
+                    ,   decl
+                    ,   ""
+                    ]
+
+        createMsgWrap :: String -> String -> Constructor -> T.Text
+        createMsgWrap inputType outputPrefix (n,args) =
+            let
+                name = T.concat ["wrap", T.pack n]
+                typE = T.concat [name, " :: ", T.pack inputType," -> ",T.pack outputPrefix,T.pack n]
+                decl = T.concat [name," ",generatePattern (n,args)," = ",generatePattern (outputPrefix++n,args)]
+            in
+                T.unlines
+                    [
+                        typE
+                    ,   decl
+                    ,   ""
+                    ]
+
+        createUpdateCase :: ((String, ServerTransition), (String, Maybe ClientTransition)) -> T.Text
+        createUpdateCase ((s0,(tn,tetd)),(s1,mCt)) =
+            let
+                s0Cons = case (M.lookup s0 sStates) of
+                            Just constr -> constr
+                            Nothing -> error $ "State" ++ s0 ++ " does not exist in the map."
+                s1Cons = case (M.lookup s1 sStates) of
+                            Just constr -> constr
+                            Nothing -> error $ "State" ++ s0 ++ " does not exist in the map."
+                name = T.concat ["update", T.pack s0, T.pack tn, T.pack s1]
+                typE = case mCt of 
+                        Just ct -> T.concat [name, " :: IncomingMessage -> Model -> (R",T.pack s1,", M",T.pack tn,")"]
+                        Nothing -> T.concat [name, " :: OutgoingMessage -> Model -> R",T.pack s1]
+                decl = T.concat [name, " ", generatePattern (tn,tetd), generatePattern s0Cons, " = error \"Update function ",name," not defined. Please define it in userApp/Update.hs.\""]
+                (ctn,ct) = case mCt of
+                            Just (ctn,ct) -> (ctn,ct)
+                            Nothing       -> ("",[])
+            in
+                case mCt of 
+                    Just ct -> T.concat ["        ","(",generatePattern (tn,tetd),",",generatePattern s0Cons,") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," msg model in return (unwrap",T.pack s1," wrappedModel,Just $ unwrap",T.pack ctn," wrappedMsg)"]
+                    Nothing -> T.concat ["        ","(",generatePattern (tn,tetd),",",generatePattern s0Cons,") -> return $ (unwrap",T.pack s1," update",T.pack s0,T.pack tn,T.pack s1," msg model, Nothing)"]
+        
+        staticInitHs = [
+                            "module Static.Init where\n"
+                       ,    "import Static.Types"
+                       ,    "import Static.Update"
+                       ,    "import qualified Init"
+                       ,    "init :: Model"
+                       ,    T.concat["init = unwrap", T.pack startSs, " ", "Init.init"]
+                       ]    
 
     in do
         createDirectoryIfMissing True $ fp </> "app"
@@ -153,9 +243,15 @@ generateServer fp (startCs
         createDirectoryIfMissing True $ fp </> "src" </> "userApp"
         currentTime <- getCurrentTime
         TIO.writeFile (fp </> "src" </> "static" </> "Types" <.> "hs") $ T.unlines $ disclaimer currentTime : typesHs
+        TIO.writeFile (fp </> "src" </> "static" </> "ServerTypes" <.> "hs") $ T.unlines $ disclaimer currentTime : [serverTypesHs]
+        TIO.writeFile (fp </> "app" </> "Main" <.> "hs") $ T.unlines $ disclaimer currentTime : [mainHs]
         TIO.writeFile (fp </> "src" </> "utils" </> "Decode" <.> "hs") $ T.unlines $ disclaimer currentTime : [decodeHs]
         TIO.writeFile (fp </> "src" </> "static" </> "Encode" <.> "hs")      $ T.unlines $ disclaimer currentTime : encoderHs
         TIO.writeFile (fp </> "src" </> "static" </> "Decode" <.> "hs")      $ T.unlines $ disclaimer currentTime : decoderHs
+        TIO.writeFile (fp </> "src" </> "static" </> "Update" <.> "hs")      $ T.unlines $ disclaimer currentTime : hiddenUpdateHs
+        TIO.writeFile (fp </> "src" </> "static" </> "Lib" <.> "hs")      $ T.unlines $ disclaimer currentTime : [libHs]
+        TIO.writeFile (fp </> "src" </> "static" </> "ServerLogic" <.> "hs")      $ T.unlines $ disclaimer currentTime : [serverLogicHs]
+        TIO.writeFile (fp </> "src" </> "static" </> "Init" <.> "hs")      $ T.unlines $ disclaimer currentTime : staticInitHs
         TIO.writeFile (fp </> "src" </> "userApp" </> "Update" <.> "hs")      $ T.unlines $ userUpdateHs
         TIO.writeFile (fp </> "src" </> "userApp" </> "Types" <.> "hs")      $ T.unlines $ userTypesHs
         TIO.writeFile (fp </> "src" </> "userApp" </> "Init" <.> "hs")      $ T.unlines $ userInitHs

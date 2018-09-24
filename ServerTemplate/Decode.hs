@@ -6,9 +6,12 @@ import Text.RawString.QQ
 import Data.Text as T
 
 decodeHs :: T.Text
-decodeHs = T.pack $ [r|module Utils.Decode where
+decodeHs = T.pack $ [r|{-# LANGUAGE ScopedTypeVariables, OverloadedStrings #-}
+
+module Utils.Decode where
 
 import Data.Char (ord,chr)
+import qualified Data.Text as T
 
 (|>) :: a -> (a -> b) -> b
 (|>) x f = f x
@@ -25,6 +28,9 @@ data Result error value =
     | Ok value
 
 type List a = [a]
+
+toFloat :: Integral a => a -> Double
+toFloat = fromIntegral
 
 rMap :: (a -> value) -> Result x a -> Result x value
 rMap fn ra =
@@ -273,14 +279,17 @@ rwithDefault def result =
     Err _ ->
         def
 
+tConcat :: [T.Text] -> T.Text
+tConcat = T.concat
+
 sConcat :: [String] -> String
-sConcat = sConcat
+sConcat = concat
 
 
-encodeInt :: Int -> Int -> Int -> String
+encodeInt :: Int -> Int -> Int -> T.Text
 encodeInt low high n =
     let
-        encodeInt_ ::  Int -> String
+        encodeInt_ ::  Int -> [Char]
         encodeInt_ nn =
             let 
                 b = 64
@@ -290,23 +299,23 @@ encodeInt low high n =
                 if nn == 0 then ""
                 else (chr <| r + 48) : encodeInt_ m
     in
-        encodeInt_ (clamp low high n)
+        T.pack $ encodeInt_ (clamp low high n)
 
-decodeInt :: Int -> Int -> String -> Result String Int
+decodeInt :: Int -> Int -> T.Text -> Result T.Text Int
 decodeInt low high s =
     let 
         decodeInt_ m s_ = case s_ of
                             f:rest -> (ord f - 48) * m + decodeInt_ (m*64) rest
                             []      -> 0
-        n = decodeInt_ 1 s
+        n = decodeInt_ 1 $ T.unpack s
     in
         if n >= low && n <= high then  Ok <| n
-        else                           Err <| "Could not decode " ++ show n ++ " as it is outside the range [" ++ show low ++ "," ++ show high ++ "]."
+        else                           Err <| T.concat ["Could not decode ", T.pack $ show n, " as it is outside the range [", T.pack $ show low, ",", T.pack $ show high, "]."]
 
-decodeList :: List String -> ((Result String a, List String) -> (Result String a, List String)) -> (Result String (List a), List String)
+decodeList :: forall a . [T.Text] -> ((Result T.Text a, [T.Text]) -> (Result T.Text a, [T.Text])) -> (Result T.Text [a], [T.Text])
 decodeList ls decodeFn =
     let 
-        aR :: Result String a -> Result String (List a) -> Result String (List a)
+        aR :: Result T.Text a -> Result T.Text [a] -> Result T.Text [a]
         aR aRes laRes =
             rMap2 (\a la -> la ++ [a]) aRes laRes
         n =
@@ -314,13 +323,11 @@ decodeList ls decodeFn =
                 nTxt:rest -> decodeInt 0 16777215 nTxt
                 []           -> Err "Could not decode number of items in list."
 
-        decodeList_ :: Int -> (Result String (List a),[String]) -> (Result String (List a),[String])
-        decodeList_ _ (resL, mainLs) = 
+        decodeList' :: (Result T.Text [a],[T.Text]) -> Int -> (Result T.Text [a],[T.Text])
+        decodeList' (resL, mainLs) _ = 
             let 
                 (newRes, newLs) = decodeFn (Err "", mainLs)
             in
                 (aR newRes resL, newLs)
     in
-        foldl decodeList_ ([], ls) [1..n]
-
-|]
+        foldl decodeList' (Ok [], drop 1 ls) [1..n]|]
