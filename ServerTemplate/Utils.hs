@@ -1,14 +1,14 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module ServerTemplate.Decode where
+module ServerTemplate.Utils where
 
 import Text.RawString.QQ
 import Data.Text as T
 
-decodeHs :: T.Text
-decodeHs = T.pack $ [r|{-# LANGUAGE ScopedTypeVariables, OverloadedStrings #-}
+utilsHs :: T.Text
+utilsHs = T.pack $ [r|{-# LANGUAGE ScopedTypeVariables, OverloadedStrings #-}
 
-module Utils.Decode where
+module Utils.Utils where
 
 import Data.Char (ord,chr)
 import qualified Data.Text as T

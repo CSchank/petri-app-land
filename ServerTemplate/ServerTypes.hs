@@ -10,7 +10,7 @@ serverTypesHs = T.pack $ [r|{-# LANGUAGE OverloadedStrings #-}
 module Static.ServerTypes
     ( Colour(..)
     , CentralMessage(..)
-    , ClientMessage(..)
+    , ClientThreadMessage(..)
     , ServerState(..)
     , Client(..)
     , ClientID
@@ -25,13 +25,13 @@ import           Network.WebSockets.Connection (Connection)
 type ClientID = Int
 
 data CentralMessage
-    = NewUser (TChan ClientMessage) Connection    --register a new user on the server
-    | ReceivedMessage ClientID IncomingMessage
+    = NewUser (TChan ClientThreadMessage) Connection    --register a new user on the server
+    | ReceivedMessage ClientID ServerMessage
 
-data ClientMessage 
-    = SendMessage OutgoingMessage
+data ClientThreadMessage 
+    = SendMessage ClientMessage
 
-newtype Client = Client (TChan ClientMessage)
+newtype Client = Client (TChan ClientThreadMessage)
 
 data ServerState = ServerState
     { clients :: IM'.IntMap Client

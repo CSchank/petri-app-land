@@ -53,7 +53,7 @@ generatePattern (constrName, args) =
     let
         patternTxt = T.intercalate " " $ map edt2Pat args
     in
-        T.concat [if length args > 0 then "(" else "",T.pack constrName, " ", patternTxt, if length args > 0 then ")" else ""]
+        T.concat [if length args > 0 then "(" else "",T.pack constrName, " ", patternTxt, if length args > 0 then ") " else ""]
 
 {-
 generatePattern :: Bool -> Bool -> ElmCustom -> T.Text

@@ -12,8 +12,6 @@ module Static.ServerLogic
     , newClientMessageChan
     , processCentralChan
     , processClientChan
-    , CentralMessage(..)
-    , ClientMessage(..)
     ) where
 
 import           Control.Concurrent.STM (STM, TChan, atomically, newTChan,
@@ -35,7 +33,7 @@ import Static.ServerTypes
 import Static.Encode
 import Static.Decode
 import Static.Init (init)
-import Utils.Decode (Result(..))
+import Utils.Utils (Result(..))
 import Static.Update (update)
 
 
@@ -44,7 +42,7 @@ newCentralMessageChan =
     newTChan
 
 
-newClientMessageChan :: STM (TChan ClientMessage)
+newClientMessageChan :: STM (TChan ClientThreadMessage)
 newClientMessageChan =
     newTChan
 
@@ -71,7 +69,7 @@ processCentralMessage :: (TChan CentralMessage) -> ServerState -> CentralMessage
 processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) = do
     -- A new Client has signed on. We need to add the following to the server
     -- state:
-    -- (1) Add their ClientMessage channel for broadcasting future updates.
+    -- (1) Add their ClientThreadMessage channel for broadcasting future updates.
     -- (2) Add their username as a key to the scoring Dict with a fresh value.
 
     let newClientId = (nextClientId state)
@@ -111,19 +109,19 @@ processCentralMessage _ state (ReceivedMessage clientId incomingMsg) = do
 --a new message has been received from a client. Process it and inform the central message about it.
 parseIncomingMsg :: ClientID -> TChan CentralMessage -> Text -> IO ()
 parseIncomingMsg clientId chan msg = do
-    case (decodeIncomingMessage (Err "",T.splitOn "\0" msg)) of
+    case (decodeServerMessage (Err "",T.splitOn "\0" msg)) of
         (Ok msg,_) -> do
                         atomically $ writeTChan chan $ ReceivedMessage clientId msg
         (Err er,l) -> Tio.putStrLn $ T.concat ["Error decoding message from client ", T.pack $ show clientId, ". Failed with error: ", er, " and the following still in the deocde buffer:", T.pack $ show l, "."]
 
 
 
-processClientChan :: WS.Connection -> TChan ClientMessage -> IO ()
+processClientChan :: WS.Connection -> TChan ClientThreadMessage -> IO ()
 processClientChan conn chan = forever $ do
-    -- This reads a ClientMessage channel forever and passes any messages
+    -- This reads a ClientThreadMessage channel forever and passes any messages
     -- it reads to the WebSocket Connection.
     (SendMessage outgoingMessage) <- atomically $ readTChan chan
-    let txtMsg = encodeOutgoingMessage outgoingMessage
+    let txtMsg = encodeClientMessage outgoingMessage
 
     WS.sendTextData conn txtMsg
     Tio.putStrLn $ T.concat $ ["Sent: ",  txtMsg]|]

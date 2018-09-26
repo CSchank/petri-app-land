@@ -27,7 +27,7 @@ type Constructor = (String,[ElmDocType]) -- (name, arguments)
 data ElmCustom = ElmCustom String [Constructor] -- name of the type 
   deriving (Ord,Eq,Show)
 
-type ClientState       	= Constructor
+type ClientState           = Constructor
 type ServerState        = Constructor
 type ClientTransition   = Constructor
 type ServerTransition   = Constructor
@@ -45,18 +45,18 @@ type ExtraServerTypes =
     M.Map String ElmCustom
 
 type ClientStates =
-	M.Map String Constructor
+    M.Map String Constructor
 
 type ServerStates =
-	M.Map String Constructor
+    M.Map String Constructor
 
 type ClientServerApp =
-    ( String               	--starting state of client
+    ( String                   --starting state of client
     , String                --starting state of server
     , ClientStates          --all possible client states
     , ServerStates          --all possible server states
-    , ExtraClientTypes		--extra client types used in states or messages
-    , ExtraServerTypes		--extra server types used in states or messages
+    , ExtraClientTypes        --extra client types used in states or messages
+    , ExtraServerTypes        --extra server types used in states or messages
     , ClientStateDiagram    --the client state diagram
     , ServerStateDiagram    --the client state diagram
     )

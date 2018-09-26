@@ -33,13 +33,13 @@ import qualified Static.ServerLogic as ServerLogic
 import Static.ServerTypes
 import Types
 import Static.Decode
-import Utils.Decode
+import Utils.Utils
 
 
 wsApp :: TChan CentralMessage -> WS.ServerApp
 wsApp centralMessageChan pendingConn = 
     let
-        loop :: WS.Connection -> TChan ClientMessage -> IO ()
+        loop :: WS.Connection -> TChan ClientThreadMessage -> IO ()
         loop conn clientMessageChan = do
                   -- wait for login message
                   rawMsg <- WS.receiveData conn
@@ -47,7 +47,7 @@ wsApp centralMessageChan pendingConn =
                   
                   case rawMsg of 
                     "v0.1" -> do -- tell the central thread to log the user in
-                        atomically $ writeTChan centralMessageChan (ServerLogic.NewUser clientMessageChan conn)
+                        atomically $ writeTChan centralMessageChan (NewUser clientMessageChan conn)
                         return ()
                     _      -> do -- user's client version does not match 
                         WS.sendTextData conn ("ve" :: T.Text) --tell client that its version it wrong

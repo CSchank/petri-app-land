@@ -12,33 +12,33 @@ green = ("Green",[])
 idle = ("Idle",[(ElmIntRange 0 100000000,"num","The number of clicks that users have made.")])
 
 click = ("Click",[])
-receive = ("Receive",[])
+reqNew = ("RequestNewColour",[])
 change = ("ChangeColour",[(ElmType "Colour","colour","")])
 
 testServer = (
-                "Red"
-             ,  "Idle"
-             ,  M.fromList [("Red",red),("Blue",blue),("Green",green)]
-             ,  M.fromList [("Idle",idle)]
-             ,  M.empty
-             ,  M.fromList [("Colour",testRGB)]
-             ,  csDiagram
-             ,  ssDiagram
+                "Red" --client start state
+             ,  "Idle" --server start start
+             ,  M.fromList [("Red",red),("Blue",blue),("Green",green)] --client states
+             ,  M.fromList [("Idle",idle)]                                 --server states
+             ,  M.fromList [("Colour",testRGB)]                            --extra client types
+             ,  M.fromList [("Colour",testRGB)]        --extra server types
+             ,  csDiagram --client state diagram
+             ,  ssDiagram --server state diagram
              )
 
 csDiagram :: ClientStateDiagram
 csDiagram = M.fromList 
             [
-                (("Red",    click)     ,("Red",    Just receive))
+                (("Red",    click)     ,("Red",    Just reqNew))
             ,    (("Red",    change)    ,("Red",    Nothing))
-            ,   (("Green",    click)     ,("Green",    Just receive))
+            ,   (("Green",    click)     ,("Green",    Just reqNew))
             ,    (("Green",    change)    ,("Blue",    Nothing))
-            ,   (("Blue",    click)     ,("Blue",    Just receive))
+            ,   (("Blue",    click)     ,("Blue",    Just reqNew))
             ,    (("Blue",    change)    ,("Red",    Nothing))
             ]
 
 ssDiagram :: ServerStateDiagram
 ssDiagram = M.fromList 
             [
-                (("Idle", receive), ("Idle", Just change))
+                (("Idle", reqNew), ("Idle", Just change))
             ]
