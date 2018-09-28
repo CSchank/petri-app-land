@@ -27,9 +27,10 @@ import                  ClientTemplate.ClientTypes
 import                  ClientTemplate.Main
 import                  ClientTemplate.ElmJson
 import                  ClientTemplate.View
+import                  ClientTemplate.Version
 
-generateServer :: FilePath -> ClientServerApp -> IO ()
-generateServer fp (startCs
+generateServer :: Bool -> FilePath -> ClientServerApp -> IO ()
+generateServer onlyStatic fp (startCs
                   ,startSs
                   ,cStates
                   ,sStates
@@ -147,7 +148,6 @@ generateServer fp (startCs
         encoderElm = ["module Static.Encode exposing (..)\n"
                     ,"import Static.Types exposing (..)"
                     ,"import Utils.Utils exposing (..)"
-                    ,"import qualified Data.Text as T"
                     ,clientOutgoingEncoder
                     ,clientExtraTypesEncoder]
 
@@ -278,9 +278,9 @@ generateServer fp (startCs
                          ,"--Server state unwrappers"
                          ,T.concat $ map (createUnwrap True "Model" "S") $ M.elems sStates
                          ,"--Server state wrappers"
-                         ,T.concat $ map (createWrap (length (M.elems sStates) > 0) True "Model" "S") $ M.elems sStates
+                         ,T.concat $ map (createWrap (length (M.elems sStates) > 1) True "Model" "S") $ M.elems sStates
                          ,"--Server message wrappers"
-                         ,T.concat $ map (createWrap (length serverMsgs > 0) True "ServerMessage" "M") $ serverMsgs
+                         ,T.concat $ map (createWrap (length serverMsgs > 1) True "ServerMessage" "M") $ serverMsgs
                          ,"--Client message unwrappers"
                          ,T.concat $ map (createUnwrap True "ClientMessage" "M") $ serverOutgoingMsgs
                          ,"update :: Int -> ServerMessage -> Model -> IO (Model, Maybe ClientMessage)"
@@ -296,13 +296,13 @@ generateServer fp (startCs
                          ,"--Server state unwrappers"
                          ,T.concat $ map (createUnwrap False "Model" "S") $ M.elems cStates
                          ,"--Server state wrappers"
-                         ,T.concat $ map (createWrap ((length $ M.elems cStates) > 0) False "Model" "S") $ M.elems cStates
+                         ,T.concat $ map (createWrap ((length $ M.elems cStates) > 1) False "Model" "S") $ M.elems cStates
                          ,"--Client message wrappers"
-                         ,T.concat $ map (createWrap (length clientMsgs > 0) False "ClientMessage" "M") $ clientMsgs
+                         ,T.concat $ map (createWrap (length clientMsgs > 1) False "ClientMessage" "M") $ clientMsgs
                          ,"--Client message unwrappers"
                          ,T.concat $ map (createUnwrap False "ServerMessage" "M") $ clientOutgoingMsgs
-                         ,"update : Int -> ClientMessage -> Model -> (Model, Maybe ServerMessage)"
-                         ,"update clientId msg model ="
+                         ,"update : ClientMessage -> Model -> (Model, Maybe ServerMessage)"
+                         ,"update msg model ="
                          ,"    case (msg, model) of"
                          ,T.concat $ map (createUpdateCase False) $ M.toList cDiagram
                          ]
@@ -404,12 +404,12 @@ generateServer fp (startCs
         TIO.writeFile (fp </> "server" </> "src" </> "static" </> "Lib" <.> "hs")      $ T.unlines $ disclaimer currentTime : [libHs]
         TIO.writeFile (fp </> "server" </> "src" </> "static" </> "ServerLogic" <.> "hs")      $ T.unlines $ disclaimer currentTime : [serverLogicHs]
         TIO.writeFile (fp </> "server" </> "src" </> "static" </> "Init" <.> "hs")      $ T.unlines $ disclaimer currentTime : staticInitHs
-        TIO.writeFile (fp </> "server" </> "src" </> "userApp" </> "Update" <.> "hs")      $ T.unlines $ userUpdateHs
-        TIO.writeFile (fp </> "server" </> "src" </> "userApp" </> "Types" <.> "hs")      $ T.unlines $ userTypesHs
-        TIO.writeFile (fp </> "server" </> "src" </> "userApp" </> "Init" <.> "hs")      $ T.unlines $ userInitHs
+        _ <- if onlyStatic then return () else (do
+            TIO.writeFile (fp </> "server" </> "src" </> "userApp" </> "Update" <.> "hs")      $ T.unlines $ userUpdateHs
+            TIO.writeFile (fp </> "server" </> "src" </> "userApp" </> "Types" <.> "hs")      $ T.unlines $ userTypesHs
+            TIO.writeFile (fp </> "server" </> "src" </> "userApp" </> "Init" <.> "hs")      $ T.unlines $ userInitHs)
 
         TIO.writeFile (fp </> "client" </> "elm.json")                     $ jsonElm
-        TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "View.elm")                     $ viewElm
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Types" <.> "elm") $ T.unlines $ disclaimer currentTime : typesElm
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "ServerTypes" <.> "elm") $ T.unlines $ disclaimer currentTime : [clientTypesElm]
         TIO.writeFile (fp </> "client" </> "app" </> "Main" <.> "elm") $ T.unlines $ disclaimer currentTime : [mainElm]
@@ -420,7 +420,11 @@ generateServer fp (startCs
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Lib" <.> "elm")      $ T.unlines $ disclaimer currentTime : [libElm]
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "ClientLogic" <.> "elm")      $ T.unlines $ disclaimer currentTime : [clientLogicElm]
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Init" <.> "elm")      $ T.unlines $ disclaimer currentTime : staticInitElm
-        TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "Update" <.> "elm")      $ T.unlines $ userUpdateElm
-        TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "Types" <.> "elm")      $ T.unlines $ userTypesElm
-        TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "Init" <.> "elm")      $ T.unlines $ userInitElm
+        TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Version" <.> "elm")      $ T.unlines $ disclaimer currentTime : [versionElm]
+        _ <- if onlyStatic then return () else (do
+            TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "Update" <.> "elm")      $ T.unlines $ userUpdateElm
+            TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "Types" <.> "elm")      $ T.unlines $ userTypesElm
+            TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "Init" <.> "elm")      $ T.unlines $ userInitElm
+            TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "View.elm")                     $ viewElm)
+
         putStrLn $ show serverTransitions

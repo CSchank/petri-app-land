@@ -14,10 +14,16 @@ import Html     exposing    (text)
 import Tuple    exposing    (second)
 import Result
 import Debug
+import String
+
+tConcat = String.concat
+
+randThen = Result.andThen
 
 error = Debug.todo
 
 rMap = Result.map
+rMap1 = Result.map
 rMap2 = Result.map2
 rMap3 = Result.map3
 rMap4 = Result.map4

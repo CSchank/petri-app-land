@@ -185,13 +185,13 @@ generateDecoder h (ElmCustom name edts) =
                             ]
         decodeEt indt (ElmType name, n, _) =
             indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"] 
-                            ,T.concat["    decode",T.pack name," (r",T.pack $ show (indt-1),",l",T.pack $ show indt,")"]
+                            ,T.concat["    decode",T.pack name," (r",T.pack $ show (indt-1),",l",T.pack $ show indt,"))"]
                             ]
         cases = map (\(constrName,edt) -> T.concat [ T.pack "        (\"",T.pack constrName, T.pack "\"", " " .:. " rest) ->"
                                                    ,"\n            (Err \"\",rest) |> \n"
                                                    ,T.unlines $ concat $ map (\(n,et) -> (decodeEt (4+n) et) ++ indtTxts (4+n) [" |>"]) $ zip [0..] edt
                                                    ,indtTxt (5 + length edt) $ T.concat ["(\\(r"
-                                                                                        ,T.pack $ show $ length edt + 3,",l",T.pack $ show $ length edt + 4,") -> (",if length edt > 1 then T.concat ["rMap",T.pack $ show $ length edt] else "Ok <|"," ",T.pack constrName," ",T.intercalate " " $ map (\n -> T.pack $ "r" ++ show (n+4)) [0..length edt-1],",l",T.pack $ show $ length edt + 4,"))"]
+                                                                                        ,T.pack $ show $ length edt + 3,",l",T.pack $ show $ length edt + 4,") -> (",if length edt > 0 then T.concat ["rMap",T.pack $ show $ length edt] else "Ok <|"," ",T.pack constrName," ",T.intercalate " " $ map (\n -> T.pack $ "r" ++ show (n+4)) [0..length edt-1],",l",T.pack $ show $ length edt + 4,"))"]
                                                    ]) edts
     in
         T.unlines [typeSig

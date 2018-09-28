@@ -11,7 +11,7 @@ module Static.Lib
     ( mainServer
     ) where
 
-import           Control.Concurrent             (forkIO)
+import           Control.Concurrent             (forkIO,threadDelay)
 import           Control.Concurrent.Async       (race)
 import           Control.Concurrent.STM         (TChan, atomically, readTChan,
                                                  writeTChan, STM)
@@ -42,15 +42,19 @@ wsApp centralMessageChan pendingConn =
         loop :: WS.Connection -> TChan ClientThreadMessage -> IO ()
         loop conn clientMessageChan = do
                   -- wait for login message
+                  Prelude.putStrLn "Waiting for version string from client..."
                   rawMsg <- WS.receiveData conn
                   Tio.putStrLn $ T.concat ["Got login message:", rawMsg]
                   
                   case rawMsg of 
                     "v0.1" -> do -- tell the central thread to log the user in
+                        WS.sendTextData conn ("v" :: T.Text) --tell client that its version is right
                         atomically $ writeTChan centralMessageChan (NewUser clientMessageChan conn)
+                        forever $ threadDelay 10000000000 --sleep this thread forever (we need it to keep the connection alive)
                         return ()
                     _      -> do -- user's client version does not match 
-                        WS.sendTextData conn ("ve" :: T.Text) --tell client that its version it wrong
+                        WS.sendTextData conn ("v0.1" :: T.Text) --tell client that its version is wrong
+                        WS.sendClose conn ("v0.1" :: T.Text) --close the Connection
                         return ()
     in
         do

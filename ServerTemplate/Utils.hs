@@ -38,6 +38,9 @@ rMap fn ra =
         Err x -> Err x
         Ok a -> Ok $ fn a
 
+rMap1 :: (a -> value) -> Result x a -> Result x value
+rMap1 = rMap
+
 
 rMap2 :: (a -> b -> value) -> Result x a -> Result x b -> Result x value
 rMap2 fn ra rb =

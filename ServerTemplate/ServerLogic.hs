@@ -74,6 +74,9 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
 
     let newClientId = (nextClientId state)
 
+    Prelude.putStrLn $ "Processing new client with ID " ++ show newClientId
+    Prelude.putStrLn $ "Current clients: " ++ show (IM'.keys $ clients state)
+
     -- Add the new Client to the server state.
     let nextClients = IM'.insert newClientId (Client clientMessageChan) (clients state)
 
@@ -87,8 +90,11 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
     --     message channel.
     forkIO $ race_ (processClientChan conn clientMessageChan) $ forever (do
         msg <- WS.receiveData conn
+        Prelude.putStrLn $ "Received " ++ T.unpack msg ++ " from clientID " ++ show newClientId
         parseIncomingMsg newClientId centralMessageChan msg
-        return ())  -- We don't care about the results of `race`
+        )  -- We don't care about the results of `race`
+
+    Prelude.putStrLn $ "Client with ID " ++ show newClientId ++ " connected successfully!"
 
     -- Provide the new state back to the loop.
     return nextState

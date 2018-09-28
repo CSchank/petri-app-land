@@ -5,21 +5,22 @@ import qualified Data.Map as M
 import Generate.Server 
 import TestElmTypes
 
-red = ("Red",[])
-blue = ("Blue",[])
-green = ("Green",[])
-
-idle = ("Idle",[(ElmIntRange 0 100000000,"num","The number of clicks that users have made.")])
+sIdle = ("Idle",[(ElmType "Colour","colour","The current colour on the server.")])
+cIdle = ("CIdle",[(ElmType "Colour","colour","The current colour on the client.")])
 
 click = ("Click",[])
-reqNew = ("RequestNewColour",[])
-change = ("ChangeColour",[(ElmType "Colour","colour","")])
+reqNew = ("NewColour",[(ElmType "Colour","newColour","The colour that the client is requesting to change to.")])
+update = ("UpdateColour",[(ElmType "Colour","updateColour","The colour that the server is updating the clients with.")])
+
+incRed = ("IncRed",[])
+incBlue = ("IncBlue",[])
+incGreen = ("IncGreen",[])
 
 testServer = (
-                "Red" --client start state
+                "CIdle" --client start state
              ,  "Idle" --server start start
-             ,  M.fromList [("Red",red),("Blue",blue),("Green",green)] --client states
-             ,  M.fromList [("Idle",idle)]                                 --server states
+             ,  M.fromList [("CIdle",cIdle)] --client states
+             ,  M.fromList [("Idle",sIdle)]                                 --server states
              ,  M.fromList [("Colour",testRGB)]                            --extra client types
              ,  M.fromList [("Colour",testRGB)]        --extra server types
              ,  csDiagram --client state diagram
@@ -29,16 +30,14 @@ testServer = (
 csDiagram :: ClientStateDiagram
 csDiagram = M.fromList 
             [
-                (("Red",    click)     ,("Red",    Just reqNew))
-            ,    (("Red",    change)    ,("Red",    Nothing))
-            ,   (("Green",    click)     ,("Green",    Just reqNew))
-            ,    (("Green",    change)    ,("Blue",    Nothing))
-            ,   (("Blue",    click)     ,("Blue",    Just reqNew))
-            ,    (("Blue",    change)    ,("Red",    Nothing))
+                (("CIdle",    incRed)     ,("CIdle",    Just reqNew))
+            ,   (("CIdle",    incBlue)     ,("CIdle",    Just reqNew))
+            ,   (("CIdle",    incGreen)     ,("CIdle",    Just reqNew))
+            ,   (("CIdle",    update)       ,("CIdle",    Nothing))
             ]
 
 ssDiagram :: ServerStateDiagram
 ssDiagram = M.fromList 
             [
-                (("Idle", reqNew), ("Idle", Just change))
+                (("Idle", reqNew), ("Idle", Just update))
             ]

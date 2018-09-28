@@ -27,8 +27,12 @@ import Url
 
 import Static.Types exposing(Model,ClientMessage)
 import Static.Init as Init
+import Static.Update
+import Static.Encode exposing(encodeServerMessage)
+import Static.Decode exposing(decodeClientMessage)
 import Update
 import View
+import Static.Version as V
 
 
 port cmdPort : Value -> Cmd msg
@@ -60,7 +64,7 @@ type State =
 
 defaultUrl : String
 defaultUrl =
-    "wss://echo.websocket.org"
+    "ws://localhost:8080"
 
 
 type alias InternalModel =
@@ -71,7 +75,7 @@ type alias InternalModel =
     , state : FunnelState
     , key : String
     , error : Maybe String
-    , userModel: Model
+    , appModel: Model
     }
 
 
@@ -100,7 +104,7 @@ init _ url key =
     , state = initialFunnelState
     , key = "socket"
     , error = Nothing
-    , userModel = Init.init
+    , appModel = Init.init
     }
       |> \model -> 
                 model |> withCmd
@@ -192,7 +196,20 @@ update msg model =
 
         NewUrlRequest urlReq -> model |> withNoCmd
         NewUrlChange url -> model |> withNoCmd
-        AppMsg appMsg -> model |> withNoCmd
+        AppMsg appMsg -> 
+            let 
+                (newAppModel, msMsg) = Static.Update.update appMsg model.appModel
+            in
+                case msMsg of 
+                    Just sMsg -> 
+                        let
+                            respTxt = encodeServerMessage sMsg
+                        in
+                            { model | appModel = newAppModel
+                                    , log = ("Sent \"" ++ respTxt ++ "\"") :: model.log
+                            } |> wsSend respTxt
+                    _ ->
+                        { model | appModel = newAppModel } |> withNoCmd
 
 wsSend : String -> InternalModel -> (InternalModel, Cmd Msg)
 wsSend m model = 
@@ -244,12 +261,32 @@ socketHandler response state mdl =
     in
     case response of
         WebSocket.MessageReceivedResponse { message } ->
-            { model | log = ("Received \"" ++ message ++ "\"") :: model.log }
-                |> withNoCmd
+            let
+                (rincomingMsg,_) = decodeClientMessage (Err "", String.split "\u{0000}" (Debug.log "Incoming message" message))
+                (newAppModel, msMsg) = 
+                    case rincomingMsg of 
+                        Ok incomingMsg -> Static.Update.update incomingMsg model.appModel
+                        Err _ -> (model.appModel, Nothing)
+            in            
+                case msMsg of 
+                    Just sMsg -> 
+                        let
+                            respTxt = encodeServerMessage sMsg
+                        in
+                            { model | appModel = newAppModel
+                                    , log = ("Received \"" ++ message ++ "\"") :: model.log
+                            } |> wsSend respTxt
+                    _ ->
+                        { model | appModel = newAppModel } |> withNoCmd
+                   
 
         WebSocket.ConnectedResponse _ ->
             { model | log = "Connected" :: model.log, appState = Connected }
-                |> withNoCmd
+                |> (if model.appState == NotConnected then 
+                        wsSend V.version
+                    else
+                        withNoCmd
+                   )
 
         WebSocket.ClosedResponse { code, wasClean, expected } ->
             { model
@@ -289,4 +326,4 @@ closedString code wasClean expected =
 
 view : InternalModel -> B.Document Msg
 view model =
-    { title = View.title model.userModel, body = [Html.map AppMsg <| View.view model.userModel] }|]
+    { title = View.title model.appModel, body = [Html.map AppMsg <| View.view model.appModel, text <| "Log: " ++ Debug.toString model.log] }|]
