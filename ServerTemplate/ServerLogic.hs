@@ -11,11 +11,11 @@ module Static.ServerLogic
     ( newCentralMessageChan
     , newClientMessageChan
     , processCentralChan
-    , processClientChan
+    , processClienTQueue
     ) where
 
-import           Control.Concurrent.STM (STM, TChan, atomically, newTChan,
-                                         readTChan, writeTChan)
+import           Control.Concurrent.STM (STM, TQueue, atomically, newTQueue,
+                                         readTQueue, writeTQueue)
 import           Control.Monad          (forever)
 import qualified Data.Map.Strict        as M'
 import qualified Data.IntMap.Strict     as IM'
@@ -37,23 +37,23 @@ import Utils.Utils (Result(..))
 import Static.Update (update)
 
 
-newCentralMessageChan :: STM (TChan CentralMessage)
+newCentralMessageChan :: STM (TQueue CentralMessage)
 newCentralMessageChan =
-    newTChan
+    newTQueue
 
 
-newClientMessageChan :: STM (TChan ClientThreadMessage)
+newClientMessageChan :: STM (TQueue ClientThreadMessage)
 newClientMessageChan =
-    newTChan
+    newTQueue
 
-processCentralChan :: TChan CentralMessage -> IO ()
+processCentralChan :: TQueue CentralMessage -> IO ()
 processCentralChan chan =
     -- This loop holds the server state and reads from the CentralMessage
     -- channel.
     let
         loop :: ServerState -> IO ()
         loop state =
-            atomically (readTChan chan) >>= processCentralMessage chan state >>= loop
+            atomically (readTQueue chan) >>= processCentralMessage chan state >>= loop
 
         initial :: ServerState
         initial = ServerState
@@ -65,7 +65,7 @@ processCentralChan chan =
         loop initial
 
 
-processCentralMessage :: (TChan CentralMessage) -> ServerState -> CentralMessage -> IO ServerState
+processCentralMessage :: (TQueue CentralMessage) -> ServerState -> CentralMessage -> IO ServerState
 processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) = do
     -- A new Client has signed on. We need to add the following to the server
     -- state:
@@ -88,7 +88,7 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
     -- (1) Process the new message channel responsible for this Client.
     -- (2) Read the WebSocket connection and pass it on to the central
     --     message channel.
-    forkIO $ race_ (processClientChan conn clientMessageChan) $ forever (do
+    forkIO $ race_ (processClienTQueue conn clientMessageChan) $ forever (do
         msg <- WS.receiveData conn
         Prelude.putStrLn $ "Received " ++ T.unpack msg ++ " from clientID " ++ show newClientId
         parseIncomingMsg newClientId centralMessageChan msg
@@ -108,25 +108,25 @@ processCentralMessage _ state (ReceivedMessage clientId incomingMsg) = do
 
     --Send message to all clients, FIXME: allow choosing of specific clients
     _ <- case mMessage of 
-            Just msg -> atomically $ mapM_ (\(Client chan) -> writeTChan chan $ SendMessage msg) $ clients state
+            Just msg -> atomically $ mapM_ (\(Client chan) -> writeTQueue chan $ SendMessage msg) $ clients state
             Nothing  -> return ()
     return nextState
 
 --a new message has been received from a client. Process it and inform the central message about it.
-parseIncomingMsg :: ClientID -> TChan CentralMessage -> Text -> IO ()
+parseIncomingMsg :: ClientID -> TQueue CentralMessage -> Text -> IO ()
 parseIncomingMsg clientId chan msg = do
     case (decodeServerMessage (Err "",T.splitOn "\0" msg)) of
         (Ok msg,_) -> do
-                        atomically $ writeTChan chan $ ReceivedMessage clientId msg
+                        atomically $ writeTQueue chan $ ReceivedMessage clientId msg
         (Err er,l) -> Tio.putStrLn $ T.concat ["Error decoding message from client ", T.pack $ show clientId, ". Failed with error: ", er, " and the following still in the deocde buffer:", T.pack $ show l, "."]
 
 
 
-processClientChan :: WS.Connection -> TChan ClientThreadMessage -> IO ()
-processClientChan conn chan = forever $ do
+processClienTQueue :: WS.Connection -> TQueue ClientThreadMessage -> IO ()
+processClienTQueue conn chan = forever $ do
     -- This reads a ClientThreadMessage channel forever and passes any messages
     -- it reads to the WebSocket Connection.
-    (SendMessage outgoingMessage) <- atomically $ readTChan chan
+    (SendMessage outgoingMessage) <- atomically $ readTQueue chan
     let txtMsg = encodeClientMessage outgoingMessage
 
     WS.sendTextData conn txtMsg

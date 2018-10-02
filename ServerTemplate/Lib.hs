@@ -13,8 +13,8 @@ module Static.Lib
 
 import           Control.Concurrent             (forkIO,threadDelay)
 import           Control.Concurrent.Async       (race)
-import           Control.Concurrent.STM         (TChan, atomically, readTChan,
-                                                 writeTChan, STM)
+import           Control.Concurrent.STM         (TQueue, atomically, readTQueue,
+                                                 writeTQueue, STM)
 import           Control.Monad                  (forever)
 import           Control.Monad.IO.Class         (liftIO)
 import qualified Data.Text              as T
@@ -36,10 +36,10 @@ import Static.Decode
 import Utils.Utils
 
 
-wsApp :: TChan CentralMessage -> WS.ServerApp
+wsApp :: TQueue CentralMessage -> WS.ServerApp
 wsApp centralMessageChan pendingConn = 
     let
-        loop :: WS.Connection -> TChan ClientThreadMessage -> IO ()
+        loop :: WS.Connection -> TQueue ClientThreadMessage -> IO ()
         loop conn clientMessageChan = do
                   -- wait for login message
                   Prelude.putStrLn "Waiting for version string from client..."
@@ -49,7 +49,7 @@ wsApp centralMessageChan pendingConn =
                   case rawMsg of 
                     "v0.1" -> do -- tell the central thread to log the user in
                         WS.sendTextData conn ("v" :: T.Text) --tell client that its version is right
-                        atomically $ writeTChan centralMessageChan (NewUser clientMessageChan conn)
+                        atomically $ writeTQueue centralMessageChan (NewUser clientMessageChan conn)
                         forever $ threadDelay 10000000000 --sleep this thread forever (we need it to keep the connection alive)
                         return ()
                     _      -> do -- user's client version does not match 
@@ -71,7 +71,7 @@ fallbackApp :: Application
 fallbackApp _ respond = respond $ responseLBS status400 [] "Not a WebSocket request."
 
 
-app :: TChan CentralMessage -> Application
+app :: TQueue CentralMessage -> Application
 app chan = websocketsOr WS.defaultConnectionOptions (wsApp chan) fallbackApp
 
 
