@@ -13,11 +13,15 @@ generateType haskell commentsEnabled (ElmCustom typeName constrs) =
     let
         typ   = if haskell then "data" else "type"
 
-        constrs2Txt = map (\(constrName, elmDocTypes) -> T.intercalate " " $ T.pack constrName : map (edt2Txt haskell commentsEnabled) elmDocTypes) constrs
+        constrs2Txt = map (generateConstructor haskell commentsEnabled) constrs
     in
         T.concat [ typ, " ", T.pack typeName, " =\n      "
                  , T.intercalate "\n    | " constrs2Txt
                  ]
+
+generateConstructor :: Bool -> Bool -> Constructor -> T.Text
+generateConstructor haskell commentsEnabled (constrName,elmDocTypes) =
+    T.intercalate " " $ T.pack constrName : map (edt2Txt haskell commentsEnabled) elmDocTypes
 
 edt2Txt :: Bool -> Bool -> (ElmType, String, String) -> T.Text
 edt2Txt h commentsEnabled (et, n, d) = T.concat [et2Txt h commentsEnabled et, if commentsEnabled then T.concat [" {-", T.pack n, "-}"] else ""]
