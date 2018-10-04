@@ -4,7 +4,6 @@ import Types
 import qualified Data.Map as M
 import Generate.Server 
 import TestElmTypes
-import Generate.Dot
 
 sIdle = ("Idle",[(ElmType "Colour","colour","The current colour on the server.")])
 cIdle = ("CIdle",[(ElmType "Colour","colour","The current colour on the client.")])
@@ -40,5 +39,5 @@ csDiagram = M.fromList
 ssDiagram :: ServerStateDiagram
 ssDiagram = M.fromList 
             [
-                (("Idle", reqNew), ("Idle", Just update))
+                (("Idle", reqNew), ("Idle", ToAll update))
             ]

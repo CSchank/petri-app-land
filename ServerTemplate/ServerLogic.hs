@@ -27,6 +27,7 @@ import           Control.Concurrent             (forkIO)
 import           Control.Concurrent.Async       (race_)
 
 import           Data.Text.IO                   as Tio
+import qualified Data.Set               as S
 
 import Static.Types
 import Static.ServerTypes
@@ -99,17 +100,32 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
     -- Provide the new state back to the loop.
     return nextState
 
-processCentralMessage _ state (ReceivedMessage clientId incomingMsg) = do
+processCentralMessage _ state (ReceivedMessage clientId incomingMsg) = 
+    let
+        connectedClients = clients state
+        
+        sendToID :: ClientMessage -> ClientID -> IO ()
+        sendToID cm clientId =
+            case IM'.lookup clientId connectedClients of
+                Just (Client chan) -> atomically $ writeTQueue chan $ SendMessage cm
+                Nothing -> Prelude.putStrLn $ "Unable to send message to client " ++ show clientId ++ " because that client doesn't exist or is logged out."    
+    in do
     -- An Client has changed the colour of a pixel. We need to:
     -- (1) Modify the colour Dict in the server state.
     -- (2) Broadcast the new colour to all clients.
     (nextServerState,mMessage) <- update clientId incomingMsg $ internalServerState state
     let nextState = state { internalServerState = nextServerState }
 
-    --Send message to all clients, FIXME: allow choosing of specific clients
     _ <- case mMessage of 
-            Just msg -> atomically $ mapM_ (\(Client chan) -> writeTQueue chan $ SendMessage msg) $ clients state
-            Nothing  -> return ()
+            Just icm -> case icm of
+                ICMOnlySender msg           -> sendToID msg clientId 
+                ICMAllExceptSender msg      -> error "This type of message (AllExceptSender) is not supported."
+                ICMAllExceptSenderF c2msg   -> error "This type of message (AllExceptSenderF) is not supported."
+                ICMSenderAnd clients msg    -> mapM_ (sendToID msg) $ S.insert clientId clients
+                ICMSenderAndF clients c2msg -> mapM_ (\cId -> sendToID (c2msg cId) cId) $ S.insert clientId clients
+                ICMToAll msg                -> mapM_ (sendToID msg) $ IM'.keys connectedClients
+                ICMToAllF c2msg             -> mapM_ (\cId -> sendToID (c2msg cId) cId) $ IM'.keys connectedClients
+            Nothing -> return ()
     return nextState
 
 --a new message has been received from a client. Process it and inform the central message about it.

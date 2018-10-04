@@ -12,6 +12,8 @@ module Utils.Utils where
 
 import Data.Char (ord,chr)
 import qualified Data.Text as T
+import Static.ServerTypes
+import Static.Types
 
 (|>) :: a -> (a -> b) -> b
 (|>) x f = f x
@@ -333,4 +335,19 @@ decodeList ls decodeFn =
             in
                 (aR newRes resL, newLs)
     in
-        foldl decodeList' (Ok [], drop 1 ls) [1..n]|]
+        foldl decodeList' (Ok [], drop 1 ls) [1..n]
+
+unwrapOnlySender :: OnlySender cm -> InternalCM cm
+unwrapOnlySender (OnlySender cm) = ICMOnlySender cm
+
+unwrapAllExceptSender :: AllExceptSender cm -> (cm -> ClientMessage) -> InternalCM ClientMessage
+unwrapAllExceptSender (AllExceptSender cm) m = ICMAllExceptSender (m cm)
+unwrapAllExceptSender (AllExceptSenderF f) m = ICMAllExceptSenderF (m . f)
+
+unwrapSenderAnd :: SenderAnd cm -> (cm -> ClientMessage) -> InternalCM ClientMessage
+unwrapSenderAnd (SenderAnd others cm) m = ICMSenderAnd others (m cm)
+unwrapSenderAnd (SenderAndF others f) m = ICMSenderAndF others (m . f)
+
+unwrapToAll :: ToAll cm -> (cm -> ClientMessage) -> InternalCM ClientMessage
+unwrapToAll (ToAll cm) m = ICMToAll (m cm)
+unwrapToAll (ToAllF f) m = ICMToAllF (m . f)|]
