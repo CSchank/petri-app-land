@@ -30,8 +30,6 @@ import Static.Init as Init
 import Static.Update
 import Static.Encode exposing(encodeServerMessage)
 import Static.Decode exposing(decodeClientMessage)
-import Update
-import View
 import Static.Version as V
 
 
