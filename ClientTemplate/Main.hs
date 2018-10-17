@@ -25,12 +25,15 @@ import PortFunnel.WebSocket as WebSocket
 import String
 import Url
 
-import Static.Types exposing(Model,ClientMessage)
+import Static.Msg exposing(ClientMessage)
+import Static.Model exposing(Model)
 import Static.Init as Init
 import Static.Update
 import Static.Encode exposing(encodeServerMessage)
-import Static.Decode exposing(decodeClientMessage)
+import Static.Decode exposing(decodeWrappedClientMessage)
 import Static.Version as V
+import Static.View
+import Static.Types
 
 
 port cmdPort : Value -> Cmd msg
@@ -148,7 +151,7 @@ type Msg
     | WSProcess Value
     | NewUrlRequest B.UrlRequest
     | NewUrlChange Url.Url
-    | AppMsg ClientMessage
+    | AppMsg Static.Types.WrappedClientMessage
 
 
 
@@ -260,7 +263,7 @@ socketHandler response state mdl =
     case response of
         WebSocket.MessageReceivedResponse { message } ->
             let
-                (rincomingMsg,_) = decodeClientMessage (Err "", String.split "\u{0000}" (Debug.log "Incoming message" message))
+                (rincomingMsg,_) = decodeWrappedClientMessage (Err "", String.split "\u{0000}" (Debug.log "Incoming message" message))
                 (newAppModel, msMsg) = 
                     case rincomingMsg of 
                         Ok incomingMsg -> Static.Update.update incomingMsg model.appModel
@@ -324,4 +327,7 @@ closedString code wasClean expected =
 
 view : InternalModel -> B.Document Msg
 view model =
-    { title = View.title model.appModel, body = [Html.map AppMsg <| View.view model.appModel, text <| "Log: " ++ Debug.toString model.log] }|]
+    { title = Static.View.title model.appModel
+    , body = [Html.map AppMsg <| Static.View.view model.appModel
+    , text <| "Log: " ++ Debug.toString model.log] 
+    }|]
