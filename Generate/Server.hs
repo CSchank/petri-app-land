@@ -53,8 +53,8 @@ generateStateMsgs csD =
     in
         foldl createDict M.empty csL
 
-generateServer :: Bool -> FilePath -> ClientServerApp -> IO ()
-generateServer onlyStatic fp (startCs
+generateServer :: Bool -> Bool -> FilePath -> ClientServerApp -> IO ()
+generateServer gsvg onlyStatic fp (startCs
                   ,startSs
                   ,cStates
                   ,sStates
@@ -85,6 +85,9 @@ generateServer onlyStatic fp (startCs
         
         clientStateTypeTxt = 
             generateType False True $ ElmCustom "Model" $ map (\(n,_) -> (n,[(ElmType ("View."++n++".Model"),"","")])) $ M.elems cStates
+
+        clientUnionMsgTypeTxt = 
+            generateType False True $ ElmCustom "ClientMessage" $ map (\(n,_) -> (n,[(ElmType ("View."++n++".Msg"),"","")])) $ M.elems cStates
 
         clientMsgs = S.toList $ S.fromList $ map (\((_,trans),(_,_)) -> trans) $ M.toList cDiagram
         clientMsgType = ElmCustom "WrappedClientMessage" $ map (\(n,t) -> ("M"++n,t)) clientMsgs
@@ -131,9 +134,13 @@ generateServer onlyStatic fp (startCs
                 T.unlines 
                     [
                         T.concat ["module View.",stateTxt, " exposing(view,title,Model(..),Msg(..))\n"]
-                    ,   "import Html exposing(..)"
-                    ,   "import Html.Attributes exposing(..)"
-                    ,   "import Html.Events exposing(..)\n"
+                    ,   if gsvg then 
+                            "import GraphicSVG exposing(..)"
+                        else T.unlines 
+                        [   "import Html exposing(..)"
+                        ,   "import Html.Attributes exposing(..)"
+                        ,   "import Html.Events exposing(..)\n"
+                        ]
                     ,   "import Static.Types exposing(..)"
                     ,   "import Utils.Utils exposing(error)"
                     ,   "-- These types are provided for reference only. Changing them will result in a failure to compile."
@@ -146,7 +153,7 @@ generateServer onlyStatic fp (startCs
                     ,   "title model = "
                     ,   T.concat["    \"",T.pack stateName,"\""],""
                     ,   "--Define your view function for this state here."
-                    ,   "view : Model -> Html Msg"
+                    ,   if gsvg then "view : Model -> Collage Msg" else "view : Model -> Html Msg"
                     ,   "view model = "
                     ,   T.concat["    error \"Please define the view function for the state ", T.pack stateName,"\""]
                     ]
@@ -206,7 +213,7 @@ generateServer onlyStatic fp (startCs
                     ,"import Static.Msg exposing (ClientMessage)"
                     ,"import Utils.Utils exposing(error)"
                     ,"import Static.Model exposing (Model)"
-                    ,"import Html exposing(..)"
+                    ,if gsvg then "import GraphicSVG exposing(..)" else "import Html exposing(..)"
                     ,T.unlines $ map (\(n,_) -> T.concat["import View.",T.pack n]) clientS2M
                     ,T.unlines $ map (\(n,_) -> T.concat["import Static.Wrappers.",T.pack n," exposing(wrapCMessage)"]) clientS2M
                     --,"-- Client states"
@@ -215,10 +222,10 @@ generateServer onlyStatic fp (startCs
                     ,"title model ="
                     ,"    case model of"
                     ,T.unlines $ map (\(n,_) -> T.concat["        Static.Model.",T.pack n," m -> View.",T.pack n,".title m"]) clientS2M
-                    ,"view : Model -> Html Static.Types.WrappedClientMessage"
+                    ,if gsvg then "view : Model -> Collage Static.Types.WrappedClientMessage" else "view : Model -> Html Static.Types.WrappedClientMessage"
                     ,"view model ="
                     ,"    case model of"
-                    ,T.unlines $ map (\(n,_) -> T.concat["        Static.Model.",T.pack n," m -> Html.map wrapCMessage <| View.",T.pack n,".view m"]) clientS2M
+                    ,T.unlines $ map (\(n,_) -> T.concat["        Static.Model.",T.pack n, if gsvg then " m -> mapCollage wrapCMessage <| View." else " m -> Html.map wrapCMessage <| View.",T.pack n,".view m"]) clientS2M
                     ]
         
         typesHs = 
@@ -270,6 +277,13 @@ generateServer onlyStatic fp (startCs
                    ,T.unlines $ map (\(n,_) -> T.concat["import View.",T.pack n]) clientS2M
                    ,"-- Client states"
                    ,clientStateTypeTxt,""
+                   ]
+
+        msgElm = [
+                   "module Static.Msg exposing(ClientMessage(..))"
+                   ,T.unlines $ map (\(n,_) -> T.concat["import View.",T.pack n]) clientS2M
+                   ,"-- Client states"
+                   ,clientUnionMsgTypeTxt,""
                    ]
 
         {-Encoders-}
@@ -640,12 +654,13 @@ generateServer onlyStatic fp (startCs
         TIO.writeFile (fp </> "client" </> "elm.json")                     $ jsonElm
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Types" <.> "elm") $ T.unlines $ disclaimer currentTime : typesElm
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "ServerTypes" <.> "elm") $ T.unlines $ disclaimer currentTime : [clientTypesElm]
-        TIO.writeFile (fp </> "client" </> "app" </> "Main" <.> "elm") $ T.unlines $ disclaimer currentTime : [mainElm]
+        TIO.writeFile (fp </> "client" </> "app" </> "Main" <.> "elm") $ T.unlines $ disclaimer currentTime : [if gsvg then mainElmGSVG else mainElm]
         TIO.writeFile (fp </> "client" </> "src" </> "utils" </> "Utils" <.> "elm") $ T.unlines $ disclaimer currentTime : [utilsElm]
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Encode" <.> "elm")      $ T.unlines $ disclaimer currentTime : encoderElm
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Decode" <.> "elm")      $ T.unlines $ disclaimer currentTime : decoderElm
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Update" <.> "elm")      $ T.unlines $ disclaimer currentTime : hiddenUpdateElm
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Model" <.> "elm")      $ T.unlines $ disclaimer currentTime : modelElm
+        TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Msg" <.> "elm")      $ T.unlines $ disclaimer currentTime : msgElm
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Lib" <.> "elm")      $ T.unlines $ disclaimer currentTime : [libElm]
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "ClientLogic" <.> "elm")      $ T.unlines $ disclaimer currentTime : [clientLogicElm]
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Init" <.> "elm")      $ T.unlines $ disclaimer currentTime : staticInitElm
