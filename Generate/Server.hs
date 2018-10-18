@@ -61,7 +61,8 @@ generateServer onlyStatic fp (startCs
                   ,cExtraT
                   ,sExtraT
                   ,cDiagram
-                  ,sDiagram) = 
+                  ,sDiagram
+                  ) = 
     let
         disclaimer date = T.unlines ["{-"
                                 ,T.concat["    THIS FILE WAS AUTOMATICALLY GENERATED AT ", T.pack $ show date,"."]
@@ -323,12 +324,12 @@ generateServer onlyStatic fp (startCs
                             Nothing -> error $ "State " ++ s0 ++ " does not exist in the map."
                 name = T.concat ["update", T.pack s0, T.pack tn, T.pack s1]
                 typE = case mCt of                        
-                            OnlySender (ctn,ct)        -> T.concat [name, (.::.),T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", (OnlySender ",T.pack ctn,"))"]
-                            AllExceptSender (ctn,ct)   -> T.concat [name, (.::.),T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", (AllExceptSender ",T.pack ctn,"))"]
-                            SenderAnd (ctn,ct)         -> T.concat [name, (.::.),T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", (SenderAnd ",T.pack ctn,"))"]
-                            ToAll (ctn,ct)             -> T.concat [name, (.::.),T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", (ToAll ",T.pack ctn,"))"]
-                            NoClientMessage            -> T.concat [name, (.::.),T.pack tn," -> ",T.pack s0," -> ",T.pack s1]
-                decl = T.concat [name, " ", generatePattern (tn,tetd), generatePattern (s0,s0Cons), "=\n    ","error \"Update function ",name," not defined. Please define it in userApp/Update.hs.\""]
+                            OnlySender (ctn,ct)        -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", (OnlySender ",T.pack ctn,"))"]
+                            AllExceptSender (ctn,ct)   -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", (AllExceptSender ",T.pack ctn,"))"]
+                            SenderAnd (ctn,ct)         -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", (SenderAnd ",T.pack ctn,"))"]
+                            ToAll (ctn,ct)             -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", (ToAll ",T.pack ctn,"))"]
+                            NoClientMessage            -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> ",T.pack s1]
+                decl = T.concat [name, " clientId ", generatePattern (tn,tetd), generatePattern (s0,s0Cons), "=\n    ","error \"Update function ",name," not defined. Please define it in userApp/Update.hs.\""]
             in
                 T.unlines
                     [
@@ -452,7 +453,7 @@ generateServer onlyStatic fp (startCs
                          ,T.concat $ map (createWrap (length serverMsgs > 1) True "ServerMessage" "M") serverMsgs
                          ,"--Client message unwrappers"
                          ,T.concat $ map (createUnwrap True "ClientMessage" "M") $ mapMaybe cm2constr serverOutgoingMsgs
-                         ,"update :: Int -> ServerMessage -> Model -> IO (Model, Maybe (InternalCM ClientMessage))"
+                         ,"update :: ClientID -> ServerMessage -> Model -> IO (Model, Maybe (InternalCM ClientMessage))"
                          ,"update clientId msg model ="
                          ,"    case (msg, model) of"
                          ,T.concat $ map createServerUpdateCase $ M.toList sDiagram
@@ -536,11 +537,11 @@ generateServer onlyStatic fp (startCs
                 wrapModel = T.concat ["(wrap",T.pack s0," model)"]
             in
                 case mCt of 
-                    OnlySender      ct -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Just <| unwrapOnlySender wrappedMsg unwrap",T.pack ctn,")\n"]
-                    AllExceptSender ct -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Just <| unwrapAllExceptSender wrappedMsg unwrap",T.pack ctn,")\n"]
-                    SenderAnd       ct -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Just <| unwrapSenderAnd wrappedMsg unwrap",T.pack ctn,")\n"]
-                    ToAll           ct -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Just <| unwrapToAll wrappedMsg unwrap",T.pack ctn,")\n"]
-                    NoClientMessage    -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> return $ (unwrap",T.pack s1," <| update",T.pack s0,T.pack tn,T.pack s1, " ", wrapMsg," ",wrapModel,", Nothing)\n"]
+                    OnlySender      ct -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Just <| unwrapOnlySender wrappedMsg unwrap",T.pack ctn,")\n"]
+                    AllExceptSender ct -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Just <| unwrapAllExceptSender wrappedMsg unwrap",T.pack ctn,")\n"]
+                    SenderAnd       ct -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Just <| unwrapSenderAnd wrappedMsg unwrap",T.pack ctn,")\n"]
+                    ToAll           ct -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Just <| unwrapToAll wrappedMsg unwrap",T.pack ctn,")\n"]
+                    NoClientMessage    -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> return $ (unwrap",T.pack s1," <| update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel,", Nothing)\n"]
         
         createClientUpdateCase2 :: (String, [(ClientTransition, String, Maybe ServerTransition)]) -> T.Text
         createClientUpdateCase2 (s0,lstTrans) =
@@ -650,10 +651,10 @@ generateServer onlyStatic fp (startCs
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Init" <.> "elm")      $ T.unlines $ disclaimer currentTime : staticInitElm
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Version" <.> "elm")      $ T.unlines $ disclaimer currentTime : [versionElm]
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "View" <.> "elm")      $ T.unlines $ disclaimer currentTime : [hiddenClientView]
-        mapM_ (\(n,txt) -> TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "View" </> n <.> "elm") txt) clientViewModules
-        mapM_ (\(n,txt) -> TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "Update" </> n <.> "elm") txt) clientUpdateModules
-        mapM_ (\(n,txt) -> TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Wrappers" </> n <.> "elm") txt) clientWrapModules
         _ <- if onlyStatic then return () else (do
+            mapM_ (\(n,txt) -> TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "View" </> n <.> "elm") txt) clientViewModules
+            mapM_ (\(n,txt) -> TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "Update" </> n <.> "elm") txt) clientUpdateModules
+            mapM_ (\(n,txt) -> TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Wrappers" </> n <.> "elm") txt) clientWrapModules
             --TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "Update" <.> "elm")      $ T.unlines $ userUpdateElm
             TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "Types" <.> "elm")      $ T.unlines $ userTypesElm
             TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "Init" <.> "elm")      $ T.unlines $ userInitElm

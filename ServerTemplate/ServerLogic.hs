@@ -25,6 +25,7 @@ import qualified Data.Text              as T
 import qualified Network.WebSockets     as WS
 import           Control.Concurrent             (forkIO)
 import           Control.Concurrent.Async       (race_)
+import           Control.Exception      (finally)
 
 import           Data.Text.IO                   as Tio
 import qualified Data.Set               as S
@@ -89,13 +90,18 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
     -- (1) Process the new message channel responsible for this Client.
     -- (2) Read the WebSocket connection and pass it on to the central
     --     message channel.
-    forkIO $ race_ (processClienTQueue conn clientMessageChan) $ forever (do
+    forkIO $ finally (race_ (processClienTQueue conn clientMessageChan) $ forever (do
         msg <- WS.receiveData conn
         Prelude.putStrLn $ "Received " ++ T.unpack msg ++ " from clientID " ++ show newClientId
         parseIncomingMsg newClientId centralMessageChan msg
-        )  -- We don't care about the results of `race`
+        ))  -- We don't care about the results of `race`
+        -- when the connection closes, catch the exception or disconnect and inform our runtime
+        (atomically $ writeTQueue centralMessageChan $ UserConnectionLost newClientId)
 
     Prelude.putStrLn $ "Client with ID " ++ show newClientId ++ " connected successfully!"
+
+    -- inform the user's app that the client has connected
+    atomically $ writeTQueue centralMessageChan $ ReceivedMessage clientID MClientConnect
 
     -- Provide the new state back to the loop.
     return nextState
@@ -110,9 +116,6 @@ processCentralMessage _ state (ReceivedMessage clientId incomingMsg) =
                 Just (Client chan) -> atomically $ writeTQueue chan $ SendMessage cm
                 Nothing -> Prelude.putStrLn $ "Unable to send message to client " ++ show clientId ++ " because that client doesn't exist or is logged out."    
     in do
-    -- An Client has changed the colour of a pixel. We need to:
-    -- (1) Modify the colour Dict in the server state.
-    -- (2) Broadcast the new colour to all clients.
     (nextServerState,mMessage) <- update clientId incomingMsg $ internalServerState state
     let nextState = state { internalServerState = nextServerState }
 
@@ -127,6 +130,18 @@ processCentralMessage _ state (ReceivedMessage clientId incomingMsg) =
                 ICMToAllF c2msg             -> mapM_ (\cId -> sendToID (c2msg cId) cId) $ IM'.keys connectedClients
             Nothing -> return ()
     return nextState
+
+processCentralMessage centralMessageChan state (UserConnectionLost clientId) = 
+    let
+        connectedClients = clients state
+    in do
+    Prelude.putStrLn $ "Client " ++ show clientId ++ " lost connection."
+    -- inform the user's app that the client has disconnected
+    atomically $ writeTQueue centralMessageChan $ ReceivedMessage clientID MClientDisconnect
+    let nextState = state { clients = IM'.delete clientId connectedClients }
+
+    return nextState
+
 
 --a new message has been received from a client. Process it and inform the central message about it.
 parseIncomingMsg :: ClientID -> TQueue CentralMessage -> Text -> IO ()

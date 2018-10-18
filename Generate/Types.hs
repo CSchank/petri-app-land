@@ -6,6 +6,7 @@ import Types                 (ElmDocType, ElmType(..), ElmCustom(..), ClientStat
 import qualified Data.Map       as M
 import qualified Data.Text      as T
 import qualified Data.Set       as S
+import Data.Maybe (mapMaybe)
 
 
 generateType :: Bool -> Bool -> ElmCustom -> T.Text
@@ -14,8 +15,15 @@ generateType haskell commentsEnabled (ElmCustom typeName constrs) =
         typ   = if haskell then "data" else "type"
 
         constrs2Txt = map (generateConstructor haskell commentsEnabled) constrs
+        typeParams = concatMap (\(_,constr) -> 
+                        mapMaybe (\ (et,_,_) ->
+                            case et of 
+                                ElmWildcardType n -> Just $ T.pack n
+                                _ -> Nothing                
+                            ) constr
+                        ) constrs
     in
-        T.concat [ typ, " ", T.pack typeName, " =\n      "
+        T.concat [ typ, " ", T.pack typeName, " ", T.intercalate " " typeParams ," =\n      "
                  , T.intercalate "\n    | " constrs2Txt
                  ]
 
@@ -39,6 +47,7 @@ et2Txt h c (ElmTriple edt0 edt1 edt2)   = T.concat ["(",edt2Txt h c edt0,", ",ed
 et2Txt h c (ElmList edt)                = T.concat ["(List ",edt2Txt h c edt,")"]
 et2Txt h c (ElmDict edt0 edt1)          = T.concat ["(Dict ",edt2Txt h c edt0," ",edt2Txt h c edt1,")"]
 et2Txt h c (ElmType name)               = T.pack name
+et2Txt h c (ElmWildcardType s)          = T.pack s
 {-
 et2Def :: ElmType -> T.Text
 et2Def (ElmIntRange _ _)            = "Int"

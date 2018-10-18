@@ -32,6 +32,7 @@ type ClientID = Int
 
 data CentralMessage
     = NewUser (TQueue ClientThreadMessage) Connection    --register a new user on the server
+    | UserConnectionLost ClientID
     | ReceivedMessage ClientID ServerMessage
 
 data ClientThreadMessage 
