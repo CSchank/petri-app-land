@@ -666,13 +666,13 @@ generateServer gsvg onlyStatic fp (startCs
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Init" <.> "elm")      $ T.unlines $ disclaimer currentTime : staticInitElm
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Version" <.> "elm")      $ T.unlines $ disclaimer currentTime : [versionElm]
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "View" <.> "elm")      $ T.unlines $ disclaimer currentTime : [hiddenClientView]
+        
+        mapM_ (\(n,txt) -> TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Wrappers" </> n <.> "elm") txt) clientWrapModules
         _ <- if onlyStatic then return () else (do
             mapM_ (\(n,txt) -> TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "View" </> n <.> "elm") txt) clientViewModules
             mapM_ (\(n,txt) -> TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "Update" </> n <.> "elm") txt) clientUpdateModules
-            mapM_ (\(n,txt) -> TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Wrappers" </> n <.> "elm") txt) clientWrapModules
             --TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "Update" <.> "elm")      $ T.unlines $ userUpdateElm
             TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "Types" <.> "elm")      $ T.unlines $ userTypesElm
-            TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "Init" <.> "elm")      $ T.unlines $ userInitElm
-            TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "View.elm")                     $ viewElm)
+            TIO.writeFile (fp </> "client" </> "src" </> "userApp" </> "Init" <.> "elm")      $ T.unlines $ userInitElm)
 
         putStrLn $ show serverTransitions

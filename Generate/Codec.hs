@@ -85,6 +85,18 @@ generateEncoder h (ElmCustom name edts) =
         encodeEt indt (ElmType name, n, _) =
             indtTxts indt $ [T.concat[T.pack n,"Txt = encode",T.pack name," ",T.pack n]
                             ]
+        encodeEt indt (ElmMaybe (et, etn, etd), n, _) =
+            indtTxts indt $ [T.concat[T.pack n, "Txt ="]
+                            ,T.concat["    case ", T.pack n, " of"]
+                            ,T.concat["        Just ",T.pack etn," ->"]
+                            ,         "            let"
+                            ,T.unlines $ encodeEt indt (et,etn,etd)
+                            ,T.concat["            in tConcat [\"J\",\"",elmDelim,"\",",T.pack etn,"Txt]"]
+                            ,         "        Nothing -> \"N\""
+                            ]
+        encodeEt indt (ElmBool, n, _) =
+            indtTxts indt $ [T.concat[T.pack n,"Txt = if ",T.pack n," then \"T\" else \"F\""]
+                            ]
         cases = map (\(constrName,edt) -> T.concat ["        ",T.pack constrName,T.concat $ map (\(et,name,desc) -> T.pack $ " " ++ name) edt," -> "
                                                     ,if length edt > 0 then T.concat ["\n            let\n"
                                                     ,T.unlines $ concat $ map (encodeEt 4) edt
@@ -187,6 +199,19 @@ generateDecoder h (ElmCustom name edts) =
             indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"] 
                             ,T.concat["    decode",T.pack name," (r",T.pack $ show (indt-1),",l",T.pack $ show indt,"))"]
                             ]
+        decodeEt indt (ElmMaybe etd, n, _) =
+            indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
+                            ,T.concat["    decodeMaybe l",T.pack $ show indt," <|"]
+                            ,T.unlines $ decodeEt (indt+2) etd,")"
+                            ]
+        {-decodeEt indt (ElmMaybe etd, n, _) =
+            indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
+                            ,T.concat["            case l",T.pack $ show indt," of"]
+                            ,T.concat["                (",T.pack n,"Txt " .:. " llf",T.pack $ show indt,") ->"]
+                            ,T.concat["                     decodeMaybe l",T.pack $ show indt," ((\"\",l",T.pack $ show indt,") |>"]
+                            ,                             T.unlines $ decodeEt (indt+5) etd,")"
+                            ,T.concat["                [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[]))"]
+                            ]-}
         cases = map (\(constrName,edt) -> T.concat [ T.pack "        (\"",T.pack constrName, T.pack "\"", " " .:. " rest) ->"
                                                    ,"\n            (Err \"\",rest) |> \n"
                                                    ,T.unlines $ concat $ map (\(n,et) -> (decodeEt (4+n) et) ++ indtTxts (4+n) [" |>"]) $ zip [0..] edt

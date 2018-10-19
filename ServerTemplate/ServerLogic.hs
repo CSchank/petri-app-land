@@ -101,7 +101,7 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
     Prelude.putStrLn $ "Client with ID " ++ show newClientId ++ " connected successfully!"
 
     -- inform the user's app that the client has connected
-    atomically $ writeTQueue centralMessageChan $ ReceivedMessage clientID MClientConnect
+    atomically $ writeTQueue centralMessageChan $ ReceivedMessage newClientId MClientConnect
 
     -- Provide the new state back to the loop.
     return nextState
@@ -137,7 +137,7 @@ processCentralMessage centralMessageChan state (UserConnectionLost clientId) =
     in do
     Prelude.putStrLn $ "Client " ++ show clientId ++ " lost connection."
     -- inform the user's app that the client has disconnected
-    atomically $ writeTQueue centralMessageChan $ ReceivedMessage clientID MClientDisconnect
+    atomically $ writeTQueue centralMessageChan $ ReceivedMessage clientId MClientDisconnect
     let nextState = state { clients = IM'.delete clientId connectedClients }
 
     return nextState

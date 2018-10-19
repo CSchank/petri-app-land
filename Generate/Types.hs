@@ -48,6 +48,8 @@ et2Txt h c (ElmList edt)                = T.concat ["(List ",edt2Txt h c edt,")"
 et2Txt h c (ElmDict edt0 edt1)          = T.concat ["(Dict ",edt2Txt h c edt0," ",edt2Txt h c edt1,")"]
 et2Txt h c (ElmType name)               = T.pack name
 et2Txt h c (ElmWildcardType s)          = T.pack s
+et2Txt h c (ElmMaybe edt)               = T.concat ["(Maybe ",edt2Txt h c edt,")"]
+et2Txt h c ElmBool                      = T.concat ["Bool"]
 {-
 et2Def :: ElmType -> T.Text
 et2Def (ElmIntRange _ _)            = "Int"

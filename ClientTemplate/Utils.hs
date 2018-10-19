@@ -237,4 +237,16 @@ decodeList ls decodeFn =
             in
                 (aR newRes resL, newLs)
     in
-        List.foldl decodeList_ (Ok [], ls) (List.range 1 n)|]
+        List.foldl decodeList_ (Ok [], ls) (List.range 1 n)
+        
+decodeMaybe : List String -> ((Result String a, List String) -> (Result String a, List String)) -> (Result String (Maybe a), List String)
+decodeMaybe ls decodeFn =
+    case ls of
+        ("J"::rest) -> 
+            let
+                (newRes, newLs) = decodeFn (Err "", rest)
+            in
+                (Result.map Just newRes,newLs)
+        ("N"::rest) ->
+            (Ok Nothing, rest)
+        _ -> (Err "Ran out of items or error while decoding a Maybe.",[])|]

@@ -21,6 +21,8 @@ data ElmType = ElmIntRange Int Int -- upper and lower bounds (used for optimizin
              | ElmDict ElmDocType ElmDocType
              | ElmType String --the type referenced must be included in the map
              | ElmWildcardType String -- a type parameter
+             | ElmMaybe ElmDocType
+             | ElmBool
   deriving (Ord,Eq,Show)
 
 type Constructor = (String,[ElmDocType]) -- (name, arguments)

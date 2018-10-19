@@ -21,6 +21,24 @@ encodeInt low high n =
     in
         encodeInt_ (clamp low high n)
 
+encodeMaybe : Maybe a -> (a -> String) -> String
+encodeMaybe m f =
+    case m of
+        Just m0 -> "J\u{0000}"++f m0
+        Nothing -> "N"
+
+decodeMaybe : List String -> ((Result String a, List String) -> (Result String a, List String)) -> (Result String (Maybe a), List String)
+decodeMaybe ls decodeFn =
+    case ls of
+        ("J"::rest) -> 
+            let
+                (newRes, newLs) = decodeFn (Err "", mainLs)
+            in
+                (Result.map Just newRes,newLs)
+        ("N"::rest) ->
+            (Ok Nothing, rest)
+
+
 decodeInt : Int -> Int -> String -> Result String Int
 decodeInt low high s =
     let 

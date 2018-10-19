@@ -350,4 +350,16 @@ unwrapSenderAnd (SenderAndF others f) m = ICMSenderAndF others (m . f)
 
 unwrapToAll :: ToAll cm -> (cm -> ClientMessage) -> InternalCM ClientMessage
 unwrapToAll (ToAll cm) m = ICMToAll (m cm)
-unwrapToAll (ToAllF f) m = ICMToAllF (m . f)|]
+unwrapToAll (ToAllF f) m = ICMToAllF (m . f)
+
+decodeMaybe :: [T.Text] -> ((Result T.Text a, [T.Text]) -> (Result T.Text a, [T.Text])) -> (Result T.Text (Maybe a), [T.Text])
+decodeMaybe ls decodeFn =
+    case ls of
+        ("J":rest) -> 
+            let
+                (newRes, newLs) = decodeFn (Err "", rest)
+            in
+                (rMap Just newRes,newLs)
+        ("N":rest) ->
+            (Ok Nothing, rest)
+        _ -> (Err "Ran out of items or error while decoding a Maybe.",[])|]
