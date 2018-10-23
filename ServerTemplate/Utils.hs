@@ -29,8 +29,6 @@ data Result error value =
       Err error 
     | Ok value
 
-type List a = [a]
-
 toFloat :: Integral a => a -> Double
 toFloat = fromIntegral
 

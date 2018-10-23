@@ -28,8 +28,6 @@ import           Static.Types
 import           Network.WebSockets.Connection (Connection)
 import Data.Set as Set
 
-type ClientID = Int
-
 data CentralMessage
     = NewUser (TQueue ClientThreadMessage) Connection    --register a new user on the server
     | UserConnectionLost ClientID

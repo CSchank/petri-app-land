@@ -33,9 +33,9 @@ data ElmCustom = ElmCustom String [Constructor] -- name of the type
 type ClientState        = Constructor
 type ServerState        = Constructor
 data OutgoingClientMessage   = 
-      OnlySender        Constructor
-    | AllExceptSender   Constructor
-    | SenderAnd         Constructor
+      ToSender        Constructor
+    | ToAllExceptSender   Constructor
+    | ToSenderAnd         Constructor
     | ToAll             Constructor
     | NoClientMessage
   deriving (Ord,Eq,Show)

@@ -35,9 +35,9 @@ cm2maybe a = Just a
 
 cm2constr :: OutgoingClientMessage -> Maybe ClientTransition
 cm2constr NoClientMessage       = Nothing
-cm2constr (OnlySender ct)       = Just ct
-cm2constr (AllExceptSender ct)  = Just ct
-cm2constr (SenderAnd ct)        = Just ct
+cm2constr (ToSender ct)       = Just ct
+cm2constr (ToAllExceptSender ct)  = Just ct
+cm2constr (ToSenderAnd ct)        = Just ct
 cm2constr (ToAll ct)            = Just ct
 
 generateStateMsgs :: ClientStateDiagram -> M.Map String [(Constructor, String, Maybe ServerTransition)]
@@ -193,17 +193,16 @@ generateServer gsvg onlyStatic fp (startCs
                     ,"import Utils.Utils exposing(error)"
                     ,T.concat["import View.",T.pack stateName," exposing(Model,Msg)"] 
                     ,"--Client message wrappers"
-                    ,T.concat $ map (createWrap (length clientMsgs > 1) False "Msg" ("View."++stateName++".")) justMessages
+                    ,T.concat $ map (createWrap (length justMessages > 1) False "Msg" ("View."++stateName++".")) justMessages
                     ,"--Client message unwrappers"
                     ,"unwrapCMessage: WrappedClientMessage -> Msg"
                     ,"unwrapCMessage cMsg = case cMsg of"
                     ,T.unlines $ map (\(n,et) -> T.concat ["    ",generatePattern ("M"++n,et)," -> ",generatePattern ("View."++stateName++"."++n,et)]) justMessages
-                    ,if length justMessages < length clientMsgs then T.concat["_ -> error \"Incorrect message passed to ",T.pack stateName," state.\""] else ""
+                    ,if length justMessages < length clientMsgs then T.concat["    _ -> error \"Incorrect message passed to ",T.pack stateName," state.\""] else ""
                     ,"--Client message wrappers"
                     ,"wrapCMessage: Msg -> WrappedClientMessage"
                     ,"wrapCMessage msg = case msg of"
                     ,T.unlines $ map (\(n,et) -> T.concat ["    ",generatePattern ("View."++stateName++"."++n,et)," -> ",generatePattern ("M"++n,et)]) justMessages
-                    ,if length justMessages < length clientMsgs then T.concat["_ -> error \"Incorrect message passed to ",T.pack stateName," state.\""] else ""
                     ]
 
         hiddenClientView =
@@ -225,7 +224,7 @@ generateServer gsvg onlyStatic fp (startCs
                     ,if gsvg then "view : Model -> Collage Static.Types.WrappedClientMessage" else "view : Model -> Html Static.Types.WrappedClientMessage"
                     ,"view model ="
                     ,"    case model of"
-                    ,T.unlines $ map (\(n,_) -> T.concat["        Static.Model.",T.pack n, if gsvg then " m -> mapCollage wrapCMessage <| View." else " m -> Html.map wrapCMessage <| View.",T.pack n,".view m"]) clientS2M
+                    ,T.unlines $ map (\(n,_) -> T.concat["        Static.Model.",T.pack n, if gsvg then T.concat[" m -> mapCollage ","Static.Wrappers.",T.pack n,".wrapCMessage <| View."] else " m -> Html.map wrapCMessage <| View.",T.pack n,".view m"]) clientS2M
                     ]
         
         typesHs = 
@@ -235,6 +234,8 @@ generateServer gsvg onlyStatic fp (startCs
                 ,"    However, instead of defining them here, why not define them in userApp/Types.hs instead? We've conveniently created it for you :)"
                 ,"-}\n"
                 ,"module Static.Types where\n"
+                ,"type List a = [a]"
+                ,"type ClientID = Int"
                 ,"-- Server states"
                 ,serverStateTypeTxt, ""
                 ,"-- Server transitions"
@@ -338,9 +339,9 @@ generateServer gsvg onlyStatic fp (startCs
                             Nothing -> error $ "State " ++ s0 ++ " does not exist in the map."
                 name = T.concat ["update", T.pack s0, T.pack tn, T.pack s1]
                 typE = case mCt of                        
-                            OnlySender (ctn,ct)        -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", (OnlySender ",T.pack ctn,"))"]
-                            AllExceptSender (ctn,ct)   -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", (AllExceptSender ",T.pack ctn,"))"]
-                            SenderAnd (ctn,ct)         -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", (SenderAnd ",T.pack ctn,"))"]
+                            ToSender (ctn,ct)        -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", (OnlySender ",T.pack ctn,"))"]
+                            ToAllExceptSender (ctn,ct)   -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", (AllExceptSender ",T.pack ctn,"))"]
+                            ToSenderAnd (ctn,ct)         -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", (SenderAnd ",T.pack ctn,"))"]
                             ToAll (ctn,ct)             -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", (ToAll ",T.pack ctn,"))"]
                             NoClientMessage            -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> ",T.pack s1]
                 decl = T.concat [name, " clientId ", generatePattern (tn,tetd), generatePattern (s0,s0Cons), "=\n    ","error \"Update function ",name," not defined. Please define it in userApp/Update.hs.\""]
@@ -484,13 +485,14 @@ generateServer gsvg onlyStatic fp (startCs
                          ,"--Client state unwrappers"
                          ,T.concat $ map (\(n,et) -> createUnwrap False ("View."++n++".Model") ("View."++n++".") (n,et)) $ M.elems cStates
                          ,"--Client state wrappers"
-                         ,T.concat $ map (\(n,et) -> createWrap ((length $ M.elems cStates) > 1) False ("View."++n++".Model") ("View."++n++".") (n,et)) $ M.elems cStates
+                         ,T.concat $ map (\(n,et) -> createWrap False False ("View."++n++".Model") ("View."++n++".") (n,et)) $ M.elems cStates
                          ,"--Outgoing message unwrappers"
                          ,T.concat $ map (\(n,et) -> createUnwrap False "ServerMessage" "M" (n,et)) $ clientOutgoingMsgs
                          ,"update : WrappedClientMessage -> Model -> (Model, Maybe ServerMessage)"
                          ,"update msg model ="
                          ,"    case (msg,model) of"
                          ,T.concat $ map createClientUpdateCase $ M.toList cDiagram
+                         ,if M.size cStates * length clientMsgs > M.size cDiagram then "        _ -> error \"The current state received a message it didn't know how to handle!\"" else ""
                          ]
 
         createUnwrap :: Bool -> String -> String -> Constructor -> T.Text
@@ -538,9 +540,9 @@ generateServer gsvg onlyStatic fp (startCs
                             Nothing -> error $ "State" ++ s0 ++ " does not exist in the map."
                 name = T.concat ["update", T.pack s0, T.pack tn, T.pack s1]
                 typE = case mCt of 
-                        OnlySender      ct -> T.concat [name, (.::.),"IncomingMessage -> Model -> (",T.pack s1,", OnlySender (",T.pack tn,"))"]
-                        AllExceptSender ct -> T.concat [name, (.::.),"IncomingMessage -> Model -> (",T.pack s1,", AllExceptSender (",T.pack tn,"))"]
-                        SenderAnd       ct -> T.concat [name, (.::.),"IncomingMessage -> Model -> (",T.pack s1,", SenderAnd (",T.pack tn,"))"]
+                        ToSender      ct -> T.concat [name, (.::.),"IncomingMessage -> Model -> (",T.pack s1,", OnlySender (",T.pack tn,"))"]
+                        ToAllExceptSender ct -> T.concat [name, (.::.),"IncomingMessage -> Model -> (",T.pack s1,", AllExceptSender (",T.pack tn,"))"]
+                        ToSenderAnd       ct -> T.concat [name, (.::.),"IncomingMessage -> Model -> (",T.pack s1,", SenderAnd (",T.pack tn,"))"]
                         ToAll           ct -> T.concat [name, (.::.),"IncomingMessage -> Model -> (",T.pack s1,", ToEveryone (",T.pack tn,"))"]
                         NoClientMessage    -> T.concat [name, (.::.),"OutgoingMessage -> Model -> ",T.pack s1]
                 decl = T.concat [name, " ", generatePattern (tn,tetd), generatePattern (s0,s0Cons), " = error \"Update function ",name," not defined. Please define it in userApp/Update.hs.\""]
@@ -551,9 +553,9 @@ generateServer gsvg onlyStatic fp (startCs
                 wrapModel = T.concat ["(wrap",T.pack s0," model)"]
             in
                 case mCt of 
-                    OnlySender      ct -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Just <| unwrapOnlySender wrappedMsg unwrap",T.pack ctn,")\n"]
-                    AllExceptSender ct -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Just <| unwrapAllExceptSender wrappedMsg unwrap",T.pack ctn,")\n"]
-                    SenderAnd       ct -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Just <| unwrapSenderAnd wrappedMsg unwrap",T.pack ctn,")\n"]
+                    ToSender      ct -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Just <| unwrapOnlySender wrappedMsg unwrap",T.pack ctn,")\n"]
+                    ToAllExceptSender ct -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Just <| unwrapAllExceptSender wrappedMsg unwrap",T.pack ctn,")\n"]
+                    ToSenderAnd       ct -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Just <| unwrapSenderAnd wrappedMsg unwrap",T.pack ctn,")\n"]
                     ToAll           ct -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Just <| unwrapToAll wrappedMsg unwrap",T.pack ctn,")\n"]
                     NoClientMessage    -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> return $ (unwrap",T.pack s1," <| update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel,", Nothing)\n"]
         
