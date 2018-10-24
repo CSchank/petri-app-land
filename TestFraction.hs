@@ -130,23 +130,24 @@ csDiagram = M.fromList
             ,   (("HaveFrac", stopDragging)     ,("HaveFrac",   Nothing))
             ,   (("HaveFrac", dragging)     ,("HaveFrac",   Just changeColour))
             ,   (("HaveFrac", sendNewColours)     ,("HaveFrac",   Nothing))
+            ,   (("HaveFrac", sendFrac)     ,("HaveFrac",   Nothing))
             ]
 
 ssDiagram :: ServerStateDiagram
 ssDiagram = M.fromList 
             [
                 (("Nobody", submitLogin), ("One", ToAll sendFrac))
-            ,   (("Nobody", clientConnect), ("One", NoClientMessage))
+            ,   (("Nobody", clientConnect), ("Nobody", NoClientMessage))
             ,   (("Nobody", clientDisconnect), ("Nobody", NoClientMessage))
             ,   (("One", submitLogin), ("Two", ToAll sendFrac))
             ,   (("One", changeColour), ("One", ToAll sendNewColours))
             ,   (("One", clientConnect), ("One", NoClientMessage))
-            ,   (("One", clientDisconnect), ("Nobody", ToAll sendFrac))
+            ,   (("One", clientDisconnect), ("Nobody", NoClientMessage))
             ,   (("Two", submitLogin), ("Three", ToAll sendFrac))
             ,   (("Two", changeColour), ("Two", ToAll sendNewColours))
             ,   (("Two", clientConnect), ("Two", NoClientMessage))
             ,   (("Two", clientDisconnect), ("One", ToAll sendFrac))
-            ,   (("Three", submitLogin), ("Three", ToAll sendFrac))
+            ,   (("Three", submitLogin), ("Four", ToAll sendFrac))
             ,   (("Three", changeColour), ("Three", ToAll sendNewColours))
             ,   (("Three", clientConnect), ("Three", NoClientMessage))
             ,   (("Three", clientDisconnect), ("Two", ToAll sendFrac))
