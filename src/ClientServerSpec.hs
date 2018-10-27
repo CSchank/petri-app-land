@@ -40,6 +40,7 @@ playing = state "Playing"
     ,edt (ElmDict (edt (ElmPair xCoord yCoord) "key" "coordinate") 
                   (edt colour "c" "box colour")
          )
+         "grid" ""
     ]
 playerNum = edt (ElmIntRange 0 3) "playerNum" ""
 maxY = 19
@@ -124,7 +125,9 @@ playingS = state "PlayingS"
     , edt colour "client4Colour" ""  
     , edt clientId "client4ID" ""
     , edt (ElmDict (edt (ElmPair xCoord yCoord) "key" "coordinate") 
-                   (edt (ElmIntRange 0 3) "boxOwner" "last player who tapped on box")
+                   (edt (ElmIntRange 0 3) "boxOwner" "last player who tapped on box"))
+          "grid"
+          "records who last tapped on boxes"
     ]
 
 --client outgoing messages
