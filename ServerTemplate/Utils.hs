@@ -338,17 +338,17 @@ decodeList ls decodeFn =
 unwrapOnlySender :: OnlySender cm -> InternalCM cm
 unwrapOnlySender (OnlySender cm) = ICMOnlySender cm
 
-unwrapAllExceptSender :: AllExceptSender cm -> (cm -> ClientMessage) -> InternalCM ClientMessage
-unwrapAllExceptSender (AllExceptSender cm) m = ICMAllExceptSender (m cm)
-unwrapAllExceptSender (AllExceptSenderF f) m = ICMAllExceptSenderF (m . f)
+unwrapAllExceptSender :: (cm -> ClientMessage) -> AllExceptSender cm -> InternalCM ClientMessage
+unwrapAllExceptSender m (AllExceptSender cm) = ICMAllExceptSender (m cm)
+unwrapAllExceptSender m (AllExceptSenderF f) = ICMAllExceptSenderF (m . f)
 
-unwrapSenderAnd :: SenderAnd cm -> (cm -> ClientMessage) -> InternalCM ClientMessage
-unwrapSenderAnd (SenderAnd others cm) m = ICMSenderAnd others (m cm)
-unwrapSenderAnd (SenderAndF others f) m = ICMSenderAndF others (m . f)
+unwrapSenderAnd :: (cm -> ClientMessage) -> SenderAnd cm -> InternalCM ClientMessage
+unwrapSenderAnd m (SenderAnd others cm) = ICMSenderAnd others (m cm)
+unwrapSenderAnd m (SenderAndF others f) = ICMSenderAndF others (m . f)
 
-unwrapToAll :: ToAll cm -> (cm -> ClientMessage) -> InternalCM ClientMessage
-unwrapToAll (ToAll cm) m = ICMToAll (m cm)
-unwrapToAll (ToAllF f) m = ICMToAllF (m . f)
+unwrapToAll :: (cm -> ClientMessage) -> ToAll cm -> InternalCM ClientMessage
+unwrapToAll m (ToAll cm) = ICMToAll (m cm)
+unwrapToAll m (ToAllF f) = ICMToAllF (m . f)
 
 decodeMaybe :: [T.Text] -> ((Result T.Text a, [T.Text]) -> (Result T.Text a, [T.Text])) -> (Result T.Text (Maybe a), [T.Text])
 decodeMaybe ls decodeFn =

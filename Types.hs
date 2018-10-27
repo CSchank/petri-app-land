@@ -33,10 +33,12 @@ data ElmCustom = ElmCustom String [Constructor] -- name of the type
 type ClientState        = Constructor
 type ServerState        = Constructor
 data OutgoingClientMessage   = 
-      ToSender        Constructor
-    | ToAllExceptSender   Constructor
-    | ToSenderAnd         Constructor
-    | ToAll             Constructor
+      ToSender            Constructor                   --reply back to the client that sent the orignal message
+    | ToAllExceptSender   Constructor                   --not used
+    | ToSenderAnd         Constructor                   --reply to sender and a set of other clients
+    | ToAll               Constructor                   --send a message to all connected clients
+    | OneOf               [OutgoingClientMessage]       --send one of a list of possible messages
+    | AllOf               [OutgoingClientMessage]       --send all of a list of possible messages
     | NoClientMessage
   deriving (Ord,Eq,Show)
 type ClientTransition   = Constructor

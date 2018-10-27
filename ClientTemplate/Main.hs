@@ -60,7 +60,9 @@ type alias FunnelState =
 -- MODEL
 
 type State =
-    Connected | NotConnected | ConnectionClosed
+      Connected 
+    | NotConnected 
+    | ConnectionClosed
 
 
 defaultUrl : String
@@ -282,8 +284,8 @@ socketHandler response state mdl =
                    
 
         WebSocket.ConnectedResponse _ ->
-            { model | log = "Connected" :: model.log, appState = Connected }
-                |> (if model.appState == NotConnected then 
+            { model | log = "Connected" :: model.log, appState = Connected, appModel = Init.init }
+                |> (if model.appState == NotConnected || mdoel.appState == ConnectionClosed then 
                         wsSend V.version
                     else
                         withNoCmd
@@ -654,7 +656,9 @@ closedString code wasClean expected =
 view : InternalModel -> { body : Collage Msg, title: String }
 view model =
     { title = Static.View.title model.appModel
-    , body = GraphicSVG.mapCollage AppMsg <| Static.View.view model.appModel
-             --   , text <| "Log: " ++ Debug.toString model.log
-             
+    , body = case model.appState of 
+                NotConnected ->         collage 500 500 [text "Connecting to server...." |> fixedwidth |> centered |> size 24 |> filled black]        
+                ConnectionClosed ->     collage 500 500 [text "Lost connection. Reconnecting...." |> fixedwidth |> centered |> size 24 |> filled black]        
+                Connected ->            GraphicSVG.mapCollage AppMsg <| Static.View.view model.appModel
+             --   , text <| "Log: " ++ Debug.toString model.log   
     }|]
