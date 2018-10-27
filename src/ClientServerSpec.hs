@@ -19,9 +19,35 @@ haveFrac = state "HaveFrac"
     ,edt maybeColour "c2" ""
     ,edt maybeColour "c3" ""
     ,edt maybeColour "c4" ""
-    ,edt (ElmIntRange 0 3) "playerNum" ""
+    ,playerNum
     ,edt (ElmMaybe channel) "draggingChannel" ""
     ]
+ready = state "Ready" 
+    [edt frac "fraction" ""
+    ,edt colour "c1" ""
+    ,edt colour "c2" ""
+    ,edt colour "c3" ""
+    ,edt colour "c4" ""
+    ,playerNum
+    ]
+playing = state "Playing" 
+    [edt frac "fraction" ""
+    ,edt colour "c1" ""
+    ,edt colour "c2" ""
+    ,edt colour "c3" ""
+    ,edt colour "c4" ""
+    ,edt (ElmIntRange 0 3) "playerNum" ""
+    ,edt (ElmDict (edt (ElmPair xCoord yCoord) "key" "coordinate") 
+                  (edt colour "c" "box colour")
+         )
+    ]
+playerNum = edt (ElmIntRange 0 3) "playerNum" ""
+maxY = 19
+maxX = 19
+xCoord = edt (ElmIntRange 0 maxX) "x" ""
+yCoord = edt (ElmIntRange 0 maxY) "y" ""
+    
+
 maybeColour = ElmMaybe (edt colour "colour" "")
 colour = (ElmType "Colour")
 channel = edt (ElmType "Channel") "channel" ""
@@ -36,8 +62,12 @@ fracType = ec "Frac"
 startDragging = msg "StartDragging" [edt (ElmType "Channel") "channel" ""]
 stopDragging = msg "StopDragging" []
 dragging = msg "Dragging" [edt (ElmType "Channel") "channel" "", edt (ElmPair x y) "position" ""]
+tapReady = msg "TapReady" []
 x = edt (ElmFloatRange 0 0 0) "x" ""
 y = edt (ElmFloatRange 0 0 0) "y" ""
+
+--Playing messages
+tapBox = msg "TapBox" [xCoord, yCoord]
 
 -- server states
 nobody = state "Nobody" [listFrac]
@@ -77,6 +107,24 @@ four = state "Four"
     , edt clientId "client3ID" ""
     , edt colour "client4Colour" ""  
     , edt clientId "client4ID" ""
+    , edt ElmBool "client1Ready" ""
+    , edt ElmBool "client2Ready" ""
+    , edt ElmBool "client3Ready" ""
+    , edt ElmBool "client4Ready" ""
+    ]
+
+playingS = state "PlayingS" 
+    [listFrac
+    , edt colour "client1Colour" ""  
+    , edt clientId "client1ID" ""
+    , edt colour "client2Colour" ""  
+    , edt clientId "client2ID" ""
+    , edt colour "client3Colour" ""  
+    , edt clientId "client3ID" ""
+    , edt colour "client4Colour" ""  
+    , edt clientId "client4ID" ""
+    , edt (ElmDict (edt (ElmPair xCoord yCoord) "key" "coordinate") 
+                   (edt (ElmIntRange 0 3) "boxOwner" "last player who tapped on box")
     ]
 
 --client outgoing messages
@@ -85,6 +133,14 @@ changeColour = msg "ChangeColour"
         edt colour "colour" ""
     ]
 
+readyMsg = msg "Ready"
+    [
+    ]
+tapMsg = msg "Tap"
+    [
+        xCoord
+    ,   yCoord
+    ]
 --server outgoing messages
 sendFrac = msg "SendFrac" 
     [edt frac "newFrac" ""
@@ -101,13 +157,16 @@ sendNewColours = msg "SendNewColours"
     ,edt maybeColour "newP3C" ""
     ,edt maybeColour "newP4C" ""
     ]
+sendTap = msg "SendTap"
+    [otherPlayer,xCoord,yCoord]
+otherPlayer = edt (ElmIntRange 0 3) "otherPlayer" "number of other player who tapped"
 
 -- the actual app that is to be generated
 clientServerApp :: ClientServerApp
 clientServerApp = (
                 "Start" --client start state
              ,  "Nobody" --server start start
-             ,  M.fromList [("Start",start),("Wait",wait),("HaveFrac",haveFrac)] --client states
+             ,  M.fromList [("Start",start),("Wait",wait),("HaveFrac",haveFrac),("Ready",ready)] --client states
              ,  M.fromList [("Nobody",nobody),("One",one),("Two",two),("Three",three),("Four",four)]                                 --server states
              ,  M.fromList [("Channel",channelType),("Colour",testRGB),("Frac",fracType)]                            --extra client types
              ,  M.fromList [("Colour",testRGB),("Frac",fracType)]        --extra server types
@@ -128,6 +187,7 @@ csDiagram = M.fromList
             ,   (("HaveFrac", dragging)     ,("HaveFrac",   Just changeColour))
             ,   (("HaveFrac", sendNewColours)     ,("HaveFrac",   Nothing))
             ,   (("HaveFrac", sendFrac)     ,("HaveFrac",   Nothing))
+            ,   (("HaveFrac", tapReady)     ,("Ready",   Just readyMsg))
             ]
 
 ssDiagram :: ServerStateDiagram
