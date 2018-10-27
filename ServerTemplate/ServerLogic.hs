@@ -142,6 +142,10 @@ processCentralMessage centralMessageChan state (UserConnectionLost clientId) =
 
     return nextState
 
+--get current state of central thread
+processCentralMessage centralMessageChan state (GetCurrentState queue) = do
+    atomically $ writeTQueue queue state
+    return state
 
 --a new message has been received from a client. Process it and inform the central message about it.
 parseIncomingMsg :: ClientID -> TQueue CentralMessage -> Text -> IO ()

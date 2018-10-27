@@ -20,7 +20,8 @@ import           Control.Monad.IO.Class         (liftIO)
 import qualified Data.Text              as T
 import           Data.Text                      (Text)
 import           Data.Text.IO                   as Tio
-import           Network.HTTP.Types             (status400)
+import qualified Data.ByteString.Lazy.Char8          as C
+import           Network.HTTP.Types             (status200)
 import           Network.Wai                    (Application, responseLBS)
 import           Network.Wai.Handler.Warp       (run)
 import           Network.Wai.Handler.WebSockets (websocketsOr)
@@ -67,12 +68,16 @@ wsApp centralMessageChan pendingConn =
 
         loop conn clientMessageChan
 
-fallbackApp :: Application
-fallbackApp _ respond = respond $ responseLBS status400 [] "Not a WebSocket request."
+fallbackApp :: TQueue CentralMessage -> Application
+fallbackApp centralChan _ respond = do
+    tempQ <- atomically $ giveReceivingQueue centralChan GetCurrentState
+    state <- atomically $ readTQueue tempQ
+    let userState = internalServerState state
+    respond $ responseLBS status200 [] $ C.pack $ show userState
 
 
 app :: TQueue CentralMessage -> Application
-app chan = websocketsOr WS.defaultConnectionOptions (wsApp chan) fallbackApp
+app centralChan = websocketsOr WS.defaultConnectionOptions (wsApp centralChan) (fallbackApp centralChan)
 
 
 mainServer :: IO ()

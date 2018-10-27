@@ -36,10 +36,10 @@ generateDot (startClient
 
         clientList = M.toList cDiagram
         serverList = M.toList sDiagram
-        clientDiagram = map clientStateToGViz $ clientList
-        serverDiagram = map serverStateToGViz $ serverList
-        c2sDiagram = MA.mapMaybe (c2sStateToGViz $ T.pack startServer) $ clientList
-        s2cDiagram = MA.mapMaybe (s2cStateToGViz $ T.pack startClient) $ serverList
+        clientDiagram = map clientStateToGViz clientList
+        serverDiagram = map serverStateToGViz serverList
+        c2sDiagram = MA.mapMaybe (c2sStateToGViz $ T.pack startServer) clientList
+        s2cDiagram = MA.mapMaybe (s2cStateToGViz $ T.pack startClient) serverList
     in do
         dotTemplate <- Tio.readFile "template.dot"
         Tio.writeFile ("rgbApp.dot") $ T.unlines $ replace $ T.lines dotTemplate
@@ -54,9 +54,9 @@ clientStateToGViz ((cState0S, cTrans), (cState1S, mServe)) =
     in
         case mServe of 
             Just m -> T.unlines $ 
-                        T.concat ["\t\t", cState0,"->",fakeName," [label=\"",generateConstructor False False cTrans,"\",arrowhead=none];"] :
-                        T.concat ["\t\t",fakeName, " [shape=point, width=0, height=0];"] :
-                        T.concat ["\t\t",fakeName,"->", cState1,";"] : []
+                        T.concat ["\t\t", cState0,"->",fakeName," [label=\"", generateConstructor False False cTrans,"\",arrowhead=none];"] :
+                        T.concat ["\t\t",fakeName, " [shape=diamond, width=0.2, height=0.2, label=\"\"];"] :
+                        T.concat ["\t\t",fakeName,"->",cState1,";"] : []
             Nothing -> T.concat ["\t\t", cState0,"->", cState1," [label=\"",generateConstructor False False cTrans,"\"];"]
 
 serverStateToGViz ((sState0S, sTrans), (sState1S, mClien)) =
@@ -66,12 +66,12 @@ serverStateToGViz ((sState0S, sTrans), (sState1S, mClien)) =
         fakeName = T.concat["fake", sState0, T.pack $ fst sTrans,sState1]
     in
         case mClien of
-            Just m -> T.unlines $ 
-                        T.concat ["\t\t", sState0,"->",fakeName," [label=\"", generateConstructor False False sTrans,"\",arrowhead=none];"] :
-                        T.concat ["\t\t",fakeName, " [shape=point, width=0, height=0];"] :
-                        T.concat ["\t\t",fakeName,"->",sState1,";"] : []
-            Nothing -> T.concat ["\t\t", sState0,"->", sState1," [label=\"",generateConstructor False False sTrans,"\"];"]
-
+            NoClientMessage    -> T.concat ["\t\t", sState0,"->", sState1," [label=\"",generateConstructor False False sTrans,"\"];"]
+            _ -> T.unlines $ 
+                    T.concat ["\t\t", sState0,"->",fakeName," [label=\"",generateConstructor False False sTrans,"\",arrowhead=none];"] :
+                    T.concat ["\t\t",fakeName, " [shape=diamond, width=0.2, height=0.2, label=\"\"];"] :
+                    T.concat ["\t\t",fakeName,"->", sState1,";"] : []
+        
 c2sStateToGViz firstServe ((cState0S, cTrans), (cState1S, Just mClien)) = 
     let 
         cState0 = T.pack cState0S
@@ -82,11 +82,25 @@ c2sStateToGViz firstServe ((cState0S, cTrans), (cState1S, Just mClien)) =
 c2sStateToGViz _ ((_, _), (_, Nothing)) = Nothing
 
 
-s2cStateToGViz firstClien ((sState0S, sTrans), (sState1S, Just mServe)) = 
+s2cStateToGViz firstClien ((sState0S, sTrans), (sState1S, ToAll cMsg)) = 
     let 
         sState0 = T.pack sState0S
         sState1 = T.pack sState1S
         fakeName = T.concat["fake", sState0, T.pack $ fst sTrans,sState1]
     in
-        Just $ T.concat ["\t",fakeName,"->", firstClien, "[label=\"",generateConstructor False False mServe,"\",lhead=cluster_0,style=dashed];"]
-s2cStateToGViz _ ((_, _), (_, Nothing)) = Nothing
+        Just $ T.concat ["\t",fakeName,"->", firstClien, "[label=\"∀ ",generateConstructor False False cMsg,"\",lhead=cluster_0,style=dashed];"]
+s2cStateToGViz firstClien ((sState0S, sTrans), (sState1S, ToSender cMsg)) = 
+    let 
+        sState0 = T.pack sState0S
+        sState1 = T.pack sState1S
+        fakeName = T.concat["fake", sState0, T.pack $ fst sTrans,sState1]
+    in
+        Just $ T.concat ["\t",fakeName,"->", firstClien, "[label=\"✉ ",generateConstructor False False cMsg,"\",lhead=cluster_0,style=dashed];"]
+s2cStateToGViz firstClien ((sState0S, sTrans), (sState1S, ToSenderAnd cMsg)) = 
+    let 
+        sState0 = T.pack sState0S
+        sState1 = T.pack sState1S
+        fakeName = T.concat["fake", sState0, T.pack $ fst sTrans,sState1]
+    in
+        Just $ T.concat ["\t",fakeName,"->", firstClien, "[label=\"✉+ ",generateConstructor False False cMsg,"\",lhead=cluster_0,style=dashed];"]
+s2cStateToGViz _ ((_, _), (_, NoClientMessage)) = Nothing

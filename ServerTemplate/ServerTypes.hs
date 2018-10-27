@@ -32,6 +32,7 @@ data CentralMessage
     = NewUser (TQueue ClientThreadMessage) Connection    --register a new user on the server
     | UserConnectionLost ClientID
     | ReceivedMessage ClientID ServerMessage
+    | GetCurrentState (TQueue ServerState)
 
 data ClientThreadMessage 
     = SendMessage ClientMessage

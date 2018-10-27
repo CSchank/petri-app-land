@@ -80,17 +80,17 @@ generateServer gsvg onlyStatic fp (startCs
                                 ,"-}"
                                 ]
         serverStateTypeTxt = 
-            generateType True True $ ElmCustom "Model" $ map (\(n,t) -> ("S"++n,t)) $ M.elems sStates
+            generateType True True [DOrd,DEq,DShow] $ ElmCustom "Model" $ map (\(n,t) -> ("S"++n,t)) $ M.elems sStates
         serverMsgs = S.toList $ serverTransFromClient `S.union` serverTransitions
         serverMsgType = ElmCustom "ServerMessage" $ map (\(n,t) -> ("M"++n,t)) serverMsgs
-        serverMsgTypeTxt = generateType True True serverMsgType
+        serverMsgTypeTxt = generateType True True [DOrd,DEq,DShow] serverMsgType
 
         serverTransFromClient = S.fromList $ mapMaybe (\(_,(_,trans)) -> trans) $ M.toList cDiagram
         serverTransitions = S.fromList $ map (\((_,trans),_) -> trans) $ M.toList sDiagram
 
         serverOutgoingMsgs = S.toList $ S.fromList $ mapMaybe (\(_,(_,trans)) -> cm2maybe trans) $ M.toList sDiagram
         serverOutgoingMsgType = ElmCustom "ClientMessage" $ map (\(n,t) -> ("M"++n,t)) $ concat $ mapMaybe cm2constr serverOutgoingMsgs
-        serverOutgoingMsgTypeTxt = generateType True True serverOutgoingMsgType
+        serverOutgoingMsgTypeTxt = generateType True True [DOrd,DEq,DShow] serverOutgoingMsgType
 
         serverOneOfs = mapMaybe 
             (\(_,(_,mCt)) -> 
@@ -100,32 +100,32 @@ generateServer gsvg onlyStatic fp (startCs
             ) $ M.toList sDiagram
         
         clientStateTypeTxt = 
-            generateType False True $ ElmCustom "Model" $ map (\(n,_) -> (n,[(ElmType ("View."++n++".Model"),"","")])) $ M.elems cStates
+            generateType False True [DOrd,DEq,DShow] $ ElmCustom "Model" $ map (\(n,_) -> (n,[(ElmType ("View."++n++".Model"),"","")])) $ M.elems cStates
 
         clientUnionMsgTypeTxt = 
-            generateType False True $ ElmCustom "ClientMessage" $ map (\(n,_) -> (n,[(ElmType ("View."++n++".Msg"),"","")])) $ M.elems cStates
+            generateType False True [DOrd,DEq,DShow] $ ElmCustom "ClientMessage" $ map (\(n,_) -> (n,[(ElmType ("View."++n++".Msg"),"","")])) $ M.elems cStates
 
         clientMsgs = S.toList $ S.fromList $ map (\((_,trans),(_,_)) -> trans) $ M.toList cDiagram
         clientMsgType = ElmCustom "WrappedClientMessage" $ map (\(n,t) -> ("M"++n,t)) clientMsgs
-        clientMsgTypeTxt = generateType False True clientMsgType
+        clientMsgTypeTxt = generateType False True [DOrd,DEq,DShow] clientMsgType
 
         clientOutgoingMsgs = S.toList $ S.fromList $ mapMaybe (\(_,(_,trans)) -> trans) $ M.toList cDiagram
         clientOutgoingMsgType = ElmCustom "ServerMessage" $ map (\(n,t) -> ("M"++n,t)) clientOutgoingMsgs
-        clientOutgoingMsgTypeTxt = generateType False True clientOutgoingMsgType
+        clientOutgoingMsgTypeTxt = generateType False True [DOrd,DEq,DShow] clientOutgoingMsgType
 
-        serverWrappedMessagesTxt = T.unlines $ map (\(name,constrs) -> generateType True True $ ElmCustom name [(name,constrs)]) serverMsgs
-        serverWrappedStateTypesTxt = T.unlines $ map (\(name,constrs) -> generateType True True $ ElmCustom name [(name,constrs)]) $ M.elems sStates
-        serverWrappedOutgoingMsgTxt = T.unlines $ map (\(name,constrs) -> generateType True True $ ElmCustom name [(name,constrs)]) $ concat $ mapMaybe cm2constr serverOutgoingMsgs
+        serverWrappedMessagesTxt = T.unlines $ map (\(name,constrs) -> generateType True True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) serverMsgs
+        serverWrappedStateTypesTxt = T.unlines $ map (\(name,constrs) -> generateType True True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) $ M.elems sStates
+        serverWrappedOutgoingMsgTxt = T.unlines $ map (\(name,constrs) -> generateType True True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) $ concat $ mapMaybe cm2constr serverOutgoingMsgs
 
         serverExtraTypes = map snd $ M.toList sExtraT
-        serverExtraTypesTxt = T.unlines $ map (generateType True True) serverExtraTypes
+        serverExtraTypesTxt = T.unlines $ map (generateType True True [DOrd,DEq,DShow]) serverExtraTypes
         
         clientExtraTypes = map snd $ M.toList cExtraT
-        clientExtraTypesTxt = T.unlines $ map (generateType False True) clientExtraTypes
+        clientExtraTypesTxt = T.unlines $ map (generateType False True [DOrd,DEq,DShow]) clientExtraTypes
 
-        clientWrappedMessagesTxt = T.unlines $ map (\(name,constrs) -> generateType False True $ ElmCustom name [(name,constrs)]) clientMsgs
-        clientWrappedStateTypesTxt = T.unlines $ map (\(name,constrs) -> generateType False True $ ElmCustom name [(name,constrs)]) $ M.elems cStates
-        clientWrappedOutgoingMsgTxt = T.unlines $ map (\(name,constrs) -> generateType False True $ ElmCustom name [(name,constrs)]) clientOutgoingMsgs
+        clientWrappedMessagesTxt = T.unlines $ map (\(name,constrs) -> generateType False True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) clientMsgs
+        clientWrappedStateTypesTxt = T.unlines $ map (\(name,constrs) -> generateType False True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) $ M.elems cStates
+        clientWrappedOutgoingMsgTxt = T.unlines $ map (\(name,constrs) -> generateType False True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) clientOutgoingMsgs
 
         clientS2M = M.toList $ generateStateMsgs cDiagram
 
@@ -161,9 +161,9 @@ generateServer gsvg onlyStatic fp (startCs
                     ,   "import Utils.Utils exposing(error)"
                     ,   "-- These types are provided for reference only. Changing them will result in a failure to compile."
                     ,   "-- The model of the state"
-                    ,   generateType False True stateType,""
+                    ,   generateType False True [DOrd,DEq,DShow] stateType,""
                     ,   "-- The possible messages to send while in this state"
-                    ,   generateType False True moduleType,"\n"
+                    ,   generateType False True [DOrd,DEq,DShow] moduleType,"\n"
                     ,   "--Change the title of the tab / browser here."
                     ,   "title : Model -> String"
                     ,   "title model = "

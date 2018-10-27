@@ -8,9 +8,11 @@ import qualified Data.Text      as T
 import qualified Data.Set       as S
 import Data.Maybe (mapMaybe)
 
+data Deriving = 
+    DOrd | DShow | DEq
 
-generateType :: Bool -> Bool -> ElmCustom -> T.Text
-generateType haskell commentsEnabled (ElmCustom typeName constrs) =
+generateType :: Bool -> Bool -> [Deriving] -> ElmCustom -> T.Text
+generateType haskell commentsEnabled deriv (ElmCustom typeName constrs) =
     let
         typ   = if haskell then "data" else "type"
 
@@ -22,9 +24,14 @@ generateType haskell commentsEnabled (ElmCustom typeName constrs) =
                                 _ -> Nothing                
                             ) constr
                         ) constrs
+        deriv2Txt DOrd = "Ord"
+        deriv2Txt DShow = "Show"
+        deriv2Txt DEq = "Eq"
+        derivTxt = T.concat ["(",T.intercalate "," $ map deriv2Txt deriv,")"]
     in
         T.concat [ typ, " ", T.pack typeName, " ", T.intercalate " " typeParams ," =\n      "
                  , T.intercalate "\n    | " constrs2Txt
+                 , if length deriv > 0 && haskell then T.concat ["\n    deriving",derivTxt] else ""
                  ]
 
 generateConstructor :: Bool -> Bool -> Constructor -> T.Text

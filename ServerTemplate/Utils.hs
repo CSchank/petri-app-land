@@ -14,6 +14,8 @@ import Data.Char (ord,chr)
 import qualified Data.Text as T
 import Static.ServerTypes
 import Static.Types
+import           Control.Concurrent.STM         (TQueue, atomically, readTQueue,
+                                                 writeTQueue, STM, newTQueue)
 
 (|>) :: a -> (a -> b) -> b
 (|>) x f = f x
@@ -360,4 +362,10 @@ decodeMaybe ls decodeFn =
                 (rMap Just newRes,newLs)
         ("N":rest) ->
             (Ok Nothing, rest)
-        _ -> (Err "Ran out of items or error while decoding a Maybe.",[])|]
+        _ -> (Err "Ran out of items or error while decoding a Maybe.",[])
+        
+giveReceivingQueue :: TQueue a -> (TQueue b -> a) -> STM (TQueue b)
+giveReceivingQueue commandQueue signalConstructor = do
+    channel <- newTQueue
+    writeTQueue commandQueue (signalConstructor channel)
+    return channel|]
