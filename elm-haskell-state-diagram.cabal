@@ -1,0 +1,99 @@
+-- This file has been generated from package.yaml by hpack version 0.28.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: d42352f40e9d17c40c388b199fc273d730cf01a5dd3762b6601658b58293eca7
+
+name:           elm-haskell-state-diagram
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/elm-haskell-state-diagram#readme>
+homepage:       https://github.com/githubuser/elm-haskell-state-diagram#readme
+bug-reports:    https://github.com/githubuser/elm-haskell-state-diagram/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2018 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+cabal-version:  >= 1.10
+extra-source-files:
+    ChangeLog.md
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/elm-haskell-state-diagram
+
+library
+  exposed-modules:
+      ClientServerSpec
+      ClientTemplate.ClientLogic
+      ClientTemplate.ClientTypes
+      ClientTemplate.ElmJson
+      ClientTemplate.Lib
+      ClientTemplate.Main
+      ClientTemplate.Utils
+      ClientTemplate.Version
+      ClientTemplate.View
+      Generate.Codec
+      Generate.Dot
+      Generate.OneOf
+      Generate.Server
+      Generate.Types
+      ServerTemplate.Lib
+      ServerTemplate.Main
+      ServerTemplate.ServerLogic
+      ServerTemplate.ServerTypes
+      ServerTemplate.Utils
+      TypeHelpers
+      Types
+  other-modules:
+      Paths_elm_haskell_state_diagram
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , directory
+    , filepath
+    , raw-strings-qq
+    , text
+    , time
+  default-language: Haskell2010
+
+executable elm-haskell-state-diagram-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_elm_haskell_state_diagram
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , directory
+    , elm-haskell-state-diagram
+    , filepath
+    , raw-strings-qq
+    , text
+    , time
+  default-language: Haskell2010
+
+test-suite elm-haskell-state-diagram-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_elm_haskell_state_diagram
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , directory
+    , elm-haskell-state-diagram
+    , filepath
+    , raw-strings-qq
+    , text
+    , time
+  default-language: Haskell2010

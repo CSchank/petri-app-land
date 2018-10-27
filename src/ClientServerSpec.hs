@@ -1,12 +1,8 @@
-module TestFraction where
+module ClientServerSpec where
 
 import Types
-import qualified Data.Map as M
-import Generate.Server 
-import TestElmTypes
-import Generate.OneOf
-import Generate.Dot
 import TypeHelpers
+import Data.Map as M
 
 
 --client states
@@ -106,8 +102,9 @@ sendNewColours = msg "SendNewColours"
     ,edt maybeColour "newP4C" ""
     ]
 
-testServer :: ClientServerApp
-testServer = (
+-- the actual app that is to be generated
+clientServerApp :: ClientServerApp
+clientServerApp = (
                 "Start" --client start state
              ,  "Nobody" --server start start
              ,  M.fromList [("Start",start),("Wait",wait),("HaveFrac",haveFrac)] --client states
@@ -156,3 +153,32 @@ ssDiagram = M.fromList
             ,   (("Four", clientConnect), ("Four", NoClientMessage))
             ,   (("Four", clientDisconnect), ("Three", ToAll sendFrac))
             ]
+
+testRGB :: ElmCustom
+testRGB = ElmCustom "Colour" [("RGB", 
+                                    [ (ElmIntRange 0 255, "red", "defines the red value of the RGB colour")
+                                    , (ElmIntRange 0 255, "green", "defines the green value of the RGB colour")
+                                    , (ElmIntRange 0 255, "blue", "defines the blue value of the RGB colour")
+                                     ]
+                              )
+                          , ("HSL", 
+                                    [ (ElmFloatRange 0 1 7, "hue", "defines the hue value of the HSL colour")
+                                    , (ElmFloatRange 0 1 7, "saturation", "defines the saturation value of the HSL colour")
+                                    , (ElmFloatRange 0 1 7, "light", "defines the light value of the HSL colour")
+                                     ]
+                              )
+                          , ("RGBA", 
+                                    [ (ElmIntRange 0 255, "red", "defines the red value of the RGBA colour")
+                                    , (ElmIntRange 0 255, "green", "defines the green value of the RGBA colour")
+                                    , (ElmIntRange 0 255, "blue", "defines the blue value of the RGBA colour")
+                                    , (ElmFloatRange 0 1 7, "alpha", "defines the alpha value of the RGBA colour")
+                                     ]
+                              )
+                          , ("HSLA", 
+                                    [ (ElmFloatRange 0 1 7, "hue", "defines the hue value of the HSL colour")
+                                    , (ElmFloatRange 0 1 7, "saturation", "defines the saturation value of the HSL colour")
+                                    , (ElmFloatRange 0 1 7, "light", "defines the light value of the HSL colour")
+                                    , (ElmFloatRange 0 1 7, "alpha", "defines the alpha value of the HSLA colour")
+                                     ]
+                              )
+                          ]
