@@ -118,16 +118,19 @@ processCentralMessage _ state (ReceivedMessage clientId incomingMsg) =
     in do
     (nextServerState,mMessage) <- update clientId incomingMsg $ internalServerState state
     let nextState = state { internalServerState = nextServerState }
-
-    _ <- case mMessage of 
-            Just icm -> case icm of
-                ICMOnlySender msg           -> sendToID msg clientId 
-                ICMAllExceptSender msg      -> error "This type of message (AllExceptSender) is not supported."
-                ICMAllExceptSenderF c2msg   -> error "This type of message (AllExceptSenderF) is not supported."
-                ICMSenderAnd clients msg    -> mapM_ (sendToID msg) $ S.insert clientId clients
-                ICMSenderAndF clients c2msg -> mapM_ (\cId -> sendToID (c2msg cId) cId) $ S.insert clientId clients
-                ICMToAll msg                -> mapM_ (sendToID msg) $ IM'.keys connectedClients
-                ICMToAllF c2msg             -> mapM_ (\cId -> sendToID (c2msg cId) cId) $ IM'.keys connectedClients
+        processICM icm =
+            case icm of
+                ICMNoClientMessage            -> return ()
+                ICMToSender msg               -> sendToID msg clientId 
+                ICMToAllExceptSender msg      -> mapM_ (sendToID msg) $ IM'.keys $ IM'.delete clientId connectedClients
+                ICMToAllExceptSenderF c2msg   -> mapM_ (\cId -> sendToID (c2msg cId) cId) $ IM'.keys $ IM'.delete clientId connectedClients
+                ICMToSenderAnd clients msg    -> mapM_ (sendToID msg) $ S.insert clientId clients
+                ICMToSenderAndF clients c2msg -> mapM_ (\cId -> sendToID (c2msg cId) cId) $ S.insert clientId clients
+                ICMToAll msg                  -> mapM_ (sendToID msg) $ IM'.keys connectedClients
+                ICMToAllF c2msg               -> mapM_ (\cId -> sendToID (c2msg cId) cId) $ IM'.keys connectedClients
+                ICMAllOf icms                 -> mapM_ processICM icms
+    _ <- case mMessage of
+            Just icm -> processICM icm
             Nothing -> return ()
     return nextState
 

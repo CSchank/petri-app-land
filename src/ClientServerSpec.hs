@@ -28,6 +28,7 @@ ready = state "Ready"
     ,edt colour "c2" ""
     ,edt colour "c3" ""
     ,edt colour "c4" ""
+    ,edt (ElmIntRange 0 3) "numReady" "the number of players that are currently ready"
     ,playerNum
     ]
 playing = state "Playing" 
@@ -136,7 +137,7 @@ changeColour = msg "ChangeColour"
         edt colour "colour" ""
     ]
 
-readyMsg = msg "Ready"
+readyMsg = msg "SendReady"
     [
     ]
 tapMsg = msg "Tap"
@@ -163,14 +164,21 @@ sendNewColours = msg "SendNewColours"
 sendTap = msg "SendTap"
     [otherPlayer,xCoord,yCoord]
 otherPlayer = edt (ElmIntRange 0 3) "otherPlayer" "number of other player who tapped"
+startGame = msg "StartGame" []
+moreReady = msg "MoreReady" 
+    [
+        edt (ElmIntRange 0 3) "playerIdReady" ""
+    ]
+readyToStart = msg "ReadyToStart" []
+acknowledgeReady = msg "AcknowledgeReady" []
 
 -- the actual app that is to be generated
 clientServerApp :: ClientServerApp
 clientServerApp = (
                 "Start" --client start state
              ,  "Nobody" --server start start
-             ,  M.fromList [("Start",start),("Wait",wait),("HaveFrac",haveFrac),("Ready",ready)] --client states
-             ,  M.fromList [("Nobody",nobody),("One",one),("Two",two),("Three",three),("Four",four)]                                 --server states
+             ,  M.fromList [("Start",start),("Wait",wait),("HaveFrac",haveFrac),("Ready",ready),("Playing",playing)] --client states
+             ,  M.fromList [("Nobody",nobody),("One",one),("Two",two),("Three",three),("Four",four),("PlayingS",playingS)]                                 --server states
              ,  M.fromList [("Channel",channelType),("Colour",testRGB),("Frac",fracType)]                            --extra client types
              ,  M.fromList [("Colour",testRGB),("Frac",fracType)]        --extra server types
              ,  csDiagram --client state diagram
@@ -183,14 +191,20 @@ clientDisconnect = ("ClientDisconnect",[])
 csDiagram :: ClientStateDiagram
 csDiagram = M.fromList 
             [
-                (("Start",    login)     ,("Wait",    Just submitLogin))
-            ,   (("Wait",     sendFrac)     ,("HaveFrac",   Nothing))
-            ,   (("HaveFrac", startDragging)     ,("HaveFrac",   Nothing))
+                (("Start",    login)            ,("Wait",    Just submitLogin))
+            ,   (("Wait",     sendFrac)         ,("HaveFrac",   Nothing))
+            ,   (("HaveFrac", startDragging)    ,("HaveFrac",   Nothing))
             ,   (("HaveFrac", stopDragging)     ,("HaveFrac",   Nothing))
-            ,   (("HaveFrac", dragging)     ,("HaveFrac",   Just changeColour))
-            ,   (("HaveFrac", sendNewColours)     ,("HaveFrac",   Nothing))
-            ,   (("HaveFrac", sendFrac)     ,("HaveFrac",   Nothing))
-            ,   (("HaveFrac", tapReady)     ,("Ready",   Just readyMsg))
+            ,   (("HaveFrac", dragging)         ,("HaveFrac",   Just changeColour))
+            ,   (("HaveFrac", sendNewColours)   ,("HaveFrac",   Nothing))
+            ,   (("HaveFrac", sendFrac)         ,("HaveFrac",   Nothing))
+            ,   (("HaveFrac", tapReady)         ,("HaveFrac",   Just readyMsg))
+            ,   (("HaveFrac", readyToStart)     ,("HaveFrac",   Nothing))
+            ,   (("HaveFrac", moreReady)        ,("HaveFrac", Nothing))
+            ,   (("HaveFrac", startGame)        ,("Playing",  Nothing))
+            ,   (("Ready", startGame)           ,("Playing",   Nothing))
+            ,   (("Playing", tapBox)            ,("Playing",   Just tapMsg))
+            ,   (("Playing", sendTap)           ,("Playing",   Nothing))
             ]
 
 ssDiagram :: ServerStateDiagram
@@ -215,6 +229,10 @@ ssDiagram = M.fromList
             ,   (("Four", changeColour), ("Four", ToAll sendNewColours))
             ,   (("Four", clientConnect), ("Four", NoClientMessage))
             ,   (("Four", clientDisconnect), ("Three", ToAll sendFrac))
+            ,   (("Four", readyMsg), ("Four", OneOf [AllOf [ToAllExceptSender moreReady, ToSender acknowledgeReady], ToSender readyToStart]))
+            ,   (("PlayingS", clientConnect), ("PlayingS", NoClientMessage))
+            ,   (("PlayingS", clientDisconnect), ("PlayingS", NoClientMessage))
+            ,   (("PlayingS", tapMsg), ("PlayingS", ToAll sendTap))
             ]
 
 testRGB :: ElmCustom

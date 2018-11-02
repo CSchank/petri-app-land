@@ -14,9 +14,9 @@ module Static.ServerTypes
     , ServerState(..)
     , Client(..)
     , ClientID
-    , OnlySender(..)
-    , AllExceptSender(..)
-    , SenderAnd(..)
+    , ToSender(..)
+    , ToAllExceptSender(..)
+    , ToSenderAnd(..)
     , ToAll(..)
     , InternalCM(..)
     ) where
@@ -39,29 +39,31 @@ data ClientThreadMessage
 
 --types of messages that can be sent back from the user update function
 
-data OnlySender clientMessage =
-      OnlySender clientMessage
+data ToSender clientMessage =
+      ToSender clientMessage
 
-data AllExceptSender clientMessage =
-      AllExceptSender clientMessage
-    | AllExceptSenderF (ClientID -> clientMessage)
+data ToAllExceptSender clientMessage =
+      ToAllExceptSender clientMessage
+    | ToAllExceptSenderF (ClientID -> clientMessage)
 
-data SenderAnd clientMessage =
-      SenderAnd (Set.Set ClientID) clientMessage
-    | SenderAndF (Set.Set ClientID) (ClientID -> clientMessage)
+data ToSenderAnd clientMessage =
+      ToSenderAnd (Set.Set ClientID) clientMessage
+    | ToSenderAndF (Set.Set ClientID) (ClientID -> clientMessage)
 
 data ToAll clientMessage =
       ToAll clientMessage
     | ToAllF (ClientID -> clientMessage)
 
 data InternalCM clientMessage =
-      ICMOnlySender clientMessage
-    | ICMAllExceptSender clientMessage
-    | ICMAllExceptSenderF (ClientID -> clientMessage)
-    | ICMSenderAnd (Set.Set ClientID) clientMessage
-    | ICMSenderAndF (Set.Set ClientID) (ClientID -> clientMessage)
+      ICMNoClientMessage
+    | ICMToSender clientMessage
+    | ICMToAllExceptSender clientMessage
+    | ICMToAllExceptSenderF (ClientID -> clientMessage)
+    | ICMToSenderAnd (Set.Set ClientID) clientMessage
+    | ICMToSenderAndF (Set.Set ClientID) (ClientID -> clientMessage)
     | ICMToAll clientMessage
     | ICMToAllF (ClientID -> clientMessage)
+    | ICMAllOf [InternalCM clientMessage]
 
 newtype Client = Client (TQueue ClientThreadMessage)
 
