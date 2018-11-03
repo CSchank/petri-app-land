@@ -7,14 +7,15 @@ import Browser as B
 import Browser.Navigation as Nav
 import Cmd.Extra exposing (addCmd, addCmds, withCmd, withCmds, withNoCmd)
 import Dict exposing (Dict)
+import Html exposing (Html, a, button, div, h1, input, p, span, text)
+import Html.Attributes exposing (checked, disabled, href, size, style, type_, value)
+import Html.Events exposing (onClick, onInput)
 import Json.Encode exposing (Value)
 import Json.Decode as D
 import PortFunnel exposing (FunnelSpec, GenericMessage, ModuleDesc, StateAccessors)
 import PortFunnel.WebSocket as WebSocket
 import String
 import Url
-
-import GraphicSVG exposing(..)
 
 import Static.Msg exposing(ClientMessage)
 import Static.Model exposing(Model)
@@ -51,7 +52,9 @@ type alias FunnelState =
 -- MODEL
 
 type State =
-    Connected | NotConnected | ConnectionClosed
+      Connected 
+    | NotConnected 
+    | ConnectionClosed
 
 
 defaultUrl : String
@@ -72,7 +75,7 @@ type alias InternalModel =
 
 
 main =
-    GraphicSVG.app
+    B.application
         { init = init
         , update = update
         , view = view
@@ -273,8 +276,8 @@ socketHandler response state mdl =
                    
 
         WebSocket.ConnectedResponse _ ->
-            { model | log = "Connected" :: model.log, appState = Connected }
-                |> (if model.appState == NotConnected then 
+            { model | log = "Connected" :: model.log, appState = Connected, appModel = Init.init }
+                |> (if model.appState == NotConnected || mdoel.appState == ConnectionClosed then 
                         wsSend V.version
                     else
                         withNoCmd
@@ -316,12 +319,9 @@ closedString code wasClean expected =
                 "NOT expected"
            )
 
-view : InternalModel -> { body : Collage Msg, title: String }
+view : InternalModel -> B.Document Msg
 view model =
     { title = Static.View.title model.appModel
-    , body = case model.appState of 
-                NotConnected ->         collage 500 500 [text "Connecting to server...." |> fixedwidth |> centered |> size 24 |> filled black]        
-                ConnectionClosed ->     collage 500 500 [text "Lost connection. Reconnecting...." |> fixedwidth |> centered |> size 24 |> filled black]        
-                Connected ->            GraphicSVG.mapCollage AppMsg <| Static.View.view model.appModel
-             --   , text <| "Log: " ++ Debug.toString model.log   
-    }|]
+    , body = [Html.map AppMsg <| Static.View.view model.appModel
+    , text <| "Log: " ++ Debug.toString model.log] 
+    }
