@@ -82,7 +82,7 @@ open the `index.html` file directly).
 5. Navigating to `http://localhost:8080` directly in the browser will display the current server state, refresh to update
 it.
 
-## Making changes to code
+## Making changes to specification
 Currently, making changes to the specification is a somewhat manual process. In the case of the client, new states' files 
 will be generated but files already existing will not be overwritten. This section provides some guidelines about how to do 
 it properly for the time being:
