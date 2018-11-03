@@ -1,12 +1,4 @@
-{-# LANGUAGE QuasiQuotes #-}
-
-module ClientTemplate.Utils where
-
-import Text.RawString.QQ
-import Data.Text as T
-
-utilsElm :: T.Text
-utilsElm = T.pack $ [r|module Utils.Utils exposing(..)
+module Utils.Utils exposing(..)
 
 import Char     exposing    (toCode, fromCode)
 import String   exposing    (toList)
@@ -249,4 +241,4 @@ decodeMaybe ls decodeFn =
                 (Result.map Just newRes,newLs)
         ("N"::rest) ->
             (Ok Nothing, rest)
-        _ -> (Err "Ran out of items or error while decoding a Maybe.",[])|]
+        _ -> (Err "Ran out of items or error while decoding a Maybe.",[])

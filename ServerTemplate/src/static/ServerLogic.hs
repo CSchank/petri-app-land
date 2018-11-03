@@ -1,12 +1,4 @@
-{-# LANGUAGE QuasiQuotes #-}
-
-module ServerTemplate.ServerLogic where
-
-import Text.RawString.QQ
-import Data.Text as T
-
-serverLogicHs :: T.Text
-serverLogicHs = T.pack $ [r|{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Static.ServerLogic
     ( newCentralMessageChan
     , newClientMessageChan
@@ -168,4 +160,4 @@ processClienTQueue conn chan = forever $ do
     let txtMsg = encodeClientMessage outgoingMessage
 
     WS.sendTextData conn txtMsg
-    Tio.putStrLn $ T.concat $ ["Sent: ",  txtMsg]|]
+    Tio.putStrLn $ T.concat $ ["Sent: ",  txtMsg]

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 63ed61eda5185c05f2e09c168bbafbf60ca3ce8cca7b98fe2d83eeaf9c42be90
+-- hash: 5c8cee9cf6abbd79ad93e8d93d5f9c9047943787dbc93a9f10b3987a91656d3d
 
 name:           elm-haskell-state-diagram
 version:        0.1.0.0
@@ -28,27 +28,15 @@ source-repository head
 library
   exposed-modules:
       ClientServerSpec
-      ClientTemplate.ClientLogic
-      ClientTemplate.ClientTypes
-      ClientTemplate.ElmJson
-      ClientTemplate.Lib
-      ClientTemplate.Main
-      ClientTemplate.Utils
-      ClientTemplate.Version
-      ClientTemplate.View
       Generate.AllOf
       Generate.Codec
       Generate.Dot
       Generate.OneOf
       Generate.Server
       Generate.Types
-      ServerTemplate.Lib
-      ServerTemplate.Main
-      ServerTemplate.ServerLogic
-      ServerTemplate.ServerTypes
-      ServerTemplate.Utils
       TypeHelpers
       Types
+      Utils
   other-modules:
       Paths_elm_haskell_state_diagram
   hs-source-dirs:
@@ -58,6 +46,7 @@ library
     , containers
     , directory
     , filepath
+    , filesystem-trees
     , raw-strings-qq
     , text
     , time
@@ -76,6 +65,7 @@ executable elm-haskell-state-diagram-exe
     , directory
     , elm-haskell-state-diagram
     , filepath
+    , filesystem-trees
     , raw-strings-qq
     , text
     , time
@@ -95,6 +85,7 @@ test-suite elm-haskell-state-diagram-test
     , directory
     , elm-haskell-state-diagram
     , filepath
+    , filesystem-trees
     , raw-strings-qq
     , text
     , time

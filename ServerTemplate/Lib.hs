@@ -1,12 +1,4 @@
-{-# LANGUAGE QuasiQuotes #-}
-
-module ServerTemplate.Lib where
-
-import Text.RawString.QQ
-import Data.Text as T
-
-libHs :: T.Text
-libHs = T.pack $ [r|{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Static.Lib
     ( mainServer
     ) where
@@ -87,4 +79,4 @@ mainServer = do
     centralMessageChan <- atomically ServerLogic.newCentralMessageChan
     forkIO $ ServerLogic.processCentralChan centralMessageChan
     Prelude.putStrLn $ "starting server on port " ++ show port
-    run port (app centralMessageChan)|]
+    run port (app centralMessageChan)

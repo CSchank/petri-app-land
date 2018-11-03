@@ -145,6 +145,11 @@ tapMsg = msg "Tap"
         xCoord
     ,   yCoord
     ]
+startMsg = msg "Start"
+    [
+        xCoord
+    ,   yCoord
+    ]
 --server outgoing messages
 sendFrac = msg "SendFrac" 
     [edt frac "newFrac" ""
@@ -201,6 +206,7 @@ csDiagram = M.fromList
             ,   (("HaveFrac", tapReady)         ,("HaveFrac",   Just readyMsg))
             ,   (("HaveFrac", readyToStart)     ,("HaveFrac",   Nothing))
             ,   (("HaveFrac", moreReady)        ,("HaveFrac", Nothing))
+            ,   (("HaveFrac", acknowledgeReady) ,("HaveFrac", Nothing))
             ,   (("HaveFrac", startGame)        ,("Playing",  Nothing))
             ,   (("Ready", startGame)           ,("Playing",   Nothing))
             ,   (("Playing", tapBox)            ,("Playing",   Just tapMsg))
@@ -230,6 +236,7 @@ ssDiagram = M.fromList
             ,   (("Four", clientConnect), ("Four", NoClientMessage))
             ,   (("Four", clientDisconnect), ("Three", ToAll sendFrac))
             ,   (("Four", readyMsg), ("Four", OneOf [AllOf [ToAllExceptSender moreReady, ToSender acknowledgeReady], ToSender readyToStart]))
+            ,   (("Four", startMsg), ("PlayingS", ToAll startGame))
             ,   (("PlayingS", clientConnect), ("PlayingS", NoClientMessage))
             ,   (("PlayingS", clientDisconnect), ("PlayingS", NoClientMessage))
             ,   (("PlayingS", tapMsg), ("PlayingS", ToAll sendTap))

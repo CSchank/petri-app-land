@@ -1,12 +1,4 @@
-{-# LANGUAGE QuasiQuotes #-}
-
-module ServerTemplate.ServerTypes where
-
-import Text.RawString.QQ
-import Data.Text as T
-
-serverTypesHs :: T.Text
-serverTypesHs = T.pack $ [r|{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Static.ServerTypes
     ( Colour(..)
     , CentralMessage(..)
@@ -71,4 +63,4 @@ data ServerState = ServerState
     { clients :: IM'.IntMap Client
     , nextClientId :: ClientID
     , internalServerState :: Model
-    }|]
+    }

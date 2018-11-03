@@ -1,12 +1,4 @@
-{-# LANGUAGE QuasiQuotes #-}
-
-module ServerTemplate.Utils where
-
-import Text.RawString.QQ
-import Data.Text as T
-
-utilsHs :: T.Text
-utilsHs = T.pack $ [r|{-# LANGUAGE ScopedTypeVariables, OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables, OverloadedStrings #-}
 
 module Utils.Utils where
 
@@ -368,4 +360,4 @@ giveReceivingQueue :: TQueue a -> (TQueue b -> a) -> STM (TQueue b)
 giveReceivingQueue commandQueue signalConstructor = do
     channel <- newTQueue
     writeTQueue commandQueue (signalConstructor channel)
-    return channel|]
+    return channel

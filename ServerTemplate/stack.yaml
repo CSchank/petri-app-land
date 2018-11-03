@@ -38,13 +38,7 @@ packages:
 # Dependency packages to be pulled from upstream that are not in the resolver
 # using the same syntax as the packages field.
 # (e.g., acme-missiles-0.3)
-extra-deps:
-- filesystem-trees-0.1.0.6@sha256:bb9a30236d84c060fa296f0bad0321aa6ca5534f04162a2951e6e6570254433b
-- cond-0.4.1.1@sha256:f1e4ab2ff6e129570c317bdd737adfa18c253817769ecca27167668d0c0abaf3
-- directory-1.2.7.1@sha256:461a51126f2d0ccca4036ab75808bdd3938636b9d37d41601107f7b58e04bade
-#- cond-0.4.1.1
-#- data-lens-2.11.2
-#- filesystem-trees-0.0
+# extra-deps: []
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

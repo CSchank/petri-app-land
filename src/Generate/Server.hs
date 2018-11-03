@@ -2,6 +2,7 @@
 
 module Generate.Server where
 
+import                  Control.Monad (unless)
 import                  Generate.Codec
 import                  Generate.Types
 import qualified        Data.Map                as M
@@ -9,6 +10,7 @@ import qualified        Data.Set                as S
 import qualified        Data.Text               as T
 import qualified        Data.Text.IO            as TIO
 import                  Types
+import                  Utils
 import                  Generate.Types
 import                  Generate.OneOf
 import                  Generate.AllOf
@@ -16,20 +18,6 @@ import                  System.Directory
 import                  System.FilePath.Posix   ((</>),(<.>))
 import                  Data.Maybe              (mapMaybe,fromMaybe)
 import                  Data.Time               (getCurrentTime)
-import                  ServerTemplate.Utils
-import                  ServerTemplate.ServerLogic
-import                  ServerTemplate.Lib
-import                  ServerTemplate.ServerTypes
-import                  ServerTemplate.Main
-
-import                  ClientTemplate.Utils
-import                  ClientTemplate.ClientLogic
-import                  ClientTemplate.Lib
-import                  ClientTemplate.ClientTypes
-import                  ClientTemplate.Main
-import                  ClientTemplate.ElmJson
-import                  ClientTemplate.View
-import                  ClientTemplate.Version
 
 cm2maybe :: OutgoingClientMessage -> Maybe OutgoingClientMessage
 cm2maybe NoClientMessage       = Nothing
@@ -682,66 +670,46 @@ generateServer gsvg onlyStatic fp (startCs
                        ]    
 
     in do
-        createDirectoryIfMissing True $ fp </> "client" </> "app"
-        createDirectoryIfMissing True $ fp </> "client" </> "src" </> "utils"
-        createDirectoryIfMissing True $ fp </> "client" </> "src" </> "static"
-        createDirectoryIfMissing True $ fp </> "client" </> "src" </> "static" </> "Wrappers"
-        createDirectoryIfMissing True $ fp </> "client" </> "src" </> "userApp" </> "View"
-        createDirectoryIfMissing True $ fp </> "client" </> "src" </> "userApp" </> "Update"
-        createDirectoryIfMissing True $ fp </> "server" </> "app"
-        createDirectoryIfMissing True $ fp </> "server" </> "src" </> "utils"
-        createDirectoryIfMissing True $ fp </> "server" </> "src" </> "static" </> "OneOf"
-        createDirectoryIfMissing True $ fp </> "server" </> "src" </> "static" </> "AllOf"
-        createDirectoryIfMissing True $ fp </> "server" </> "src" </> "userApp"
+        copyDirectory "ClientTemplate" (fp </> "client")
+        copyDirectory "ServerTemplate" (fp </> "server")
         currentTime <- getCurrentTime
+        unless (null serverOneOfs) $ createDirectoryIfMissing True $ fp </> "server" </> "src" </> "static" </> "OneOf" 
+        unless (null serverAllOfs) $ createDirectoryIfMissing True $ fp </> "server" </> "src" </> "static" </> "AllOf"
         mapM_ (\n -> TIO.writeFile (fp </> "server" </> "src" </> "static" </> "OneOf" </> "OneOf" ++ show n <.> "hs") $ generateOneOf True n) serverOneOfs
         mapM_ (\n -> TIO.writeFile (fp </> "server" </> "src" </> "static" </> "AllOf" </> "AllOf" ++ show n <.> "hs") $ generateAllOf True n) serverAllOfs
-        TIO.writeFile (fp </> "server" </> "src" </> "static" </> "Types" <.> "hs") $ T.unlines $ disclaimer currentTime : typesHs
-        TIO.writeFile (fp </> "server" </> "src" </> "static" </> "ServerTypes" <.> "hs") $ T.unlines $ disclaimer currentTime : [serverTypesHs]
-        TIO.writeFile (fp </> "server" </> "app" </> "Main" <.> "hs") $ T.unlines $ disclaimer currentTime : [mainHs]
-        TIO.writeFile (fp </> "server" </> "src" </> "utils" </> "Utils" <.> "hs") $ T.unlines $ disclaimer currentTime : [utilsHs]
-        TIO.writeFile (fp </> "server" </> "src" </> "static" </> "Encode" <.> "hs")      $ T.unlines $ disclaimer currentTime : encoderHs
-        TIO.writeFile (fp </> "server" </> "src" </> "static" </> "Decode" <.> "hs")      $ T.unlines $ disclaimer currentTime : decoderHs
-        TIO.writeFile (fp </> "server" </> "src" </> "static" </> "Update" <.> "hs")      $ T.unlines $ disclaimer currentTime : hiddenUpdateHs
-        TIO.writeFile (fp </> "server" </> "src" </> "static" </> "Lib" <.> "hs")      $ T.unlines $ disclaimer currentTime : [libHs]
-        TIO.writeFile (fp </> "server" </> "src" </> "static" </> "ServerLogic" <.> "hs")      $ T.unlines $ disclaimer currentTime : [serverLogicHs]
-        TIO.writeFile (fp </> "server" </> "src" </> "static" </> "Init" <.> "hs")      $ T.unlines $ disclaimer currentTime : staticInitHs
-        _ <- if onlyStatic then return () else (do
-            writeIfNotExists (fp </> "server" </> "src" </> "userApp" </> "Update" <.> "hs")      $ T.unlines $ userUpdateHs
-            writeIfNotExists (fp </> "server" </> "src" </> "userApp" </> "Types" <.> "hs")      $ T.unlines $ userTypesHs
-            writeIfNotExists (fp </> "server" </> "src" </> "userApp" </> "Init" <.> "hs")      $ T.unlines $ userInitHs)
+        TIO.writeFile (fp </> "server" </> "src" </> "static" </> "Types" <.> "hs")  $ T.unlines $ disclaimer currentTime : typesHs
+        TIO.writeFile (fp </> "server" </> "src" </> "static" </> "Encode" <.> "hs") $ T.unlines $ disclaimer currentTime : encoderHs
+        TIO.writeFile (fp </> "server" </> "src" </> "static" </> "Decode" <.> "hs") $ T.unlines $ disclaimer currentTime : decoderHs
+        TIO.writeFile (fp </> "server" </> "src" </> "static" </> "Update" <.> "hs") $ T.unlines $ disclaimer currentTime : hiddenUpdateHs
+        TIO.writeFile (fp </> "server" </> "src" </> "static" </> "Init" <.> "hs")   $ T.unlines $ disclaimer currentTime : staticInitHs
+        unless onlyStatic (do
+            writeIfNotExists (fp </> "server" </> "src" </> "userApp" </> "Update" <.> "hs") $ T.unlines userUpdateHs
+            writeIfNotExists (fp </> "server" </> "src" </> "userApp" </> "Types" <.> "hs")  $ T.unlines userTypesHs
+            writeIfNotExists (fp </> "server" </> "src" </> "userApp" </> "Init" <.> "hs")   $ T.unlines userInitHs)
 
-        TIO.writeFile (fp </> "client" </> "elm.json")                     $ jsonElm
+
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Types" <.> "elm") $ T.unlines $ disclaimer currentTime : typesElm
-        TIO.writeFile (fp </> "client" </> "src" </> "static" </> "ServerTypes" <.> "elm") $ T.unlines $ disclaimer currentTime : [clientTypesElm]
-        TIO.writeFile (fp </> "client" </> "app" </> "Main" <.> "elm") $ T.unlines $ disclaimer currentTime : [if gsvg then mainElmGSVG else mainElm]
-        TIO.writeFile (fp </> "client" </> "src" </> "utils" </> "Utils" <.> "elm") $ T.unlines $ disclaimer currentTime : [utilsElm]
+        --TIO.writeFile (fp </> "client" </> "app" </> "Main" <.> "elm") $ T.unlines $ disclaimer currentTime : [if gsvg then mainElmGSVG else mainElm]
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Encode" <.> "elm")      $ T.unlines $ disclaimer currentTime : encoderElm
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Decode" <.> "elm")      $ T.unlines $ disclaimer currentTime : decoderElm
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Update" <.> "elm")      $ T.unlines $ disclaimer currentTime : hiddenUpdateElm
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Model" <.> "elm")      $ T.unlines $ disclaimer currentTime : modelElm
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Msg" <.> "elm")      $ T.unlines $ disclaimer currentTime : msgElm
-        TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Lib" <.> "elm")      $ T.unlines $ disclaimer currentTime : [libElm]
-        TIO.writeFile (fp </> "client" </> "src" </> "static" </> "ClientLogic" <.> "elm")      $ T.unlines $ disclaimer currentTime : [clientLogicElm]
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Init" <.> "elm")      $ T.unlines $ disclaimer currentTime : staticInitElm
-        TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Version" <.> "elm")      $ T.unlines $ disclaimer currentTime : [versionElm]
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "View" <.> "elm")      $ T.unlines $ disclaimer currentTime : [hiddenClientView]
         
         mapM_ (\(n,txt) -> TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Wrappers" </> n <.> "elm") txt) clientWrapModules
-        _ <- if onlyStatic then return () else (do
+        unless onlyStatic (do
             mapM_ (\(n,txt) -> writeIfNotExists (fp </> "client" </> "src" </> "userApp" </> "View" </> n <.> "elm") txt) clientViewModules
             mapM_ (\(n,txt) -> writeIfNotExists (fp </> "client" </> "src" </> "userApp" </> "Update" </> n <.> "elm") txt) clientUpdateModules
             --writeIfNotExists (fp </> "client" </> "src" </> "userApp" </> "Update" <.> "elm")      $ T.unlines $ userUpdateElm
-            writeIfNotExists (fp </> "client" </> "src" </> "userApp" </> "Types" <.> "elm")      $ T.unlines $ userTypesElm
-            writeIfNotExists (fp </> "client" </> "src" </> "userApp" </> "Init" <.> "elm")      $ T.unlines $ userInitElm)
+            writeIfNotExists (fp </> "client" </> "src" </> "userApp" </> "Types" <.> "elm")      $ T.unlines userTypesElm
+            writeIfNotExists (fp </> "client" </> "src" </> "userApp" </> "Init" <.> "elm")      $ T.unlines userInitElm)
 
-        putStrLn $ show serverTransitions
+        print serverTransitions
 
 writeIfNotExists :: FilePath -> T.Text -> IO ()
 writeIfNotExists fp txt = do
     exists <- doesFileExist fp
     Prelude.putStrLn $ fp ++ " exists:" ++ show exists
-    if not exists then
-        TIO.writeFile fp txt
-    else 
-        return ()
+    unless exists $ TIO.writeFile fp txt
