@@ -2,6 +2,7 @@
 Each app is written in two main phases, and then iterated on as it is changed:
 1. Define the client and server states (including data types) and transitions
 2. Implement the generated function stubs for state transitions and view functions
+
 The code can then be compiled and run.
 This library will generate much of the client (Elm) and server (Haskell) code for you, including handling state and server 
 threads, encoding and decoding messages and ensuring that the code matches the specification directly. This ensures that
