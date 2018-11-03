@@ -9,7 +9,7 @@ import ClientServerSpec
 import System.Environment
 
 main = generateServer 
-            True                        --True: GraphicSVG, False: Elm Html
-            False                       --True: regenerate only static files, False: regenerate static files and user files if they don't exist
-            "../elm-fraction-drawer/"   --directory
-            clientServerApp             --the server to generate
+            True              --True: GraphicSVG, False: Elm Html
+            False             --True: regenerate only static files, False: regenerate static files and user files if they don't exist
+            outputDirectory   --directory
+            clientServerApp   --the server to generate

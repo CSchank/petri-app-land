@@ -4,6 +4,8 @@ import Types
 import TypeHelpers
 import Data.Map as M
 
+--where to output generated files
+outputDirectory = "../elm-fraction-drawer/"
 
 --client states
 start = state "Start" []
