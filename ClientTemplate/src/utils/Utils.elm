@@ -242,3 +242,16 @@ decodeMaybe ls decodeFn =
         ("N"::rest) ->
             (Ok Nothing, rest)
         _ -> (Err "Ran out of items or error while decoding a Maybe.",[])
+
+decodeBool : List String -> (Result String Bool, List String)
+decodeBool ls =
+    case ls of
+        ("T"::rest) -> (Ok True, rest)
+        ("F"::rest) -> (Ok False, rest)
+        _ -> (Err "error decoding boolean value",[])
+
+decodeString : List String -> (Result String String, List String)
+decodeString ls =
+    case ls of
+        fst::rest -> (Ok fst, rest)
+        _ -> (Err "Error decoding string value",[])

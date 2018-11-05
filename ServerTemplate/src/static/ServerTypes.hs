@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Static.ServerTypes
-    ( Colour(..)
-    , CentralMessage(..)
+    ( CentralMessage(..)
     , ClientThreadMessage(..)
     , ServerState(..)
     , Client(..)

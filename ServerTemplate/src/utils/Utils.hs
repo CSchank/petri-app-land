@@ -329,6 +329,19 @@ decodeList ls decodeFn =
     in
         foldl decodeList' (Ok [], drop 1 ls) [1..n]
 
+decodeBool :: [T.Text] -> (Result T.Text Bool, [T.Text])
+decodeBool ls =
+    case ls of
+        "T":rest -> (Ok True, rest)
+        "F":rest -> (Ok False, rest)
+        _ -> (Err "Error decoding boolean value",[])
+
+decodeString :: [T.Text] -> (Result T.Text String, [T.Text])
+decodeString ls =
+    case ls of
+        fst:rest -> (Ok $ T.unpack fst, rest)
+        _ -> (Err "Error decoding string value",[])
+
 unwrapToSender :: (cm -> ClientMessage) -> ToSender cm -> InternalCM ClientMessage
 unwrapToSender m (ToSender cm) = ICMToSender (m cm)
 

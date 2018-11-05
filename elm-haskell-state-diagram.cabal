@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5c8cee9cf6abbd79ad93e8d93d5f9c9047943787dbc93a9f10b3987a91656d3d
+-- hash: f5cc41ea6e8d2a18a458eef6c0722e62c83d5bdc01285156bd2f3787e434ce04
 
 name:           elm-haskell-state-diagram
 version:        0.1.0.0
@@ -28,6 +28,7 @@ source-repository head
 library
   exposed-modules:
       ClientServerSpec
+      ClientServerSpecOld
       Generate.AllOf
       Generate.Codec
       Generate.Dot

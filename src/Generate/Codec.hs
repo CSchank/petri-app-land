@@ -37,7 +37,7 @@ generateEncoder h (ElmCustom name edts) =
                 indtTxts indt $ [T.concat[T.pack $ n ++ "Txt"," = encodeInt ",pLow," ",pHigh," (round <| (",T.pack n,"-",pLow,")*",pPrec ,")"]
                             ]
         encodeEt indt (ElmString, n, _) =
-            indtTxts indt $ [T.concat [T.pack n, "Txt = ",T.pack n]]
+            indtTxts indt $ [T.concat [T.pack n, if h then "Txt = T.pack " else "Txt = ",T.pack n]]
         encodeEt indt (ElmSizedString size, n, _) =
             error "Not implemented yet"--indtTxts indt $ [T.concat[T.pack n, "Txt =",T.pack n]
         encodeEt indt (ElmPair (et0,n0,d0) (et1,n1,d1), n, _) =
@@ -142,7 +142,9 @@ generateDecoder h (ElmCustom name edts) =
                             ,T.concat["            [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[]))"]
                             ]
         decodeEt indt (ElmString, n, _) =
-            indtTxts indt $ [T.concat [T.pack n, " = ",T.pack n,"Txt"]]
+            indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
+                            ,T.concat["    decodeString l",T.pack $ show indt]
+                            ]
         decodeEt indt (ElmSizedString size, n, _) =
             error "Not implemented yet"--indtTxts indt $ [T.concat[T.pack n, "Txt =",T.pack n]
         decodeEt indt (ElmPair (et0,n0,d0) (et1,n1,d1), n, _) =
@@ -203,6 +205,10 @@ generateDecoder h (ElmCustom name edts) =
             indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
                             ,T.unlines $ decodeEt (indt+2) etd,") |>"
                             ,T.concat["    decodeMaybe l",T.pack $ show indt]
+                            ]
+        decodeEt indt (ElmBool, n, _) =
+            indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
+                            ,T.concat["    (decodeBool l",T.pack $ show indt]
                             ]
         {-decodeEt indt (ElmMaybe etd, n, _) =
             indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]

@@ -324,4 +324,4 @@ view model =
                 ConnectionClosed ->     collage 500 500 [text "Lost connection. Reconnecting...." |> fixedwidth |> centered |> size 24 |> filled black]        
                 Connected ->            GraphicSVG.mapCollage AppMsg <| Static.View.view model.appModel
              --   , text <| "Log: " ++ Debug.toString model.log   
-    }|]
+    }
