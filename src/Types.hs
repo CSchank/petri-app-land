@@ -51,16 +51,16 @@ type ServerStateDiagram =
     M.Map (String, ServerTransition) (String, OutgoingClientMessage)
 
 type ExtraClientTypes =
-    M.Map String ElmCustom
+    [ElmCustom]
 
 type ExtraServerTypes =
-    M.Map String ElmCustom
+    [ElmCustom]
 
 type ClientStates =
-    M.Map String Constructor
+    [Constructor]
 
 type ServerStates =
-    M.Map String Constructor
+    [Constructor]
 
 type ClientServerApp =
     ( String                   --starting state of client

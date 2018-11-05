@@ -54,14 +54,19 @@ generateStateMsgs csD =
 generateServer :: Bool -> Bool -> FilePath -> ClientServerApp -> IO ()
 generateServer gsvg onlyStatic fp (startCs
                   ,startSs
-                  ,cStates
-                  ,sStates
-                  ,cExtraT
-                  ,sExtraT
+                  ,cStateslst
+                  ,sStateslst
+                  ,cExtraTlst
+                  ,sExtraTlst
                   ,cDiagram
                   ,sDiagram
                   ) = 
     let
+        cStates = M.fromList $ map (\(n,const) -> (n,(n,const))) cStateslst
+        sStates = M.fromList $ map (\(n,const) -> (n,(n,const))) sStateslst
+        cExtraT = M.fromList $ map (\(ElmCustom n constrs) -> (n,ElmCustom n constrs)) cExtraTlst
+        sExtraT = M.fromList $ map (\(ElmCustom n constrs) -> (n,ElmCustom n constrs)) sExtraTlst
+    
         disclaimer date = T.unlines ["{-"
                                 ,T.concat["    THIS FILE WAS AUTOMATICALLY GENERATED AT ", T.pack $ show date,"."]
                                 , "    IMPORTANT: USE THIS FILE FOR REFERENCE ONLY. YOU SHOULD NOT MODIFY THIS FILE. INSTEAD, MODIFY THE STATE DIAGRAM AND REGENERATE THIS FILE."

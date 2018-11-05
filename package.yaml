@@ -24,10 +24,9 @@ dependencies:
 - text
 - containers
 - time
-- raw-strings-qq
 - filepath
 - directory
-- filesystem-trees
+- process
 
 library:
   source-dirs: src

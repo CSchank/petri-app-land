@@ -1,10 +1,8 @@
-cabal-version: 1.12
-
--- This file has been generated from package.yaml by hpack version 0.31.0.
+-- This file has been generated from package.yaml by hpack version 0.28.2.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f5cc41ea6e8d2a18a458eef6c0722e62c83d5bdc01285156bd2f3787e434ce04
+-- hash: c3b7125b4498299ac8631bef53f33ee36d2732ba33a87504de10800fad663bfc
 
 name:           elm-haskell-state-diagram
 version:        0.1.0.0
@@ -17,9 +15,10 @@ copyright:      2018 Author name here
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
+cabal-version:  >= 1.10
 extra-source-files:
-    README.md
     ChangeLog.md
+    README.md
 
 source-repository head
   type: git
@@ -47,8 +46,7 @@ library
     , containers
     , directory
     , filepath
-    , filesystem-trees
-    , raw-strings-qq
+    , process
     , text
     , time
   default-language: Haskell2010
@@ -66,8 +64,7 @@ executable elm-haskell-state-diagram-exe
     , directory
     , elm-haskell-state-diagram
     , filepath
-    , filesystem-trees
-    , raw-strings-qq
+    , process
     , text
     , time
   default-language: Haskell2010
@@ -86,8 +83,7 @@ test-suite elm-haskell-state-diagram-test
     , directory
     , elm-haskell-state-diagram
     , filepath
-    , filesystem-trees
-    , raw-strings-qq
+    , process
     , text
     , time
   default-language: Haskell2010
