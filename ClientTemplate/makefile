@@ -1,7 +1,7 @@
 app: bin/index.js
 
 bin/index.js: src/*
-	elm make app/Main.elm --output=bin/index.js
+	elm make app/Main.elm --output=build/index.js
 
 launch:
 	open http://localhost:8000/index.html
