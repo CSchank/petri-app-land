@@ -1,6 +1,6 @@
 app: bin/index.js
 
-bin/index.js: src/*
+bin/index.js: $(shell find src -type f | grep elm)
 	elm make app/Main.elm --output=build/index.js
 
 launch:

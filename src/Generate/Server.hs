@@ -62,7 +62,9 @@ generateServer gsvg onlyStatic fp (startCs
                   ,sDiagram
                   ) = 
     let
-        cStates = M.fromList $ map (\(n,const) -> (n,(n,const))) cStateslst
+        cState2ConstrMap (ClientState (n,edt)) = (n,(n,edt))
+        cState2ConstrMap (ClientStateWithSubs (n,edt) _) = (n,(n,edt))
+        cStates = M.fromList $ map cState2ConstrMap cStateslst
         sStates = M.fromList $ map (\(n,const) -> (n,(n,const))) sStateslst
         cExtraT = M.fromList $ map (\(ElmCustom n constrs) -> (n,ElmCustom n constrs)) cExtraTlst
         sExtraT = M.fromList $ map (\(ElmCustom n constrs) -> (n,ElmCustom n constrs)) sExtraTlst
@@ -144,6 +146,15 @@ generateServer gsvg onlyStatic fp (startCs
         clientWrapModules =
             map (\(n,m) -> (n,hiddenWrapModule (n,m))) clientS2M
 
+        clientS2Subs = mapMaybe (\cs -> 
+                        case cs of 
+                            ClientStateWithSubs (stn,_) subs -> Just (stn,subs)
+                            _ -> Nothing 
+                        ) cStateslst
+
+        clientSubModules =
+            map (\(n,m) -> (n,clientSubsModule (n,m))) clientS2Subs
+
         clientViewModule (stateName, messages) =
             let 
                 stateTxt = T.pack stateName
@@ -200,6 +211,40 @@ generateServer gsvg onlyStatic fp (startCs
                     ,   T.unlines $ map (\(m,s1,mSt) -> createClientUserUpdate ((stateName,m),(s1,mSt))) messages,"\n"
                     ]
 
+        clientSubsModule (stateName, subs) =
+            let 
+                stateTxt = T.pack stateName
+                justSubs = map (\(m,_) -> m) subs
+                msgNames = map (\(n,_) -> T.pack n) subs
+                subsNames = map (\(n,_) -> T.concat["sub",T.pack stateName,T.pack n]) subs
+                moduleType = ElmCustom "Msg" subs
+                state = fromMaybe ("", []) (M.lookup stateName cStates)
+            in
+                T.unlines 
+                    [
+                        T.concat ["module Subs.",stateTxt," exposing (..)"]
+                    ,   T.concat ["import Static.Types exposing(..)"]
+                    ,   T.concat ["import View.",stateTxt," exposing (Model)"],"\n"
+                    ,   "import Utils.Utils exposing(error)"
+                    ,   T.unlines $ map createClientUserSub subs,"\n"
+                    ]
+        
+        createClientUserSub :: Constructor -> T.Text
+        createClientUserSub (sn,_) =
+            let
+                (.::.) = " : "
+                name = T.concat ["sub", T.pack sn]
+                decl = T.concat [name, " m =\n    ","error \"Subscription function ",name," not defined. Please define it in userApp/Subs/",T.pack sn,".elm\""]
+                typE = T.concat [name, (.::.), "Model -> Sub ", T.pack sn]
+            in
+                T.unlines
+                    [
+                        "--Hint: replace the error with the subscription."
+                    ,   typE
+                    ,   decl
+                    ,   ""
+                    ]
+
         hiddenWrapModule (stateName,messages) = 
             let 
                 stateTxt = T.pack stateName
@@ -217,7 +262,8 @@ generateServer gsvg onlyStatic fp (startCs
                     ,T.concat["import View.",T.pack stateName," exposing(Model,Msg)"] 
                     ,"--Client message wrappers"
                     ,T.concat $ map (createWrap (length justMessages > 1) False "Msg" ("View."++stateName++".")) justMessages
-                    ,"--Client message unwrappers"
+                    ,"--Client message unwrappers"                    
+                    ,T.concat $ map (createUnwrap False "Msg" ("View."++stateName++".")) justMessages
                     ,"unwrapCMessage: WrappedClientMessage -> Msg"
                     ,"unwrapCMessage cMsg = case cMsg of"
                     ,T.unlines $ map (\(n,et) -> T.concat ["    ",generatePattern ("M"++n,et)," -> ",generatePattern ("View."++stateName++"."++n,et)]) justMessages
@@ -545,6 +591,27 @@ generateServer gsvg onlyStatic fp (startCs
                          ,T.concat $ map createClientUpdateCase $ M.toList cDiagram
                          ,if M.size cStates * length clientMsgs > M.size cDiagram then "        _ -> error \"The current state received a message it didn't know how to handle!\"" else ""
                          ]
+        hiddenSubsElm = ["module Static.Subs exposing (..)"
+                         ,"import Static.Types exposing (..)"
+                         ,"import Static.Model exposing (Model)"
+                         ,"import Static.Msg"
+                         ,T.unlines $ map (\(n,_) -> T.pack $ "import View." ++ n) clientS2Subs
+                         ,T.unlines $ map (\(n,_) -> T.pack $ "import Subs." ++ n) clientS2Subs
+                         ,T.unlines $ map (\(n,_) -> T.pack $ "import Static.Wrappers." ++ n) clientS2Subs
+                         ,"subscriptions : Model -> Sub WrappedClientMessage"
+                         ,"subscriptions model ="
+                         ,"    case model of"
+                         ,T.concat $ map createClientSubCase clientS2Subs
+                         ,if length clientS2Subs < M.size cDiagram then "        _ ->  Sub.none" else ""
+                         ]
+
+        createClientSubCase :: (String, [Constructor]) -> T.Text
+        createClientSubCase (stateName, subs) =
+            let
+                snTxt = T.pack stateName
+                subsTxt = map (\(sn,_) -> T.concat ["Sub.map (Static.Wrappers.",snTxt,".wrapCMessage << Static.Wrappers.",snTxt,".unwrap",T.pack sn,") <| Subs.",T.pack stateName,".sub",T.pack sn," m"]) subs
+            in
+                T.concat ["        Static.Model.",snTxt," m -> Sub.batch [",T.intercalate "," subsTxt,"]"]
 
         createUnwrap :: Bool -> String -> String -> Constructor -> T.Text
         createUnwrap h outputType inputPrefix (n,args) =
@@ -675,18 +742,19 @@ generateServer gsvg onlyStatic fp (startCs
                        ]    
 
     in do
-        copyDirectory "ClientTemplate" (fp </> "client")
-        copyDirectory "ServerTemplate" (fp </> "server")
+        copyDirectory "ClientTemplate/" (fp </> "client")
+        copyDirectory "ServerTemplate/" (fp </> "server")
         currentTime <- getCurrentTime
-        unless (null serverOneOfs) $ createDirectoryIfMissing True $ fp </> "server" </> "src" </> "static" </> "OneOf" 
-        unless (null serverAllOfs) $ createDirectoryIfMissing True $ fp </> "server" </> "src" </> "static" </> "AllOf"
-        mapM_ (\n -> TIO.writeFile (fp </> "server" </> "src" </> "static" </> "OneOf" </> "OneOf" ++ show n <.> "hs") $ generateOneOf True n) serverOneOfs
-        mapM_ (\n -> TIO.writeFile (fp </> "server" </> "src" </> "static" </> "AllOf" </> "AllOf" ++ show n <.> "hs") $ generateAllOf True n) serverAllOfs
-        TIO.writeFile (fp </> "server" </> "src" </> "static" </> "Types" <.> "hs")  $ T.unlines $ disclaimer currentTime : typesHs
-        TIO.writeFile (fp </> "server" </> "src" </> "static" </> "Encode" <.> "hs") $ T.unlines $ disclaimer currentTime : encoderHs
-        TIO.writeFile (fp </> "server" </> "src" </> "static" </> "Decode" <.> "hs") $ T.unlines $ disclaimer currentTime : decoderHs
-        TIO.writeFile (fp </> "server" </> "src" </> "static" </> "Update" <.> "hs") $ T.unlines $ disclaimer currentTime : hiddenUpdateHs
-        TIO.writeFile (fp </> "server" </> "src" </> "static" </> "Init" <.> "hs")   $ T.unlines $ disclaimer currentTime : staticInitHs
+        unless (null serverOneOfs) $ createDirectoryIfMissing True $ fp </> "server" </> "src" </> "Static" </> "OneOf" 
+        unless (null serverAllOfs) $ createDirectoryIfMissing True $ fp </> "server" </> "src" </> "Static" </> "AllOf"
+        unless (null clientS2Subs) $ createDirectoryIfMissing True $ fp </> "client" </> "src" </> "userApp" </> "Subs"
+        mapM_ (\n -> TIO.writeFile (fp </> "server" </> "src" </> "Static" </> "OneOf" </> "OneOf" ++ show n <.> "hs") $ generateOneOf True n) serverOneOfs
+        mapM_ (\n -> TIO.writeFile (fp </> "server" </> "src" </> "Static" </> "AllOf" </> "AllOf" ++ show n <.> "hs") $ generateAllOf True n) serverAllOfs
+        TIO.writeFile (fp </> "server" </> "src" </> "Static" </> "Types" <.> "hs")  $ T.unlines $ disclaimer currentTime : typesHs
+        TIO.writeFile (fp </> "server" </> "src" </> "Static" </> "Encode" <.> "hs") $ T.unlines $ disclaimer currentTime : encoderHs
+        TIO.writeFile (fp </> "server" </> "src" </> "Static" </> "Decode" <.> "hs") $ T.unlines $ disclaimer currentTime : decoderHs
+        TIO.writeFile (fp </> "server" </> "src" </> "Static" </> "Update" <.> "hs") $ T.unlines $ disclaimer currentTime : hiddenUpdateHs
+        TIO.writeFile (fp </> "server" </> "src" </> "Static" </> "Init" <.> "hs")   $ T.unlines $ disclaimer currentTime : staticInitHs
         unless onlyStatic (do
             writeIfNotExists (fp </> "server" </> "src" </> "userApp" </> "Update" <.> "hs") $ T.unlines userUpdateHs
             writeIfNotExists (fp </> "server" </> "src" </> "userApp" </> "Types" <.> "hs")  $ T.unlines userTypesHs
@@ -702,11 +770,13 @@ generateServer gsvg onlyStatic fp (startCs
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Msg" <.> "elm")      $ T.unlines $ disclaimer currentTime : msgElm
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Init" <.> "elm")      $ T.unlines $ disclaimer currentTime : staticInitElm
         TIO.writeFile (fp </> "client" </> "src" </> "static" </> "View" <.> "elm")      $ T.unlines $ disclaimer currentTime : [hiddenClientView]
+        TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Subs" <.> "elm")      $ T.unlines $ disclaimer currentTime : hiddenSubsElm
         
         mapM_ (\(n,txt) -> TIO.writeFile (fp </> "client" </> "src" </> "static" </> "Wrappers" </> n <.> "elm") txt) clientWrapModules
         unless onlyStatic (do
             mapM_ (\(n,txt) -> writeIfNotExists (fp </> "client" </> "src" </> "userApp" </> "View" </> n <.> "elm") txt) clientViewModules
             mapM_ (\(n,txt) -> writeIfNotExists (fp </> "client" </> "src" </> "userApp" </> "Update" </> n <.> "elm") txt) clientUpdateModules
+            mapM_ (\(n,txt) -> writeIfNotExists (fp </> "client" </> "src" </> "userApp" </> "Subs" </> n <.> "elm") txt) clientSubModules
             --writeIfNotExists (fp </> "client" </> "src" </> "userApp" </> "Update" <.> "elm")      $ T.unlines $ userUpdateElm
             writeIfNotExists (fp </> "client" </> "src" </> "userApp" </> "Types" <.> "elm")      $ T.unlines userTypesElm
             writeIfNotExists (fp </> "client" </> "src" </> "userApp" </> "Init" <.> "elm")      $ T.unlines userInitElm)

@@ -25,6 +25,7 @@ import Static.Decode exposing(decodeWrappedClientMessage)
 import Static.Version as V
 import Static.View
 import Static.Types
+import Static.Subs
 
 
 port cmdPort : Value -> Cmd msg
@@ -35,7 +36,7 @@ port subPort : (Value -> msg) -> Sub msg
 
 subscriptions : InternalModel -> Sub Msg
 subscriptions model =
-    subPort WSProcess
+    Sub.batch [subPort WSProcess, Sub.map AppMsg <| Static.Subs.subscriptions model.appMode]
 
 
 getCmdPort : InternalModel -> (Value -> Cmd Msg)

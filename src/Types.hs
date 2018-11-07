@@ -30,7 +30,6 @@ type Constructor = (String,[ElmDocType]) -- (name, arguments)
 data ElmCustom = ElmCustom String [Constructor] -- name of the type 
   deriving (Ord,Eq,Show)
 
-type ClientState        = Constructor
 type ServerState        = Constructor
 data OutgoingClientMessage   = 
       ToSender            Constructor                   --reply back to the client that sent the orignal message
@@ -56,17 +55,15 @@ type ExtraClientTypes =
 type ExtraServerTypes =
     [ElmCustom]
 
-type ClientStates =
-    [Constructor]
-
-type ServerStates =
-    [Constructor]
+data ClientState =
+      ClientState Constructor
+    | ClientStateWithSubs Constructor [Constructor]
 
 type ClientServerApp =
     ( String                   --starting state of client
     , String                --starting state of server
-    , ClientStates          --all possible client states
-    , ServerStates          --all possible server states
+    , [ClientState]          --all possible client states
+    , [ServerState]          --all possible server states
     , ExtraClientTypes        --extra client types used in states or messages
     , ExtraServerTypes        --extra server types used in states or messages
     , ClientStateDiagram    --the client state diagram
