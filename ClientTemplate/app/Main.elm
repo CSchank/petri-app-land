@@ -36,7 +36,7 @@ port subPort : (Value -> msg) -> Sub msg
 
 subscriptions : InternalModel -> Sub Msg
 subscriptions model =
-    Sub.batch [subPort WSProcess, Sub.map AppMsg <| Static.Subs.subscriptions model.appMode]
+    Sub.batch [subPort WSProcess, Sub.map AppMsg <| Static.Subs.subscriptions model.appModel]
 
 
 getCmdPort : InternalModel -> (Value -> Cmd Msg)

@@ -130,25 +130,25 @@ generateDecoder h (ElmCustom name edts) =
 
         decodeEt :: Int -> ElmDocType -> [T.Text]
         decodeEt indt (ElmIntRange low high,n,_) = 
-            indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
+            indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
                             ,T.concat["        (case l",T.pack $ show indt," of"]
                             ,T.concat["            (",T.pack n,"Txt " .:. " ll",T.pack $ show indt,") -> ","(decodeInt ",T.pack $ show low," ",T.pack $ show high," ",T.pack n,"Txt |> randThen (\\",T.pack n,"Res -> Ok <| ",T.pack n,"Res + ",T.pack $ show low,"),ll",T.pack $ show indt,")"]
                             ,T.concat["            [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[]))"]
                             ]
         decodeEt indt (ElmFloatRange low high precision,n,_) = 
-            indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
+            indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
                             ,T.concat["        (case l",T.pack $ show indt," of"]
                             ,T.concat["            (",T.pack n,"Txt ".:. " ll",T.pack $ show indt,") -> ","(decodeInt ",T.pack $ show $ round (low*10^precision)," ",T.pack $ show $ round (high*10^precision)," ",T.pack n,"Txt |> randThen (\\",T.pack n,"Res -> Ok <| (toFloat ",T.pack n,"Res + ",T.pack $ show (round (low * 10^precision)),") / ",T.pack $ show (10^precision),"),ll",T.pack $ show indt,")"]
                             ,T.concat["            [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[]))"]
                             ]
         decodeEt indt (ElmString, n, _) =
-            indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
+            indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
                             ,T.concat["    decodeString l",T.pack $ show indt]
                             ]
         decodeEt indt (ElmSizedString size, n, _) =
             error "Not implemented yet"--indtTxts indt $ [T.concat[T.pack n, "Txt =",T.pack n]
         decodeEt indt (ElmPair (et0,n0,d0) (et1,n1,d1), n, _) =
-            indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
+            indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
                             ,"    let"
                             --parse first part of tuple
                             ,T.concat["        (",T.pack n0,",lf",T.pack $ show indt,") ="]
@@ -167,7 +167,7 @@ generateDecoder h (ElmCustom name edts) =
                             ,T.concat["    in (rMap2 (\\rff",T.pack $ show indt," rss",T.pack $ show indt," -> (rff",T.pack $ show indt,",rss",T.pack $ show indt,")) ", T.pack n0," ",T.pack n1,",ls",T.pack $ show indt,")"]
                             ]
         decodeEt indt (ElmTriple (et0,n0,d0) (et1,n1,d1) (et2,n2,d2), n, _) =
-            indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
+            indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
                             ,"    let"
                             --parse first part of tuple
                             ,T.concat["        (",T.pack n0,",lf",T.pack $ show indt,") ="]
@@ -193,22 +193,22 @@ generateDecoder h (ElmCustom name edts) =
                             ,T.concat["    in (rMap3 (\\rff",T.pack $ show indt," rss",T.pack $ show indt," rtt",T.pack $ show indt," -> (rff",T.pack $ show indt,",rss",T.pack $ show indt,",rtt",T.pack $ show indt,")) ", T.pack n0," ",T.pack n1," ",T.pack n2,",lt",T.pack $ show indt,")"]
                             ]
         decodeEt indt (ElmList etd, n, _) =
-            indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
+            indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
                             ,T.unlines $ decodeEt (indt+2) etd,") |>"
                             ,T.concat["    decodeList l",T.pack $ show indt]
                             ]
         decodeEt indt (ElmType name, n, _) =
-            indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"] 
+            indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"] 
                             ,T.concat["    decode",T.pack name," (r",T.pack $ show (indt-1),",l",T.pack $ show indt,")"]
                             ]
         decodeEt indt (ElmMaybe etd, n, _) =
-            indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
+            indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
                             ,T.unlines $ decodeEt (indt+2) etd,") |>"
                             ,T.concat["    decodeMaybe l",T.pack $ show indt]
                             ]
         decodeEt indt (ElmBool, n, _) =
-            indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
-                            ,T.concat["    (decodeBool l",T.pack $ show indt]
+            indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
+                            ,T.concat["    decodeBool l",T.pack $ show indt]
                             ]
         {-decodeEt indt (ElmMaybe etd, n, _) =
             indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
@@ -222,7 +222,7 @@ generateDecoder h (ElmCustom name edts) =
                                                    ,"\n            (Err \"\",rest) |> \n"
                                                    ,T.unlines $ concat $ map (\(n,et) -> (decodeEt (4+n) et) ++ indtTxts (4+n) [" |>"]) $ zip [0..] edt
                                                    ,indtTxt (5 + length edt) $ T.concat ["(\\(r"
-                                                                                        ,T.pack $ show $ length edt + 3,",l",T.pack $ show $ length edt + 4,") -> (",if length edt > 0 then T.concat ["rMap",T.pack $ show $ length edt] else "Ok <|"," ",T.pack constrName," ",T.intercalate " " $ map (\n -> T.pack $ "r" ++ show (n+4)) [0..length edt-1],",l",T.pack $ show $ length edt + 4,T.replicate (length edt + 2) ")"]
+                                                                                        ,T.pack $ show $ length edt + 3,",l",T.pack $ show $ length edt + 4,") -> (",if length edt > 0 then T.concat ["rMap",T.pack $ show $ length edt] else "Ok <|"," ",T.pack constrName," ",T.intercalate " " $ map (\n -> T.pack $ "r" ++ show (n+4)) [0..length edt-1],",l",T.pack $ show $ length edt + 4,"))"]
                                                    ]) edts
     in
         T.unlines [typeSig
