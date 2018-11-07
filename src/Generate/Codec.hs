@@ -194,7 +194,7 @@ generateDecoder h (ElmCustom name edts) =
                             ]
         decodeEt indt (ElmList etd, n, _) =
             indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
-                            ,T.concat $ ["("] ++ decodeEt 1 etd ++ [")"],") |>"
+                            ,T.concat ["(",T.strip $ T.intercalate "\n" $ decodeEt (indt+1) etd,") |>"]
                             ,T.concat["    decodeList l",T.pack $ show indt]
                             ]
         decodeEt indt (ElmType name, n, _) =
@@ -203,7 +203,7 @@ generateDecoder h (ElmCustom name edts) =
                             ]
         decodeEt indt (ElmMaybe etd, n, _) =
             indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
-                            ,T.concat $ ["("] ++ decodeEt 1 etd ++ [")"]," |>"
+                            ,T.concat ["(",T.strip $ T.intercalate "\n" $ decodeEt (indt+1) etd,") |>"]
                             ,T.concat["    decodeMaybe l",T.pack $ show indt]
                             ]
         decodeEt indt (ElmBool, n, _) =
