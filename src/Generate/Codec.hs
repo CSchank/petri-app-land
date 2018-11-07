@@ -155,14 +155,14 @@ generateDecoder h (ElmCustom name edts) =
                             ,T.concat["            case l",T.pack $ show indt," of"]
                             ,T.concat["                (",T.pack n,"Txt " .:. " llf",T.pack $ show indt,") ->"]
                             ,T.concat["                     (\"\",l",T.pack $ show indt,") |>"]
-                            ,T.unlines $ decodeEt (indt+5) (et0,n0,d0),"                     )"
+                            ,T.unlines $ decodeEt (indt+5) (et0,n0,d0)
                             ,T.concat["                [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[])"]
                             --parse second part of tuple
                             ,T.concat["        (",T.pack n1,",ls",T.pack $ show indt,") ="]
                             ,T.concat["            case lf",T.pack $ show indt," of"]
                             ,T.concat["                (",T.pack n,"Txt " .:. " lls",T.pack $ show indt,") ->"]
                             ,T.concat["                     (\"\",lf",T.pack $ show indt,") |>"]
-                            ,T.unlines $ decodeEt (indt+5) (et1,n1,d1),"                     )"
+                            ,T.unlines $ decodeEt (indt+5) (et1,n1,d1)
                             ,T.concat["                [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[])"]
                             ,T.concat["    in (rMap2 (\\rff",T.pack $ show indt," rss",T.pack $ show indt," -> (rff",T.pack $ show indt,",rss",T.pack $ show indt,")) ", T.pack n0," ",T.pack n1,",ls",T.pack $ show indt,")"]
                             ]
@@ -174,27 +174,27 @@ generateDecoder h (ElmCustom name edts) =
                             ,T.concat["            case l",T.pack $ show indt," of"]
                             ,T.concat["                (",T.pack n,"Txt " .:. " llf",T.pack $ show indt,") ->"]
                             ,T.concat["                     (\"\",l",T.pack $ show indt,") |>"]
-                            ,T.unlines $ decodeEt (indt+5) (et0,n0,d0),"                     )"
+                            ,T.unlines $ decodeEt (indt+5) (et0,n0,d0)
                             ,T.concat["                [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[])"]
                             --parse second part of tuple
                             ,T.concat["        (",T.pack n1,",ls",T.pack $ show indt,") ="]
                             ,T.concat["            case lf",T.pack $ show indt," of"]
                             ,T.concat["                (",T.pack n,"Txt " .:. " lls",T.pack $ show indt,") ->"]
                             ,T.concat["                     (\"\",lf",T.pack $ show indt,") |>"]
-                            ,T.unlines $ decodeEt (indt+5) (et1,n1,d1),"                     )"
+                            ,T.unlines $ decodeEt (indt+5) (et1,n1,d1)
                             ,T.concat["                [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[])"]
                             --parse third part of tuple
                             ,T.concat["        (",T.pack n2,",lt",T.pack $ show indt,") ="]
                             ,T.concat["            case ls",T.pack $ show indt," of"]
                             ,T.concat["                (",T.pack n,"Txt " .:. " lls",T.pack $ show indt,") ->"]
                             ,T.concat["                     (\"\",ls",T.pack $ show indt,") |>"]
-                            ,T.unlines $ decodeEt (indt+5) (et1,n1,d1),"                     )"
+                            ,T.unlines $ decodeEt (indt+5) (et1,n1,d1)
                             ,T.concat["                [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[])"]
                             ,T.concat["    in (rMap3 (\\rff",T.pack $ show indt," rss",T.pack $ show indt," rtt",T.pack $ show indt," -> (rff",T.pack $ show indt,",rss",T.pack $ show indt,",rtt",T.pack $ show indt,")) ", T.pack n0," ",T.pack n1," ",T.pack n2,",lt",T.pack $ show indt,")"]
                             ]
         decodeEt indt (ElmList etd, n, _) =
             indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
-                            ,T.unlines $ decodeEt (indt+2) etd,") |>"
+                            ,T.concat $ ["("] ++ decodeEt 1 etd ++ [")"],") |>"
                             ,T.concat["    decodeList l",T.pack $ show indt]
                             ]
         decodeEt indt (ElmType name, n, _) =
@@ -203,7 +203,7 @@ generateDecoder h (ElmCustom name edts) =
                             ]
         decodeEt indt (ElmMaybe etd, n, _) =
             indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
-                            ,T.unlines $ decodeEt (indt+2) etd,") |>"
+                            ,T.concat $ ["("] ++ decodeEt 1 etd ++ [")"]," |>"
                             ,T.concat["    decodeMaybe l",T.pack $ show indt]
                             ]
         decodeEt indt (ElmBool, n, _) =
