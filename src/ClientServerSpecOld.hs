@@ -182,7 +182,7 @@ acknowledgeReady = msg "AcknowledgeReady" []
 -- the actual app that is to be generated
 clientServerApp :: ClientServerApp
 clientServerApp = (
-                "Start" --client start state
+                ("Start", Nothing) --client start state
              ,  "Nobody" --server start start
              ,  [start,wait,haveFrac,ready,playing] --client states
              ,  [nobody,one,two,three,four,playingS]                                 --server states
@@ -198,21 +198,21 @@ clientDisconnect = ("ClientDisconnect",[])
 csDiagram :: ClientStateDiagram
 csDiagram = M.fromList 
             [
-                (("Start",    login)            ,("Wait",    Just submitLogin))
-            ,   (("Wait",     sendFrac)         ,("HaveFrac",   Nothing))
-            ,   (("HaveFrac", startDragging)    ,("HaveFrac",   Nothing))
-            ,   (("HaveFrac", stopDragging)     ,("HaveFrac",   Nothing))
-            ,   (("HaveFrac", dragging)         ,("HaveFrac",   Just changeColour))
-            ,   (("HaveFrac", sendNewColours)   ,("HaveFrac",   Nothing))
-            ,   (("HaveFrac", sendFrac)         ,("HaveFrac",   Nothing))
-            ,   (("HaveFrac", tapReady)         ,("HaveFrac",   Just readyMsg))
-            ,   (("HaveFrac", readyToStart)     ,("HaveFrac",   Nothing))
-            ,   (("HaveFrac", moreReady)        ,("HaveFrac", Nothing))
-            ,   (("HaveFrac", acknowledgeReady) ,("HaveFrac", Nothing))
-            ,   (("HaveFrac", startGame)        ,("Playing",  Nothing))
-            ,   (("Ready", startGame)           ,("Playing",   Nothing))
-            ,   (("Playing", tapBox)            ,("Playing",   Just tapMsg))
-            ,   (("Playing", sendTap)           ,("Playing",   Nothing))
+                (("Start",    login)            ,("Wait", Nothing,Just submitLogin))
+            ,   (("Wait",     sendFrac)         ,("HaveFrac",  Nothing, Nothing))
+            ,   (("HaveFrac", startDragging)    ,("HaveFrac",  Nothing, Nothing))
+            ,   (("HaveFrac", stopDragging)     ,("HaveFrac",  Nothing, Nothing))
+            ,   (("HaveFrac", dragging)         ,("HaveFrac",  Nothing, Just changeColour))
+            ,   (("HaveFrac", sendNewColours)   ,("HaveFrac",  Nothing, Nothing))
+            ,   (("HaveFrac", sendFrac)         ,("HaveFrac",  Nothing, Nothing))
+            ,   (("HaveFrac", tapReady)         ,("HaveFrac",  Nothing, Just readyMsg))
+            ,   (("HaveFrac", readyToStart)     ,("HaveFrac",  Nothing, Nothing))
+            ,   (("HaveFrac", moreReady)        ,("HaveFrac",  Nothing,Nothing))
+            ,   (("HaveFrac", acknowledgeReady) ,("HaveFrac",  Nothing,Nothing))
+            ,   (("HaveFrac", startGame)        ,("Playing",   Nothing,Nothing))
+            ,   (("Ready", startGame)           ,("Playing",   Nothing,Nothing))
+            ,   (("Playing", tapBox)            ,("Playing",   Nothing,Just tapMsg))
+            ,   (("Playing", sendTap)           ,("Playing",   Nothing,Nothing))
             ]
 
 ssDiagram :: ServerStateDiagram

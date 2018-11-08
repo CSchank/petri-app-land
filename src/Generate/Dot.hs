@@ -18,8 +18,8 @@ generateDot (startClient
                   ,cExtraT
                   ,sExtraT
                   ,cDiagram
-                  ,sDiagram)= 
-    let
+                  ,sDiagram)= error ""
+    {-let
         replace :: [T.Text] -> [T.Text]
         replace (l1:ls) = ( case lookup l1 swaps of
                             Just new -> new
@@ -46,13 +46,13 @@ generateDot (startClient
         putStrLn $ show clientDiagram
 
 --clientStateToGViz :: ClientStateDiagram -> T.Text
-clientStateToGViz ((cState0S, cTrans), (cState1S, mServe)) =
+clientStateToGViz ((cState0S, cTrans), (cState1S, mCmd, mServe)) =
     let 
         cState0 = T.pack cState0S
         cState1 = T.pack cState1S
         fakeName = T.concat["fake", cState0, T.pack $ fst cTrans,cState1]
     in
-        case mServe of 
+        case (mCmd,mServe) of 
             Just m -> T.unlines $ 
                         T.concat ["\t\t", cState0,"->",fakeName," [label=\"", generateConstructor False False cTrans,"\",arrowhead=none];"] :
                         T.concat ["\t\t",fakeName, " [shape=diamond, width=0.2, height=0.2, label=\"\"];"] :
@@ -103,4 +103,4 @@ s2cStateToGViz firstClien ((sState0S, sTrans), (sState1S, ToSenderAnd cMsg)) =
         fakeName = T.concat["fake", sState0, T.pack $ fst sTrans,sState1]
     in
         Just $ T.concat ["\t",fakeName,"->", firstClien, "[label=\"✉+ ",generateConstructor False False cMsg,"\",lhead=cluster_0,style=dashed];"]
-s2cStateToGViz _ ((_, _), (_, NoClientMessage)) = Nothing
+s2cStateToGViz _ ((_, _), (_, NoClientMessage)) = Nothing-}

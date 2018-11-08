@@ -13,6 +13,7 @@ import PortFunnel exposing (FunnelSpec, GenericMessage, ModuleDesc, StateAccesso
 import PortFunnel.WebSocket as WebSocket
 import String
 import Url
+import Task
 
 import GraphicSVG exposing(..)
 
@@ -97,13 +98,14 @@ init _ url key =
     , state = initialFunnelState
     , key = "socket"
     , error = Nothing
-    , appModel = Init.init
+    , appModel = Tuple.first Init.init
     }
       |> \model -> 
                 model |> withCmd
                     (WebSocket.makeOpenWithKey model.key model.url
                         |> send model
                     )
+                    |> addCmd (Cmd.map AppMsg <| Tuple.second Init.init)
 
 
 socketAccessors : StateAccessors FunnelState WebSocket.State
@@ -191,16 +193,24 @@ update msg model =
         NewUrlChange url -> model |> withNoCmd
         AppMsg appMsg -> 
             let 
-                (newAppModel, msMsg) = Static.Update.update appMsg model.appModel
+                (newAppModel, mCmd, msMsg) = Static.Update.update appMsg model.appModel
             in
-                case msMsg of 
-                    Just sMsg -> 
+                case (mCmd, msMsg) of 
+                    (Just cmd, Just sMsg) -> 
+                        let
+                            respTxt = encodeServerMessage sMsg
+                        in
+                            { model | appModel = newAppModel } 
+                                |> wsSend respTxt 
+                                |> addCmd (Cmd.map AppMsg cmd)
+                    (Nothing, Just sMsg) -> 
                         let
                             respTxt = encodeServerMessage sMsg
                         in
                             { model | appModel = newAppModel
-                                    , log = ("Sent \"" ++ respTxt ++ "\"") :: model.log
                             } |> wsSend respTxt
+                    (Just cmd, Nothing) -> 
+                        { model | appModel = newAppModel } |> withCmd (Cmd.map AppMsg cmd)
                     _ ->
                         { model | appModel = newAppModel } |> withNoCmd
 
@@ -256,25 +266,18 @@ socketHandler response state mdl =
         WebSocket.MessageReceivedResponse { message } ->
             case message of 
                 "resetfadsfjewi" -> 
-                    { model | appModel = Init.init }
+                    { model | appModel = Tuple.first Init.init } |> withNoCmd
                 _ ->
                     let
                         (rincomingMsg,_) = decodeWrappedClientMessage (Err "", String.split "\u{0000}" (Debug.log "Incoming message" message))
-                        (newAppModel, msMsg) = 
+                        newCmd = 
                             case rincomingMsg of 
-                                Ok incomingMsg -> Static.Update.update incomingMsg model.appModel
-                                Err _ -> (model.appModel, Nothing)
+                                Ok incomingMsg -> Task.perform AppMsg (Task.succeed incomingMsg)
+                                Err _ -> Cmd.none
                     in            
-                        case msMsg of 
-                            Just sMsg -> 
-                                let
-                                    respTxt = encodeServerMessage sMsg
-                                in
-                                    { model | appModel = newAppModel
-                                            , log = ("Received \"" ++ message ++ "\"") :: model.log
-                                    } |> wsSend respTxt
-                            _ ->
-                                { model | appModel = newAppModel } |> withNoCmd
+                        ({ model | log = ("Received \"" ++ message ++ "\"") :: model.log }
+                        , newCmd
+                        )
                    
 
         WebSocket.ConnectedResponse _ ->

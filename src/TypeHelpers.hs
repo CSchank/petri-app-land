@@ -8,12 +8,8 @@ cState :: String -> [ElmDocType] -> ClientState
 cState n edts = ClientState $ constructor n edts
 
 withSub :: Constructor -> ClientState -> ClientState
-withSub sub (ClientState constr)              = ClientStateWithSubs constr [sub]
-withSub sub (ClientStateWithSubs constr subs) = ClientStateWithSubs constr (sub:subs)
-
-cStateWithSubs :: String -> [ElmDocType] -> [Constructor] -> ClientState
-cStateWithSubs n edts subs =
-    ClientStateWithSubs (constructor n edts) subs
+withSub sub (ClientState constr)                            = ClientStateWithSubs constr [sub]
+withSub sub (ClientStateWithSubs constr subs)               = ClientStateWithSubs constr (sub:subs)
 
 sState :: String -> [ElmDocType] -> Constructor
 sState = constructor

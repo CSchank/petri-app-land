@@ -42,10 +42,11 @@ data OutgoingClientMessage   =
     | NoClientMessage
   deriving (Ord,Eq,Show)
 type ClientTransition   = Constructor
+type ClientCmd          = Constructor
 type ServerTransition   = Constructor
 
 type ClientStateDiagram =
-    M.Map (String, ClientTransition) (String, Maybe ServerTransition)
+    M.Map (String, ClientTransition) (String, Maybe ClientCmd, Maybe ServerTransition)
 
 type ServerStateDiagram =
     M.Map (String, ServerTransition) (String, OutgoingClientMessage)
@@ -58,10 +59,10 @@ type ExtraServerTypes =
 
 data ClientState =
       ClientState Constructor
-    | ClientStateWithSubs Constructor [Constructor]
+    | ClientStateWithSubs Constructor [Constructor] {-subs-}
 
 type ClientServerApp =
-    ( String                   --starting state of client
+    ( (String, Maybe Constructor)                   --starting state and command of client
     , String                --starting state of server
     , [ClientState]          --all possible client states
     , [ServerState]          --all possible server states
