@@ -24,9 +24,12 @@ data CentralMessage
     | UserConnectionLost ClientID
     | ReceivedMessage ClientID ServerMessage
     | GetCurrentState (TQueue ServerState)
+    | SetInternalState Model
+    | ResetClients
 
 data ClientThreadMessage 
     = SendMessage ClientMessage
+    | ResetState
 
 --types of messages that can be sent back from the user update function
 
@@ -41,6 +44,10 @@ data ToSenderAnd clientMessage =
       ToSenderAnd (Set.Set ClientID) clientMessage
     | ToSenderAndF (Set.Set ClientID) (ClientID -> clientMessage)
 
+data ToSet clientMessage =
+      ToSet (Set.Set ClientID) clientMessage
+    | ToSetF (Set.Set ClientID) (ClientID -> clientMessage)
+
 data ToAll clientMessage =
       ToAll clientMessage
     | ToAllF (ClientID -> clientMessage)
@@ -52,6 +59,8 @@ data InternalCM clientMessage =
     | ICMToAllExceptSenderF (ClientID -> clientMessage)
     | ICMToSenderAnd (Set.Set ClientID) clientMessage
     | ICMToSenderAndF (Set.Set ClientID) (ClientID -> clientMessage)
+    | ICMToSet (Set.Set ClientID) clientMessage
+    | ICMToSetF (Set.Set ClientID) (ClientID -> clientMessage)
     | ICMToAll clientMessage
     | ICMToAllF (ClientID -> clientMessage)
     | ICMAllOf [InternalCM clientMessage]

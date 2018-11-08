@@ -353,6 +353,10 @@ unwrapSenderAnd :: (cm -> ClientMessage) -> ToSenderAnd cm -> InternalCM ClientM
 unwrapSenderAnd m (ToSenderAnd others cm) = ICMToSenderAnd others (m cm)
 unwrapSenderAnd m (ToSenderAndF others f) = ICMToSenderAndF others (m . f)
 
+unwrapToSet :: (cm -> ClientMessage) -> ToSenderAnd cm -> InternalCM ClientMessage
+unwrapToSet m (ToSet others cm) = ICMToSet others (m cm)
+unwrapToSet m (ToSetF others f) = ICMToSetF others (m . f)
+
 unwrapToAll :: (cm -> ClientMessage) -> ToAll cm -> InternalCM ClientMessage
 unwrapToAll m (ToAll cm) = ICMToAll (m cm)
 unwrapToAll m (ToAllF f) = ICMToAllF (m . f)

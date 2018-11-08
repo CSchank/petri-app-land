@@ -35,6 +35,7 @@ data OutgoingClientMessage   =
       ToSender            Constructor                   --reply back to the client that sent the orignal message
     | ToAllExceptSender   Constructor                   --not used
     | ToSenderAnd         Constructor                   --reply to sender and a set of other clients
+    | ToSet               Constructor                   --reply to sender and a set of other clients
     | ToAll               Constructor                   --send a message to all connected clients
     | OneOf               [OutgoingClientMessage]       --send one of a list of possible messages
     | AllOf               [OutgoingClientMessage]       --send all of a list of possible messages

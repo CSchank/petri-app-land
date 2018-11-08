@@ -14,7 +14,7 @@ import           Data.Text                      (Text)
 import           Data.Text.IO                   as Tio
 import qualified Data.ByteString.Lazy.Char8          as C
 import           Network.HTTP.Types             (status200)
-import           Network.Wai                    (Application, responseLBS)
+import           Network.Wai                    (Application, responseLBS, pathInfo)
 import           Network.Wai.Handler.Warp       (run)
 import           Network.Wai.Handler.WebSockets (websocketsOr)
 
@@ -27,6 +27,7 @@ import Static.ServerTypes
 import Types
 import Static.Decode
 import Utils.Utils
+import Static.Init
 
 
 wsApp :: TQueue CentralMessage -> WS.ServerApp
@@ -61,7 +62,11 @@ wsApp centralMessageChan pendingConn =
         loop conn clientMessageChan
 
 fallbackApp :: TQueue CentralMessage -> Application
-fallbackApp centralChan _ respond = do
+fallbackApp centralChan req respond = do
+    let url = pathInfo req
+    case url of 
+        ["reset"] -> atomically $ writeTQueue centralChan $ SetInternalState $ Static.Init.init
+        _ -> return ()
     tempQ <- atomically $ giveReceivingQueue centralChan GetCurrentState
     state <- atomically $ readTQueue tempQ
     let userState = internalServerState state

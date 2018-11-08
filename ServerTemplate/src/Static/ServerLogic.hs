@@ -118,6 +118,8 @@ processCentralMessage _ state (ReceivedMessage clientId incomingMsg) =
                 ICMToAllExceptSenderF c2msg   -> mapM_ (\cId -> sendToID (c2msg cId) cId) $ IM'.keys $ IM'.delete clientId connectedClients
                 ICMToSenderAnd clients msg    -> mapM_ (sendToID msg) $ S.insert clientId clients
                 ICMToSenderAndF clients c2msg -> mapM_ (\cId -> sendToID (c2msg cId) cId) $ S.insert clientId clients
+                ICMToSet clients msg          -> mapM_ (sendToID msg) clients
+                ICMToSetF clients c2msg       -> mapM_ (\cId -> sendToID (c2msg cId) cId) clients
                 ICMToAll msg                  -> mapM_ (sendToID msg) $ IM'.keys connectedClients
                 ICMToAllF c2msg               -> mapM_ (\cId -> sendToID (c2msg cId) cId) $ IM'.keys connectedClients
                 ICMAllOf icms                 -> mapM_ processICM icms
@@ -142,6 +144,16 @@ processCentralMessage centralMessageChan state (GetCurrentState queue) = do
     atomically $ writeTQueue queue state
     return state
 
+--set current state of user server
+processCentralMessage centralMessageChan state (SetInternalState newInternalState) = do
+    return $ state { internalServerState = newInternalState }
+
+--set current state of user server
+processCentralMessage centralMessageChan state ResetClients = do
+    let connectedClients = clients state
+    atomically $ mapM_ (\(Client chan) -> writeTQueue chan ResetState) $ IM'.elems connectedClients
+    return state
+
 --a new message has been received from a client. Process it and inform the central message about it.
 parseIncomingMsg :: ClientID -> TQueue CentralMessage -> Text -> IO ()
 parseIncomingMsg clientId chan msg = do
@@ -156,8 +168,12 @@ processClienTQueue :: WS.Connection -> TQueue ClientThreadMessage -> IO ()
 processClienTQueue conn chan = forever $ do
     -- This reads a ClientThreadMessage channel forever and passes any messages
     -- it reads to the WebSocket Connection.
-    (SendMessage outgoingMessage) <- atomically $ readTQueue chan
-    let txtMsg = encodeClientMessage outgoingMessage
+    clientMsg{-(SendMessage outgoingMessage)-} <- atomically $ readTQueue chan
+    case clientMsg of 
+        SendMessage outgoingMessage -> do
+            let txtMsg = encodeClientMessage outgoingMessage
 
-    WS.sendTextData conn txtMsg
-    Tio.putStrLn $ T.concat $ ["Sent: ",  txtMsg]
+            WS.sendTextData conn txtMsg
+            Tio.putStrLn $ T.concat $ ["Sent: ",  txtMsg]
+        ResetState ->
+            WS.sendTextData conn ("resetfadsfjewi" :: T.Text)

@@ -28,6 +28,7 @@ cm2constr NoClientMessage           = Nothing
 cm2constr (ToSender ct)             = Just [ct]
 cm2constr (ToAllExceptSender ct)    = Just [ct]
 cm2constr (ToSenderAnd ct)          = Just [ct]
+cm2constr (ToSet ct)          = Just [ct]
 cm2constr (ToAll ct)                = Just [ct]
 cm2constr (OneOf ocms)              = 
     case mapMaybe cm2constr ocms of
@@ -413,6 +414,7 @@ generateServer gsvg onlyStatic fp (startCs
                 ocm2Txt (ToSender (ctn,_))          = T.concat["ToSender ",T.pack ctn]
                 ocm2Txt (ToAllExceptSender (ctn,_)) = T.concat["ToAllExceptSender ",T.pack ctn]
                 ocm2Txt (ToSenderAnd (ctn,_))       = T.concat["ToSenderAnd ",T.pack ctn]
+                ocm2Txt (ToSet (ctn,_))             = T.concat["ToSet ",T.pack ctn]
                 ocm2Txt (ToAll (ctn,_))             = T.concat["ToAll ",T.pack ctn]
                 ocm2Txt (OneOf ocms)                = T.concat["OneOf",T.pack $ show $ length ocms," (",T.intercalate ") (" $ map ocm2Txt ocms,")"]
                 ocm2Txt (AllOf ocms)                = T.concat["AllOf",T.pack $ show $ length ocms," (",T.intercalate ") (" $ map ocm2Txt ocms,")"]
@@ -475,8 +477,8 @@ generateServer gsvg onlyStatic fp (startCs
                 "module Update where"
                 ,"import Static.Types --types are generated from the state diagram, don't remove this import"
                 ,"import Static.ServerTypes"
-                ,T.unlines $ map (\n -> T.concat ["import Static.OneOf.OneOf",T.pack $ show n]) oneOfs
-                ,T.unlines $ map (\n -> T.concat ["import Static.AllOf.AllOf",T.pack $ show n]) allOfs
+                ,T.unlines $ map (\n -> T.concat ["import Static.OneOf.OneOf",T.pack $ show n," as OneOf",T.pack $ show n]) oneOfs
+                ,T.unlines $ map (\n -> T.concat ["import Static.AllOf.AllOf",T.pack $ show n," (AllOf",T.pack $ show n,"(..))"]) allOfs
                 ,""
                 ,"{-"
                 ,"    Fill in the update functions to control the behaviour of your server. Don't change the type declarations or the input definitions"
@@ -665,6 +667,7 @@ generateServer gsvg onlyStatic fp (startCs
                     case mCt of
                         ToSender            ct -> T.concat ["unwrapToSender ",unwrapMsg ct]
                         ToAllExceptSender   ct -> T.concat ["unwrapToAllExceptSender ",unwrapMsg ct]
+                        ToSet               ct -> T.concat ["unwrapToSet", unwrapMsg ct]
                         ToSenderAnd         ct -> T.concat ["unwrapToSenderAnd ",unwrapMsg ct]
                         ToAll               ct -> T.concat ["unwrapToAll ",unwrapMsg ct]
                         OneOf              cts -> T.concat ["Static.OneOf.OneOf",T.pack $ show $ length cts,".unwrap (",T.intercalate ") (" $ map unwrapMct cts,")"]

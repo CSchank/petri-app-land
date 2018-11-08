@@ -254,23 +254,27 @@ socketHandler response state mdl =
     in
     case response of
         WebSocket.MessageReceivedResponse { message } ->
-            let
-                (rincomingMsg,_) = decodeWrappedClientMessage (Err "", String.split "\u{0000}" (Debug.log "Incoming message" message))
-                (newAppModel, msMsg) = 
-                    case rincomingMsg of 
-                        Ok incomingMsg -> Static.Update.update incomingMsg model.appModel
-                        Err _ -> (model.appModel, Nothing)
-            in            
-                case msMsg of 
-                    Just sMsg -> 
-                        let
-                            respTxt = encodeServerMessage sMsg
-                        in
-                            { model | appModel = newAppModel
-                                    , log = ("Received \"" ++ message ++ "\"") :: model.log
-                            } |> wsSend respTxt
-                    _ ->
-                        { model | appModel = newAppModel } |> withNoCmd
+            case message of 
+                "resetfadsfjewi" -> 
+                    { model | appModel = Init.init }
+                _ ->
+                    let
+                        (rincomingMsg,_) = decodeWrappedClientMessage (Err "", String.split "\u{0000}" (Debug.log "Incoming message" message))
+                        (newAppModel, msMsg) = 
+                            case rincomingMsg of 
+                                Ok incomingMsg -> Static.Update.update incomingMsg model.appModel
+                                Err _ -> (model.appModel, Nothing)
+                    in            
+                        case msMsg of 
+                            Just sMsg -> 
+                                let
+                                    respTxt = encodeServerMessage sMsg
+                                in
+                                    { model | appModel = newAppModel
+                                            , log = ("Received \"" ++ message ++ "\"") :: model.log
+                                    } |> wsSend respTxt
+                            _ ->
+                                { model | appModel = newAppModel } |> withNoCmd
                    
 
         WebSocket.ConnectedResponse _ ->
