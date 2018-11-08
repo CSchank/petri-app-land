@@ -10,7 +10,7 @@ mkCmd cmd args = intercalate " " $ [cmd] ++ args
 
 copyDirectory :: FilePath -> FilePath -> IO ()
 copyDirectory source target = do
-    newCmd <- return $ mkCmd "cp" ["-rn",source,target]
+    newCmd <- return $ mkCmd "rsync" ["-r","-u",source,target]
     ps <- spawnCommand newCmd
     exitCode <- waitForProcess ps
     return ()
