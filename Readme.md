@@ -73,8 +73,10 @@ A dictionary of tuples as follows:
 2. Run `make` or `make app` to build the Elm JavaScript files.
 3. If you haven't already, run `make launch` to view the file in `elm reactor` (the Elm program will not work if you 
 open the `index.html` file directly).
-4. To rebuild, re-run `make app` and refresh the browser.
+4. To rebuild, re-run `make` or  `make app` and refresh the browser.
 5. You can use `make stop` to stop the elm reactor server when you're done.
+6. To preview state views as standalone files, use `make sa -m=State` where `State` is the state you wish to preview.
+You can change the state to preview by changing `model` in `src/Static/Standalone/State.elm`.
 ### Server
 1. In terminal, navigate to the `server` directory.
 2. Run `stack build` to build the server.

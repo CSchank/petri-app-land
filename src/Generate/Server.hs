@@ -5,6 +5,7 @@ module Generate.Server where
 import                  Control.Monad (unless)
 import                  Generate.Codec
 import                  Generate.Types
+import                  Generate.Standalone
 import qualified        Data.Map                as M
 import qualified        Data.Set                as S
 import qualified        Data.Text               as T
@@ -762,6 +763,9 @@ generateServer gsvg onlyStatic fp (startCs
             --writeIfNotExists (fp </> "client" </> "src" </> "userApp" </> "Update" <.> "elm")      $ T.unlines $ userUpdateElm
             writeIfNotExists (fp </> "client" </> "src" </> "userApp" </> "Types" <.> "elm")      $ T.unlines userTypesElm
             writeIfNotExists (fp </> "client" </> "src" </> "userApp" </> "Init" <.> "elm")      $ T.unlines userInitElm)
+
+        createDirectoryIfMissing True $ fp </> "client" </> "src" </> "Static" </> "Standalone" 
+        generateStandalones cExtraTlst fp cStateslst
 
         print serverTransitions
 
