@@ -286,17 +286,17 @@ sConcat = concat
 encodeInt :: Int -> Int -> Int -> T.Text
 encodeInt low high n =
     let
-        encodeInt_ ::  Int -> [Char]
+        encodeInt_ :: Int -> [Char]
         encodeInt_ nn =
             let 
                 b = 64
                 r = nn `mod` b
                 m = nn `div` b
             in    
-                if nn == 0 then ""
+                if nn < 64 then [chr <| r + 48]
                 else (chr <| r + 48) : encodeInt_ m
     in
-        T.pack $ encodeInt_ (clamp low high n)
+        T.pack $ encodeInt_ (clamp low high n - low)
 
 decodeInt :: Int -> Int -> T.Text -> Result T.Text Int
 decodeInt low high s =
@@ -304,7 +304,7 @@ decodeInt low high s =
         decodeInt_ m s_ = case s_ of
                             f:rest -> (ord f - 48) * m + decodeInt_ (m*64) rest
                             []      -> 0
-        n = decodeInt_ 1 $ T.unpack s
+        n = (decodeInt_ 1 $ T.unpack s) + low
     in
         if n >= low && n <= high then  Ok <| n
         else                           Err <| T.concat ["Could not decode ", T.pack $ show n, " as it is outside the range [", T.pack $ show low, ",", T.pack $ show high, "]."]
@@ -353,7 +353,7 @@ unwrapSenderAnd :: (cm -> ClientMessage) -> ToSenderAnd cm -> InternalCM ClientM
 unwrapSenderAnd m (ToSenderAnd others cm) = ICMToSenderAnd others (m cm)
 unwrapSenderAnd m (ToSenderAndF others f) = ICMToSenderAndF others (m . f)
 
-unwrapToSet :: (cm -> ClientMessage) -> ToSenderAnd cm -> InternalCM ClientMessage
+unwrapToSet :: (cm -> ClientMessage) -> ToSet cm -> InternalCM ClientMessage
 unwrapToSet m (ToSet others cm) = ICMToSet others (m cm)
 unwrapToSet m (ToSetF others f) = ICMToSetF others (m . f)
 

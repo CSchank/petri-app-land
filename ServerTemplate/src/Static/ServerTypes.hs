@@ -8,6 +8,7 @@ module Static.ServerTypes
     , ToSender(..)
     , ToAllExceptSender(..)
     , ToSenderAnd(..)
+    , ToSet(..)
     , ToAll(..)
     , InternalCM(..)
     ) where

@@ -670,7 +670,7 @@ generateServer gsvg onlyStatic fp (startCs
                     case mCt of
                         ToSender            ct -> T.concat ["unwrapToSender ",unwrapMsg ct]
                         ToAllExceptSender   ct -> T.concat ["unwrapToAllExceptSender ",unwrapMsg ct]
-                        ToSet               ct -> T.concat ["unwrapToSet", unwrapMsg ct]
+                        ToSet               ct -> T.concat ["unwrapToSet ", unwrapMsg ct]
                         ToSenderAnd         ct -> T.concat ["unwrapToSenderAnd ",unwrapMsg ct]
                         ToAll               ct -> T.concat ["unwrapToAll ",unwrapMsg ct]
                         OneOf              cts -> T.concat ["Static.OneOf.OneOf",T.pack $ show $ length cts,".unwrap (",T.intercalate ") (" $ map unwrapMct cts,")"]

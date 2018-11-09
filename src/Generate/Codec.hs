@@ -132,13 +132,13 @@ generateDecoder h (ElmCustom name edts) =
         decodeEt indt (ElmIntRange low high,n,_) = 
             indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
                             ,T.concat["        (case l",T.pack $ show indt," of"]
-                            ,T.concat["            (",T.pack n,"Txt " .:. " ll",T.pack $ show indt,") -> ","(decodeInt ",T.pack $ show low," ",T.pack $ show high," ",T.pack n,"Txt |> randThen (\\",T.pack n,"Res -> Ok <| ",T.pack n,"Res + ",T.pack $ show low,"),ll",T.pack $ show indt,")"]
+                            ,T.concat["            (",T.pack n,"Txt " .:. " ll",T.pack $ show indt,") -> ","(decodeInt ",T.pack $ show low," ",T.pack $ show high," ",T.pack n,"Txt |> randThen Ok,ll",T.pack $ show indt,")"]
                             ,T.concat["            [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[]))"]
                             ]
         decodeEt indt (ElmFloatRange low high precision,n,_) = 
             indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
                             ,T.concat["        (case l",T.pack $ show indt," of"]
-                            ,T.concat["            (",T.pack n,"Txt ".:. " ll",T.pack $ show indt,") -> ","(decodeInt ",T.pack $ show $ round (low*10^precision)," ",T.pack $ show $ round (high*10^precision)," ",T.pack n,"Txt |> randThen (\\",T.pack n,"Res -> Ok <| (toFloat ",T.pack n,"Res + ",T.pack $ show (round (low * 10^precision)),") / ",T.pack $ show (10^precision),"),ll",T.pack $ show indt,")"]
+                            ,T.concat["            (",T.pack n,"Txt ".:. " ll",T.pack $ show indt,") -> ","(decodeInt ",T.pack $ show $ round (low*10^precision)," ",T.pack $ show $ round (high*10^precision)," ",T.pack n,"Txt |> randThen (\\",T.pack n,"Res -> Ok <| toFloat ",T.pack n,"Res / ",T.pack $ show (10^precision),"),ll",T.pack $ show indt,")"]
                             ,T.concat["            [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[]))"]
                             ]
         decodeEt indt (ElmString, n, _) =

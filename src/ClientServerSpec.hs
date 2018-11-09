@@ -31,7 +31,7 @@ ready = cState "Ready"
     ,edt colour "c2" ""
     ,edt colour "c3" ""
     ,edt colour "c4" ""
-    ,edt (ElmIntRange 0 3) "numReady" "the number of players that are currently ready"
+    ,edt (ElmIntRange 1 3) "numReady" "the number of players that are currently ready"
     ,playerNum
     ]
 playing = cState "Playing" 
@@ -220,6 +220,7 @@ csDiagram = M.fromList
             ,   (("HaveFrac", acknowledgeReady) ,("Ready",      Nothing,Nothing))
             ,   (("HaveFrac", startGame)        ,("Playing",    Nothing,Nothing))
             ,   (("Ready", startGame)           ,("Playing",    Nothing,Nothing))
+            ,   (("Ready", moreReady)           ,("Ready",    Nothing,Nothing))
             ,   (("Playing", startPainting)     ,("Playing",    Nothing,Just tapMsg))
             ,   (("Playing", enterBox)          ,("Playing",    Nothing,Just tapMsg))
             ,   (("Playing", stopPainting)      ,("Playing",    Nothing,Nothing))
@@ -229,30 +230,30 @@ csDiagram = M.fromList
 ssDiagram :: ServerStateDiagram
 ssDiagram = M.fromList 
             [
-                (("Nobody", submitLogin), ("One", ToAll sendFrac))
+                (("Nobody", submitLogin), ("One", ToSet sendFrac))
             ,   (("Nobody", clientConnect), ("Nobody", NoClientMessage))
             ,   (("Nobody", clientDisconnect), ("Nobody", NoClientMessage))
-            ,   (("One", submitLogin), ("Two", ToAll sendFrac))
-            ,   (("One", changeColour), ("One", ToAll sendNewColours))
+            ,   (("One", submitLogin), ("Two", ToSet sendFrac))
+            ,   (("One", changeColour), ("One", ToSet sendNewColours))
             ,   (("One", clientConnect), ("One", NoClientMessage))
             ,   (("One", clientDisconnect), ("Nobody", NoClientMessage))
-            ,   (("Two", submitLogin), ("Three", ToAll sendFrac))
-            ,   (("Two", changeColour), ("Two", ToAll sendNewColours))
+            ,   (("Two", submitLogin), ("Three", ToSet sendFrac))
+            ,   (("Two", changeColour), ("Two", ToSet sendNewColours))
             ,   (("Two", clientConnect), ("Two", NoClientMessage))
-            ,   (("Two", clientDisconnect), ("One", ToAll sendFrac))
-            ,   (("Three", submitLogin), ("Four", ToAll sendFrac))
-            ,   (("Three", changeColour), ("Three", ToAll sendNewColours))
+            ,   (("Two", clientDisconnect), ("One", ToSet sendFrac))
+            ,   (("Three", submitLogin), ("Four", ToSet sendFrac))
+            ,   (("Three", changeColour), ("Three", ToSet sendNewColours))
             ,   (("Three", clientConnect), ("Three", NoClientMessage))
-            ,   (("Three", clientDisconnect), ("Two", ToAll sendFrac))
+            ,   (("Three", clientDisconnect), ("Two", ToSet sendFrac))
             ,   (("Four", submitLogin), ("Four", NoClientMessage))
-            ,   (("Four", changeColour), ("Four", ToAll sendNewColours))
+            ,   (("Four", changeColour), ("Four", ToSet sendNewColours))
             ,   (("Four", clientConnect), ("Four", NoClientMessage))
-            ,   (("Four", clientDisconnect), ("Three", ToAll sendFrac))
-            ,   (("Four", readyMsg), ("Four", OneOf [AllOf [ToAllExceptSender moreReady, ToSender acknowledgeReady], ToSender readyToStart]))
-            ,   (("Four", startMsg), ("PlayingS", ToAll startGame))
+            ,   (("Four", clientDisconnect), ("Three", ToSet sendFrac))
+            ,   (("Four", readyMsg), ("Four", OneOf [AllOf [ToSet moreReady, ToSender acknowledgeReady], ToSender readyToStart]))
+            ,   (("Four", startMsg), ("PlayingS", ToSet startGame))
             ,   (("PlayingS", clientConnect), ("PlayingS", NoClientMessage))
             ,   (("PlayingS", clientDisconnect), ("PlayingS", NoClientMessage))
-            ,   (("PlayingS", tapMsg), ("PlayingS", ToAll sendTap))
+            ,   (("PlayingS", tapMsg), ("PlayingS", ToSet sendTap))
             ]
 
 testRGB :: ElmCustom

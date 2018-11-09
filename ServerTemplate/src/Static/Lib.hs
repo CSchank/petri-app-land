@@ -65,7 +65,10 @@ fallbackApp :: TQueue CentralMessage -> Application
 fallbackApp centralChan req respond = do
     let url = pathInfo req
     case url of 
-        ["reset"] -> atomically $ writeTQueue centralChan $ SetInternalState $ Static.Init.init
+        ["reset"] ->
+            atomically $ do 
+                writeTQueue centralChan $ SetInternalState $ Static.Init.init
+                writeTQueue centralChan $ ResetClients
         _ -> return ()
     tempQ <- atomically $ giveReceivingQueue centralChan GetCurrentState
     state <- atomically $ readTQueue tempQ

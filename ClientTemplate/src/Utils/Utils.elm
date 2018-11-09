@@ -196,10 +196,10 @@ encodeInt low high n =
                 r = modBy b nn
                 m = nn // b
             in    
-                if nn == 0 then ""
+                if nn < 64 then (String.fromChar <| fromCode <| r + 48)
                 else (String.fromChar <| fromCode <| r + 48) ++ encodeInt_ m
     in
-        encodeInt_ (clamp low high n)
+        encodeInt_ (clamp low high n - low)
 
 decodeInt : Int -> Int -> String -> Result String Int
 decodeInt low high s =
@@ -207,7 +207,7 @@ decodeInt low high s =
         decodeInt_ m s_ = case s_ of
                             f::rest -> (toCode f - 48) * m + decodeInt_ (m*64) rest
                             []      -> 0
-        n = decodeInt_ 1 <| toList s
+        n = (decodeInt_ 1 <| toList s) + low
     in
         if n >= low && n <= high then  Ok <| n
         else                           Err <| "Could not decode " ++ String.fromInt n ++ " as it is outside the range [" ++ String.fromInt low ++ "," ++ String.fromInt high ++ "]."
