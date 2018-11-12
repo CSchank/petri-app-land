@@ -15,7 +15,7 @@ generateAllOf h n =
         name = T.concat["AllOf",nTxt]
         constr = (T.unpack name,[(ElmWildcardType (i2A n),(i2A n),"") | n <- [0..n-1]])
         typ = generateType True False [] $ ElmCustom (T.unpack name) [constr]
-        decl = T.concat["unwrap ",T.intercalate " " $ map (\n -> T.concat["f",T.pack $ show n]) [0..n-1], " ",generatePattern constr," ="]
+        decl = T.concat["unwrap ",T.intercalate " " $ map (\n -> T.concat["f",T.pack $ show n]) [0..n-1], " wl ",generatePattern constr," ="]
         allOf = T.concat["AllOf",nTxt," ",T.intercalate " " $ map (T.pack . i2A) [0..n-1]]
         oneCase n = 
             let
@@ -28,9 +28,9 @@ generateAllOf h n =
             [
                 T.concat["module Static.AllOf.",name," where"]
             ,   typ
-            ,   T.concat["unwrap",(.::.),T.intercalate " -> " (map (\n -> T.concat["(",T.pack $ i2A n, " -> ","a0)"]) [0..n-1])," -> ",allOf," -> [a0]"]
+            ,   T.concat["unwrap",(.::.),T.intercalate " -> " (map (\n -> T.concat["(",T.pack $ i2A n, " -> ","a0)"]) [0..n-1])," -> ([a0] -> a0) -> ",allOf," -> a0"]
             ,   decl
-            ,   T.concat  ["    [",T.intercalate "," $ map oneCase [0..n-1],"]"]
+            ,   T.concat  ["    wl [",T.intercalate "," $ map oneCase [0..n-1],"]"]
             ]
 
 i2A :: Int -> String

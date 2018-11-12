@@ -8,6 +8,8 @@ import Static.ServerTypes
 import Static.Types
 import           Control.Concurrent.STM         (TQueue, atomically, readTQueue,
                                                  writeTQueue, STM, newTQueue)
+import qualified Data.Map.Strict as Dict
+
 
 (|>) :: a -> (a -> b) -> b
 (|>) x f = f x
@@ -17,7 +19,7 @@ infixl 0 |>
 (<|) :: (a -> b) -> a -> b
 (<|) f x = f x
 
-infixl 0 <|
+infixr 0 <|
 
 data Result error value = 
       Err error 
@@ -372,9 +374,23 @@ decodeMaybe ls decodeFn =
         ("N":rest) ->
             (Ok Nothing, rest)
         _ -> (Err "Ran out of items or error while decoding a Maybe.",[])
+
+decodeDict :: Ord a => (Result T.Text [(a,b)], [T.Text]) -> (Result T.Text (Dict a b), [T.Text])
+decodeDict (res,lst) =
+    (rMap Dict.fromList res, lst)
         
 giveReceivingQueue :: TQueue a -> (TQueue b -> a) -> STM (TQueue b)
 giveReceivingQueue commandQueue signalConstructor = do
     channel <- newTQueue
     writeTQueue commandQueue (signalConstructor channel)
     return channel
+
+lLength :: Foldable t => t a -> Int
+lLength = length
+
+pFst = fst
+
+lFoldl :: (a -> b -> b) -> b -> [a] -> b
+lFoldl f init lst = foldl (flip f) init lst
+
+lRange a b = [a..b]

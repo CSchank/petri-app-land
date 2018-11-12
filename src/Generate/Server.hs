@@ -20,6 +20,21 @@ import                  System.FilePath.Posix   ((</>),(<.>))
 import                  Data.Maybe              (mapMaybe,fromMaybe)
 import                  Data.Time               (getCurrentTime)
 
+fnub = S.toList . S.fromList
+
+findReachableTypes :: ElmCustom -> [String]
+findReachableTypes (ElmCustom name constrs) =
+    let
+        edt2Reachable (ElmPair edt0 edt1,_,_) = concatMap edt2Reachable [edt0,edt1]
+        edt2Reachable (ElmTriple edt0 edt1 edt2,_,_) = concatMap edt2Reachable [edt0,edt1,edt2]
+        edt2Reachable (ElmList edt,_,_) = edt2Reachable edt
+        edt2Reachable (ElmDict edt0 edt1,_,_) = concatMap edt2Reachable [edt0,edt1]
+        edt2Reachable (ElmMaybe edt,_,_) = edt2Reachable edt
+        edt2Reachable (ElmType n,_,_) = [n]
+        edt2Reachable _ = []
+    in
+        S.toList $ S.fromList $ concatMap (\(_,edts) -> concatMap edt2Reachable edts) constrs
+
 cm2maybe :: OutgoingClientMessage -> Maybe OutgoingClientMessage
 cm2maybe NoClientMessage       = Nothing
 cm2maybe a = Just a
@@ -64,6 +79,9 @@ generateServer gsvg onlyStatic fp (startCs
                   ,sDiagram
                   ) = 
     let
+        cExtraTypeMap = M.fromList $ map (\(ElmCustom n a) -> (n,ElmCustom n a)) cExtraTlst
+        sExtraTypeMap = M.fromList $ map (\(ElmCustom n a) -> (n,ElmCustom n a)) sExtraTlst
+        
         cState2ConstrMap (ClientState (n,edt)) = (n,(n,edt))
         cState2ConstrMap (ClientStateWithSubs (n,edt) _) = (n,(n,edt))
         cStates = M.fromList $ map cState2ConstrMap cStateslst
@@ -87,7 +105,7 @@ generateServer gsvg onlyStatic fp (startCs
         serverTransitions = S.fromList $ map (\((_,trans),_) -> trans) $ M.toList sDiagram
 
         serverOutgoingMsgs = S.toList $ S.fromList $ mapMaybe (\(_,(_,trans)) -> cm2maybe trans) $ M.toList sDiagram
-        serverOutgoingMsgType = ElmCustom "ClientMessage" $ map (\(n,t) -> ("M"++n,t)) $ concat $ mapMaybe cm2constr serverOutgoingMsgs
+        serverOutgoingMsgType = ElmCustom "ClientMessage" $ map (\(n,t) -> ("M"++n,t)) $ S.toList $ S.fromList $ concat $ mapMaybe cm2constr serverOutgoingMsgs
         serverOutgoingMsgTypeTxt = generateType True True [DOrd,DEq,DShow] serverOutgoingMsgType
 
 
@@ -123,9 +141,11 @@ generateServer gsvg onlyStatic fp (startCs
         clientOutgoingMsgType = ElmCustom "ServerMessage" $ map (\(n,t) -> ("M"++n,t)) clientOutgoingMsgs
         clientOutgoingMsgTypeTxt = generateType False True [DOrd,DEq,DShow] clientOutgoingMsgType
 
+        clientTransFromServer = S.fromList $ mapMaybe (\(_,(_,trans)) -> cm2constr trans) $ M.toList sDiagram
+
         serverWrappedMessagesTxt = T.unlines $ map (\(name,constrs) -> generateType True True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) serverMsgs
         serverWrappedStateTypesTxt = T.unlines $ map (\(name,constrs) -> generateType True True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) $ M.elems sStates
-        serverWrappedOutgoingMsgTxt = T.unlines $ map (\(name,constrs) -> generateType True True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) $ concat $ mapMaybe cm2constr serverOutgoingMsgs
+        serverWrappedOutgoingMsgTxt = T.unlines $ map (\(name,constrs) -> generateType True True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) $ S.toList $ S.fromList $ concat $ mapMaybe cm2constr serverOutgoingMsgs
 
         serverExtraTypes = map snd $ M.toList sExtraT
         serverExtraTypesTxt = T.unlines $ map (generateType True True [DOrd,DEq,DShow]) serverExtraTypes
@@ -362,28 +382,36 @@ generateServer gsvg onlyStatic fp (startCs
                    ]
 
         {-Encoders-}
-        serverOutgoingEncoder = generateEncoder True $ ElmCustom "ClientMessage" $ map (\(n,t) -> ("M"++n,t)) $ concat $ mapMaybe cm2constr serverOutgoingMsgs
-        serverExtraTypesEncoder = T.unlines $ map (generateEncoder True) serverExtraTypes
+        serverOutgoingEncoder = generateEncoder True $ ElmCustom "ClientMessage" $ map (\(n,t) -> ("M"++n,t)) $ fnub $ concat $ mapMaybe cm2constr serverOutgoingMsgs
+        serverOutgoingExtraTypes =
+            mapMaybe (\tn -> M.lookup tn sExtraTypeMap) $ findReachableTypes serverOutgoingMsgType
+        serverExtraTypesEncoder = T.unlines $ map (generateEncoder True) serverOutgoingExtraTypes
         encoderHs = ["{-# LANGUAGE OverloadedStrings #-}\n"
                     ,"module Static.Encode where\n"
                     ,"import Static.Types"
                     ,"import Utils.Utils"
                     ,"import qualified Data.Text as T"
+                    ,"import Data.Map.Strict as Dict"
                     ,serverOutgoingEncoder
                     ,serverExtraTypesEncoder]
 
-        clientEncoder = generateEncoder False serverMsgType
-        clientOutgoingEncoder = generateEncoder False $ ElmCustom "ServerMessage" $ map (\(n,t) -> ("M"++n,t)) clientOutgoingMsgs
-        clientExtraTypesEncoder = T.unlines $ map (generateEncoder False) clientExtraTypes
+        clientOutgoingEncoder = generateEncoder False clientOutgoingMsgType
+        clientOutgoingExtraTypes =
+            mapMaybe (\tn -> M.lookup tn cExtraTypeMap) $ findReachableTypes clientOutgoingMsgType
+        clientExtraTypesEncoder = T.unlines $ map (generateEncoder False) clientOutgoingExtraTypes
         encoderElm = ["module Static.Encode exposing (..)\n"
                     ,"import Static.Types exposing (..)"
                     ,"import Utils.Utils exposing (..)"
+                    ,"import Dict exposing (Dict)"
                     ,clientOutgoingEncoder
                     ,clientExtraTypesEncoder]
 
         {-Decoders-}
-        serverDecoder = generateDecoder True serverMsgType
-        serverExtraTypesDecoder = T.unlines $ map (generateDecoder True) serverExtraTypes
+        serverIncomingMsgType = ElmCustom "ServerMessage" $ map (\(n,t) -> ("M"++n,t)) $ S.toList serverTransFromClient
+        serverDecoder = generateDecoder True serverIncomingMsgType
+        serverIncomingExtraTypes =
+            mapMaybe (\tn -> M.lookup tn sExtraTypeMap) $ findReachableTypes serverIncomingMsgType
+        serverExtraTypesDecoder = T.unlines $ map (generateDecoder True) serverIncomingExtraTypes
         decoderHs = ["{-# LANGUAGE OverloadedStrings #-}\n"
                     ,"module Static.Decode where\n"
                     ,"import Utils.Utils"
@@ -392,14 +420,17 @@ generateServer gsvg onlyStatic fp (startCs
                     ,serverDecoder
                     ,serverExtraTypesDecoder]
 
-        clientDecoder = generateDecoder False clientMsgType
-        clientExtraTypesDecoder = T.unlines $ map (generateDecoder False) clientExtraTypes
+        clientIncomingMsgType = ElmCustom "WrappedClientMessage" $ map (\(n,t) -> ("M"++n,t)) $S.toList serverTransFromClient
+        clientDecoder = generateDecoder False clientIncomingMsgType
+        clientIncomingExtraTypes =
+            mapMaybe (\tn -> M.lookup tn sExtraTypeMap) $ findReachableTypes clientIncomingMsgType
+        clientExtraTypesDecoder = T.unlines $ map (generateDecoder False) clientIncomingExtraTypes
         decoderElm = ["module Static.Decode exposing (..)\n"
-                    ,"import Utils.Utils exposing (..)"
-                    ,"import String"
-                    ,"import Static.Types exposing(..)\n"
-                    ,clientDecoder
-                    ,clientExtraTypesDecoder]
+                     ,"import Utils.Utils exposing (..)"
+                     ,"import String"
+                     ,"import Static.Types exposing(..)\n"
+                     ,clientDecoder
+                     ,clientExtraTypesDecoder]
 
         createServerUserUpdate :: ((String, ServerTransition), (String, OutgoingClientMessage)) -> T.Text
         createServerUserUpdate ((s0,(tn,tetd)),(s1,mCt)) =
@@ -563,13 +594,13 @@ generateServer gsvg onlyStatic fp (startCs
                          ,"import Update\n"
                          ,"import Utils.Utils"
                          ,"--Server state unwrappers"
-                         ,T.concat $ map (createUnwrap True "Model" "S") $ M.elems sStates
+                         ,T.concat $ map (createUnwrap True "Model" "S") $ fnub $ M.elems sStates
                          ,"--Server state wrappers"
-                         ,T.concat $ map (createWrap (length (M.elems sStates) > 1) True "Model" "S") $ M.elems sStates
+                         ,T.concat $ map (createWrap (length (M.elems sStates) > 1) True "Model" "S") $ fnub $ M.elems sStates
                          ,"--Server message wrappers"
-                         ,T.concat $ map (createWrap (length serverMsgs > 1) True "ServerMessage" "M") serverMsgs
+                         ,T.concat $ map (createWrap (length serverMsgs > 1) True "ServerMessage" "M") $ fnub serverMsgs
                          ,"--Client message unwrappers"
-                         ,T.concat $ map (createUnwrap True "ClientMessage" "M") $ concat $ mapMaybe cm2constr serverOutgoingMsgs
+                         ,T.concat $ map (createUnwrap True "ClientMessage" "M") $ fnub $ concat $ mapMaybe cm2constr serverOutgoingMsgs
                          ,"update :: ClientID -> ServerMessage -> Model -> IO (Model, Maybe (InternalCM ClientMessage))"
                          ,"update clientId msg model ="
                          ,"    case (msg, model) of"
@@ -674,7 +705,7 @@ generateServer gsvg onlyStatic fp (startCs
                         ToSenderAnd         ct -> T.concat ["unwrapToSenderAnd ",unwrapMsg ct]
                         ToAll               ct -> T.concat ["unwrapToAll ",unwrapMsg ct]
                         OneOf              cts -> T.concat ["Static.OneOf.OneOf",T.pack $ show $ length cts,".unwrap (",T.intercalate ") (" $ map unwrapMct cts,")"]
-                        AllOf              cts -> T.concat ["ICMAllOf . Static.AllOf.AllOf",T.pack $ show $ length cts,".unwrap (",T.intercalate ") (" $ map unwrapMct cts,")"]
+                        AllOf              cts -> T.concat ["Static.AllOf.AllOf",T.pack $ show $ length cts,".unwrap (",T.intercalate ") (" $ map unwrapMct cts,") ICMAllOf"]
                         NoClientMessage        -> "ICMNoClientMessage"
             in
                 case mCt of

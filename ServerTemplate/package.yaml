@@ -37,19 +37,6 @@ library:
   source-dirs: 
     - src
     - src/userApp
-  exposed-modules:
-    - Init
-    - Static.Decode
-    - Static.Encode
-    - Static.Init
-    - Static.Lib
-    - Static.ServerLogic
-    - Static.ServerTypes
-    - Static.Types
-    - Static.Update
-    - Types
-    - Update
-    - Utils.Utils
 
 executables:
   server-exe:

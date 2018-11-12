@@ -255,3 +255,16 @@ decodeString ls =
     case ls of
         fst::rest -> (Ok fst, rest)
         _ -> (Err "Error decoding string value",[])
+
+decodeDict :: (Result String List (comparable,b), List String) -> (Result T.Text (Dict comparable b), List String)
+decodeDict (res,lst) =
+    (rMap Dict.fromList res, lst)
+
+lLength = List.length
+
+pFst = Tuple.first
+
+lFoldl :: (a -> b -> b) -> b -> [a] -> b
+lFoldl = List.foldl
+
+lRange = List.range

@@ -47,7 +47,7 @@ generateEncoder h (ElmCustom name edts) =
                             encodeEt (indt+2) (et0,n0,d0) ++
                             encodeEt (indt+2) (et1,n1,d1) ++
             indtTxts indt   ["    in"
-                            ,T.concat ["        tConcat [",T.pack n0,"Txt",",",elmDelim,",",T.pack n1,"Txt]"]
+                            ,T.concat ["        tConcat [",T.pack n0,"Txt",",\"",elmDelim,"\",",T.pack n1,"Txt]"]
                             ]
         encodeEt indt (ElmTriple (et0,n0,d0) (et1,n1,d1) (et2,n2,d2), n, _) =
             indtTxts indt $ [T.concat[T.pack n, "Txt ="]
@@ -68,20 +68,16 @@ generateEncoder h (ElmCustom name edts) =
                             ,"                    let"] ++
                             (encodeEt (indt+6) (et, etn, etd)) ++
             indtTxts indt   ["                    in"
-                            ,T.concat["                        (str",T.pack $ show indt," ++ \"",elmDelim,"\" ++ ",T.pack etn,"Txt, rest)"]
+                            ,T.concat["                        (tConcat [str",T.pack $ show indt,",\"",elmDelim,"\",",T.pack etn,"Txt], rest)"]
                             ,T.concat["                [] -> (str",T.pack $ show indt,",",T.pack n,"List)"]
                             ,T.concat["        encode",T.pack n," ls ="]
-                            ,T.concat["            List.foldl encode",T.pack n,"_ (\"\",ls) (List.range 0 (List.length ",T.pack n,"))"]
+                            ,T.concat["            lFoldl encode",T.pack n,"_ (\"\",ls) (lRange 0 (lLength ",T.pack n,"))"]
                             ,"    in"
-                            ,T.concat ["        tConcat [encodeInt 0 16777216 <| List.length ",T.pack n,", Tuple.first <| encode",T.pack n," ",T.pack n,"]"]
+                            ,T.concat ["        tConcat [encodeInt 0 16777216 <| lLength ",T.pack n,", pFst <| encode",T.pack n," ",T.pack n,"]"]
                             ]
         encodeEt indt (ElmDict etd0 etd1, n, _) =
-            error "Dictionaries aren't supported yet."
-            {-indtTxts indt [
-                            T.concat["let"]
-                          , T.concat["    ",T.pack n,T.pack $ " = listDictPairs" ++ show indt]
-                          ] ++
-            encodeEt indt (ElmList (ElmPair etd0 etd1,"dictPair" ++ show indt,""), n, "")-}
+            indtTxts indt $ T.concat [T.pack n,"AsList = Dict.toList ",T.pack n] :
+                encodeEt 0 (ElmList (ElmPair etd0 etd1,"keyValuePairs",""),n++"AsList","")
         encodeEt indt (ElmType name, n, _) =
             indtTxts indt $ [T.concat[T.pack n,"Txt = encode",T.pack name," ",T.pack n]
                             ]
@@ -197,6 +193,11 @@ generateDecoder h (ElmCustom name edts) =
                             ,T.concat ["(",T.strip $ T.intercalate "\n" $ decodeEt (indt+1) etd,") |>"]
                             ,T.concat["    decodeList l",T.pack $ show indt]
                             ]
+        decodeEt indt (ElmDict etd0 etd1, n, _) =
+            indtTxts indt $ [T.strip $ T.unlines $ decodeEt (indt+1) (ElmList (ElmPair etd0 etd1,n++"KeyValPair",""),n++"AsList","")
+                            ,"|> decodeDict"
+                            ]
+                            
         decodeEt indt (ElmType name, n, _) =
             indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"] 
                             ,T.concat["    decode",T.pack name," (r",T.pack $ show (indt-1),",l",T.pack $ show indt,")"]

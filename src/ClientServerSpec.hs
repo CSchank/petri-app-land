@@ -24,8 +24,28 @@ typepass = msg "TypePass" [edt ElmString "password" ""]
 
 wait = cState "Wait" []
 
+viewingLobbies = cState "ViewingLobbies"
+    [
+        edt ElmString "currentUser" ""
+    ,   edt (ElmList $ edt (ElmType "Lobby") "lobby" "") "lobbies" ""
+    ]
 
-haveFrac = cState "HaveFrac" 
+lobby = ec "Lobby"
+    [
+        constructor "Lobby" 
+            [
+                edt (ElmIntRange 0 10000000) "lobbyId" ""
+            ,   edt (ElmIntRange 0 99) "icon" ""
+            ,   edt ElmString "name" ""
+            ,   edt (ElmIntRange 0 4) "numPlayers" ""
+            ]
+    ]
+
+--viewing lobby messages
+joinLobby = msg "JoinLobby" [edt (ElmIntRange 0 10000000) "lobbyId" ""]
+tapJoin = msg "TapJoin" [edt (ElmIntRange 0 10000000) "tappedLobbyId" ""]
+
+inLobby = cState "InLobby"
     [edt frac "fraction" ""
     ,edt maybeColour "c1" ""
     ,edt maybeColour "c2" ""
@@ -34,7 +54,9 @@ haveFrac = cState "HaveFrac"
     ,edt (ElmIntRange 0 3) "numReady" "the number of players that are currently ready"
     ,playerNum
     ,edt (ElmMaybe channel) "draggingChannel" ""
+    ,edt ElmString "objectToDraw" ""
     ]
+
 ready = cState "Ready" 
     [edt frac "fraction" ""
     ,edt colour "c1" ""
@@ -74,7 +96,7 @@ fracType = ec "Frac"
         constructor "Frac" [edt (ElmIntRange 0 1000) "numerator" "",edt (ElmIntRange 1 1000) "denominator" ""]
     ]
 
---HaveFrac messages
+--InLobby messages
 startDragging = msg "StartDragging" [edt (ElmType "Channel") "channel" ""]
 stopDragging = msg "StopDragging" []
 dragging = msg "Dragging" [edt (ElmType "Channel") "channel" "", edt (ElmPair x y) "position" ""]
@@ -148,6 +170,16 @@ playingS = sState "PlayingS"
           "records who last tapped on boxes"
     ]
 
+gameState = ec "GameState" 
+    [one,two,three,four,playingS]
+
+serverState = sState "Idle"
+    [
+        edt (ElmDict (edt clientId "cid" "") (edt ElmString "username" "")) "usersLoggedIn" ""
+    ,   edt (ElmDict (edt clientId "cid" "") (edt (ElmIntRange 0 10000000) "gameId" "")) "user2GameId" ""
+    ,   edt (ElmDict (edt (ElmIntRange 0 10000000) "gameId" "") (edt (ElmType "GameState") "gameState" "")) "gameDict" ""
+    ]
+
 --client outgoing messages
 changeColour = msg "ChangeColour" 
     [
@@ -175,6 +207,28 @@ sendFrac = msg "SendFrac"
     ,edt maybeColour "newP4C" ""
     ]
 
+couldNotJoin = msg "CouldNotJoin" []
+
+acknowledgeJoin = msg "AcknowledgeJoinLobby" 
+    [edt frac "newFrac" ""
+    ,edt (ElmIntRange 0 3) "newPlayer" ""
+    ,edt maybeColour "newP1C" ""
+    ,edt maybeColour "newP2C" ""
+    ,edt maybeColour "newP3C" ""
+    ,edt maybeColour "newP4C" ""
+    ,edt (ElmIntRange 0 99) "icon" ""
+    ,edt ElmString "lobbyName" ""
+    ]
+
+refreshLobby = msg "RefreshLobby" 
+    [edt maybeColour "newP1C" ""
+    ,edt maybeColour "newP2C" ""
+    ,edt maybeColour "newP3C" ""
+    ,edt maybeColour "newP4C" ""
+    ,edt (ElmIntRange 0 99) "icon" ""
+    ,edt ElmString "lobbyName" ""
+    ]
+
 sendNewColours = msg "SendNewColours"
     [edt maybeColour "newP1C" ""
     ,edt maybeColour "newP2C" ""
@@ -195,16 +249,22 @@ acknowledgeReady = msg "AcknowledgeReady"
         edt (ElmIntRange 1 4) "numPlayersReady" ""
     ]
 initTime = msg "InitTime" [edt (ElmIntRange 0 0) "time" ""]
+incorrectLogin = msg "IncorrectLogin" []
+sendLobbies = msg "SendLobbies"
+    [
+        edt (ElmList $ edt (ElmType "Lobby") "lobby" "") "lobbies" ""
+    ]
+sendGameWin = msg "SendGameWin" []
 
 -- the actual app that is to be generated
 clientServerApp :: ClientServerApp
 clientServerApp = (
                 ("Start", Just initTime) --client start state
-             ,  "Nobody" --server start start
-             ,  [start,wait,haveFrac,ready,playing] --client states
-             ,  [nobody,one,two,three,four,playingS]                                 --server states
+             ,  "Idle" --server start start
+             ,  [start,wait,viewingLobbies,inLobby,ready,playing] --client states
+             ,  [serverState]                                 --server states
              ,  [channelType,testRGB,fracType]                            --extra client types
-             ,  [testRGB,fracType]        --extra server types
+             ,  [testRGB,fracType,gameState,lobby]        --extra server types
              ,  csDiagram --client state diagram
              ,  ssDiagram --server state diagram
              )
@@ -213,24 +273,27 @@ clientConnect = ("ClientConnect",[])
 clientDisconnect = ("ClientDisconnect",[])
 
 csDiagram :: ClientStateDiagram
-csDiagram = M.fromList 
+csDiagram = M.fromList
             [
                 (("Start",    login)            ,("Wait",       Nothing,Just submitLogin))
             ,   (("Start",    typeuser)         ,("Start",      Nothing,Nothing))
             ,   (("Start",    typepass)         ,("Start",      Nothing,Nothing))
             ,   (("Start",    initTime)         ,("Start",      Nothing,Nothing))
-            ,   (("Wait",     sendFrac)         ,("HaveFrac",   Nothing,Nothing))
-            ,   (("HaveFrac", startDragging)    ,("HaveFrac",   Nothing,Nothing))
-            ,   (("HaveFrac", stopDragging)     ,("HaveFrac",   Nothing,Nothing))
-            ,   (("HaveFrac", dragging)         ,("HaveFrac",   Nothing,Just changeColour))
-            ,   (("HaveFrac", sendNewColours)   ,("HaveFrac",   Nothing,Nothing))
-            ,   (("HaveFrac", sendFrac)         ,("HaveFrac",   Nothing,Nothing))
-            ,   (("HaveFrac", tapReady)         ,("HaveFrac",   Nothing,Just readyMsg))
-            ,   (("HaveFrac", tapStart)         ,("HaveFrac",   Nothing,Just startMsg))
-            ,   (("HaveFrac", readyToStart)     ,("HaveFrac",   Nothing,Nothing))
-            ,   (("HaveFrac", moreReady)        ,("HaveFrac",   Nothing,Nothing))
-            ,   (("HaveFrac", acknowledgeReady) ,("Ready",      Nothing,Nothing))
-            ,   (("HaveFrac", startGame)        ,("Playing",    Nothing,Nothing))
+            ,   (("Wait",     sendFrac)         ,("InLobby",   Nothing,Nothing))
+            ,   (("ViewingLobbies", tapJoin)    ,("ViewingLobbies",   Nothing, Just joinLobby))
+            ,   (("ViewingLobbies", couldNotJoin),("ViewingLobbies",   Nothing, Nothing))
+            ,   (("ViewingLobbies", acknowledgeJoin),("InLobby",   Nothing, Nothing))
+            ,   (("InLobby", startDragging)    ,("InLobby",   Nothing,Nothing))
+            ,   (("InLobby", stopDragging)     ,("InLobby",   Nothing,Nothing))
+            ,   (("InLobby", dragging)         ,("InLobby",   Nothing,Just changeColour))
+            ,   (("InLobby", sendNewColours)   ,("InLobby",   Nothing,Nothing))
+            ,   (("InLobby", sendFrac)         ,("InLobby",   Nothing,Nothing))
+            ,   (("InLobby", tapReady)         ,("InLobby",   Nothing,Just readyMsg))
+            ,   (("InLobby", tapStart)         ,("InLobby",   Nothing,Just startMsg))
+            ,   (("InLobby", readyToStart)     ,("InLobby",   Nothing,Nothing))
+            ,   (("InLobby", moreReady)        ,("InLobby",   Nothing,Nothing))
+            ,   (("InLobby", acknowledgeReady) ,("Ready",      Nothing,Nothing))
+            ,   (("InLobby", startGame)        ,("Playing",    Nothing,Nothing))
             ,   (("Ready", startGame)           ,("Playing",    Nothing,Nothing))
             ,   (("Ready", moreReady)           ,("Ready",    Nothing,Nothing))
             ,   (("Playing", startPainting)     ,("Playing",    Nothing,Just tapMsg))
@@ -242,7 +305,17 @@ csDiagram = M.fromList
 ssDiagram :: ServerStateDiagram
 ssDiagram = M.fromList 
             [
-                (("Nobody", submitLogin), ("One", ToSet sendFrac))
+                (("Idle", clientConnect), ("Idle", NoClientMessage))
+            ,   (("Idle", clientDisconnect), ("Idle",NoClientMessage))
+            ,   (("Idle", submitLogin), ("Idle", OneOf [ToSender incorrectLogin, ToSender sendLobbies]))
+            ,   (("Idle", joinLobby), ("Idle", AllOf [OneOf [ToSender acknowledgeJoin, ToSender couldNotJoin], ToSet sendLobbies]))
+            ,   (("Idle", changeColour), ("Idle", ToSet sendNewColours))
+            ,   (("Idle", readyMsg), ("Idle", OneOf [AllOf [ToSet moreReady, ToSender acknowledgeReady], ToSender readyToStart]))
+            ,   (("Idle", startMsg), ("Idle", ToSet startGame))
+            ,   (("Idle", tapMsg), ("Idle", OneOf [ToSet sendTap, ToSet sendGameWin]))
+
+
+            {- (("Nobody", submitLogin), ("One", ToSet sendFrac))
             ,   (("Nobody", clientConnect), ("Nobody", NoClientMessage))
             ,   (("Nobody", clientDisconnect), ("Nobody", NoClientMessage))
             ,   (("One", submitLogin), ("Two", ToSet sendFrac))
@@ -265,7 +338,7 @@ ssDiagram = M.fromList
             ,   (("Four", startMsg), ("PlayingS", ToSet startGame))
             ,   (("PlayingS", clientConnect), ("PlayingS", NoClientMessage))
             ,   (("PlayingS", clientDisconnect), ("PlayingS", NoClientMessage))
-            ,   (("PlayingS", tapMsg), ("PlayingS", ToSet sendTap))
+            ,   (("PlayingS", tapMsg), ("PlayingS", ToSet sendTap))-}
             ]
 
 testRGB :: ElmCustom
