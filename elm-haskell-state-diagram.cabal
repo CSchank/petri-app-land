@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: cc73ed8c346f6148156516405a388f885f2911f605dceabcd5548ed8c113bb46
+-- hash: 7380e026132cf6b3a3a4510df8dc8aa67c98af156b451c8dbac32c845ee917ca
 
 name:           elm-haskell-state-diagram
 version:        0.1.0.0
@@ -31,6 +31,7 @@ library
       Generate.AllOf
       Generate.Codec
       Generate.Dot
+      Generate.Helpers
       Generate.OneOf
       Generate.Server
       Generate.Standalone

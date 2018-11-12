@@ -8,9 +8,19 @@ import Data.Map as M
 outputDirectory = "../elm-fraction-drawer/"
 
 --client states
-start = cState "Start" []
-submitLogin = msg "SubmitLogin" []
+start = cState "Start" 
+    [
+        edt ElmString "userfield" ""
+    ,   edt ElmString "passfield" ""
+    ]
+submitLogin = msg "SubmitLogin" 
+    [
+        edt ElmString "username" ""
+    ,   edt ElmString "password" ""
+    ]
 login = msg "Login" []
+typeuser = msg "TypeUser" [edt ElmString "username" ""]
+typepass = msg "TypePass" [edt ElmString "password" ""]
 
 wait = cState "Wait" []
 
@@ -205,7 +215,9 @@ clientDisconnect = ("ClientDisconnect",[])
 csDiagram :: ClientStateDiagram
 csDiagram = M.fromList 
             [
-                (("Start",    login)            ,("Wait",      Nothing,Just submitLogin))
+                (("Start",    login)            ,("Wait",       Nothing,Just submitLogin))
+            ,   (("Start",    typeuser)         ,("Start",      Nothing,Nothing))
+            ,   (("Start",    typepass)         ,("Start",      Nothing,Nothing))
             ,   (("Start",    initTime)         ,("Start",      Nothing,Nothing))
             ,   (("Wait",     sendFrac)         ,("HaveFrac",   Nothing,Nothing))
             ,   (("HaveFrac", startDragging)    ,("HaveFrac",   Nothing,Nothing))
