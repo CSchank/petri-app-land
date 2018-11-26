@@ -7,6 +7,7 @@ import Tuple    exposing    (second)
 import Result
 import Debug
 import String
+import Dict exposing (Dict)
 
 tConcat = String.concat
 
@@ -229,7 +230,7 @@ decodeList ls decodeFn =
             in
                 (aR newRes resL, newLs)
     in
-        List.foldl decodeList_ (Ok [], ls) (List.range 1 n)
+        List.foldl decodeList_ (Ok [], List.drop 1 ls) (List.range 1 n)
         
 decodeMaybe : List String -> ((Result String a, List String) -> (Result String a, List String)) -> (Result String (Maybe a), List String)
 decodeMaybe ls decodeFn =
@@ -256,7 +257,7 @@ decodeString ls =
         fst::rest -> (Ok fst, rest)
         _ -> (Err "Error decoding string value",[])
 
-decodeDict :: (Result String List (comparable,b), List String) -> (Result T.Text (Dict comparable b), List String)
+decodeDict : (Result String (List (comparable,b)), List String) -> (Result String (Dict comparable b), List String)
 decodeDict (res,lst) =
     (rMap Dict.fromList res, lst)
 
@@ -264,7 +265,7 @@ lLength = List.length
 
 pFst = Tuple.first
 
-lFoldl :: (a -> b -> b) -> b -> [a] -> b
+lFoldl : (a -> b -> b) -> b -> List a -> b
 lFoldl = List.foldl
 
 lRange = List.range

@@ -271,7 +271,7 @@ socketHandler response state mdl =
                     let
                         (rincomingMsg,_) = decodeWrappedClientMessage (Err "", String.split "\u{0000}" (Debug.log "Incoming message" message))
                         newCmd = 
-                            case rincomingMsg of 
+                            case (Debug.log "decoded message: " rincomingMsg) of 
                                 Ok incomingMsg -> Task.perform AppMsg (Task.succeed incomingMsg)
                                 Err _ -> Cmd.none
                     in            

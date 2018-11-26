@@ -29,10 +29,12 @@ generateType haskell commentsEnabled deriv (ElmCustom typeName constrs) =
         deriv2Txt DEq = "Eq"
         derivTxt = T.concat ["(",T.intercalate "," $ map deriv2Txt deriv,")"]
     in
+        if length constrs > 0 then
         T.concat [ typ, " ", T.pack typeName, " ", T.intercalate " " typeParams ," =\n      "
                  , T.intercalate "\n    | " constrs2Txt
                  , if length deriv > 0 && haskell then T.concat ["\n    deriving",derivTxt] else ""
                  ]
+        else ""
 
 generateConstructor :: Bool -> Bool -> Constructor -> T.Text
 generateConstructor haskell commentsEnabled (constrName,elmDocTypes) =
