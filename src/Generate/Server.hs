@@ -21,6 +21,7 @@ import                  System.FilePath.Posix   ((</>),(<.>))
 import                  Data.Maybe              (mapMaybe,fromMaybe)
 import                  Data.Time               (getCurrentTime)
 
+fnub :: Ord a => [a] -> [a]
 fnub = S.toList . S.fromList
 
 findReachableTypes :: ElmCustom -> [String]
@@ -73,6 +74,23 @@ generateStateMsgs csD cStates =
                 Nothing     -> Just [(trans,s1,mCmd,mSt)]
     in
         foldl createDict initDict csL
+
+generateStateMsgsServer :: ServerStateDiagram -> [ServerState] -> M.Map String [(Constructor, String, OutgoingClientMessage)]
+generateStateMsgsServer ssD sStates =
+    let
+        initDict = M.fromList $ map 
+            (\cs -> case cs of
+                            (n,_) -> (n,[])
+                    ) sStates
+        ssL = M.toList ssD
+        createDict currDict ((s0,trans),(s1,mCt)) = 
+            M.alter (alterOne (trans,s1,mCt)) s0 currDict
+        alterOne (trans,s1,mCt) mState = 
+            case mState of 
+                Just transs -> Just $ (trans,s1,mCt):transs
+                Nothing     -> Just [(trans,s1,mCt)]
+    in
+        foldl createDict initDict ssL
 
 generateServer :: Bool -> Bool -> FilePath -> ClientServerApp -> IO ()
 generateServer gsvg onlyStatic fp (startCs
@@ -158,6 +176,7 @@ generateServer gsvg onlyStatic fp (startCs
         clientWrappedOutgoingMsgTxt = T.unlines $ map (\(name,constrs) -> generateType False True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) clientOutgoingMsgs
 
         clientS2M = M.toList $ generateStateMsgs cDiagram cStateslst
+        serverS2M = M.toList $ generateStateMsgsServer sDiagram sStateslst
 
         clientViewModules =
             map (\(n,m) -> (n,clientViewModule (n,m))) clientS2M
@@ -170,6 +189,9 @@ generateServer gsvg onlyStatic fp (startCs
         
         clientWrapModules =
             map (\(n,m) -> (n,hiddenWrapModule (n,m))) clientS2M
+
+        serverUpdateModules =
+            map (\(n,m) -> (n,serverUpdateModule (n,m))) serverS2M 
 
         clientS2Subs = mapMaybe (\cs -> 
                         case cs of 
@@ -518,29 +540,21 @@ generateServer gsvg onlyStatic fp (startCs
                     ,   decl
                     ,   ""
                     ]
-
                     
-        userUpdateHs = 
+        serverUpdateModule (stateName, messages) = 
             let
-                oneOfs = 
-                    mapMaybe 
-                        (\(_,(_,mCt)) -> 
-                            case mCt of
-                                OneOf cts -> Just $ length cts
-                                _ -> Nothing
-                        ) $ M.toList sDiagram
-                allOfs = 
-                    mapMaybe 
-                        (\(_,(_,mCt)) -> 
-                            case mCt of
-                                AllOf cts -> Just $ length cts
-                                _ -> Nothing
-                        ) $ M.toList sDiagram
+                oneOfs = fnub $ concat $ mapMaybe
+                    (\(_,_,mCt) -> findOneOfs mCt) $ messages
+                allOfs = fnub $ concat $ mapMaybe
+                    (\(_,_,mCt) -> findAllOfs mCt) $ messages
+                stateTxt = T.pack stateName
             in
-                [
-                "module Update where"
+                T.unlines [
+                T.concat["module Update.",stateTxt," where"]
                 ,"import Static.Types --types are generated from the state diagram, don't remove this import"
                 ,"import Static.ServerTypes"
+                ,T.concat["import Static.Helpers.",stateTxt]
+                ,"import Utils ((|>),(<|))"
                 ,T.unlines $ map (\n -> T.concat ["import Static.OneOf.OneOf",T.pack $ show n," as OneOf",T.pack $ show n]) oneOfs
                 ,T.unlines $ map (\n -> T.concat ["import Static.AllOf.AllOf",T.pack $ show n," (AllOf",T.pack $ show n,"(..))"]) allOfs
                 ,""
@@ -555,26 +569,8 @@ generateServer gsvg onlyStatic fp (startCs
                 ,"         - Message is the message being received"
                 ,"         - Next is the next server state"
                 ,"-}"
-                ,T.unlines $ map createServerUserUpdate $ M.toList sDiagram
+                ,T.unlines $ map (\(m,s1,mCt) -> createServerUserUpdate ((stateName,m),(s1,mCt))) messages,"\n"
                 ]
-        userUpdateElm = [
-                        "module Update exposing(..)"
-                       ,"import Static.Types exposing(..) --types are generated from the state diagram, don't remove this import"
-                       ,"import Utils.Utils exposing(..)"
-                       ,""
-                       ,"{-"
-                       ,"    Fill in the update functions to control the behaviour of your server. Don't change the type declarations or the input definitions"
-                       ,"    of the functions. Types have been tagged with M and R for Message and Return types, respectively. These represent constructors"
-                       ,"    identical to your messages and states and arguments are unwrapped in the background. This ensures your code follows the state"
-                       ,"    diagram you created. If you would like to change these input and return types, edit the state diagram and regenerate the code."
-                       ,""
-                       ,"    The functions are named as follows: updateCurrentMessageNext where"
-                       ,"         - Current is the current server state"
-                       ,"         - Message is the message being received"
-                       ,"         - Next is the next server state"
-                       ,"-}"
-                       ,T.unlines $ map createClientUserUpdate $ M.toList cDiagram
-                       ]
         userTypesHs = ["{-"
                       ,"    Define your own types for internal use here. Note that any types used in the state or messages should be defined in the state"
                       ,"    diagram and generated for use in your program. These types can be used within update / view functions only."
@@ -623,7 +619,7 @@ generateServer gsvg onlyStatic fp (startCs
                          ,"import Static.ServerTypes"
                          ,T.unlines $ map (\n -> T.concat ["import Static.OneOf.OneOf",T.pack $ show n]) serverOneOfs
                          ,T.unlines $ map (\n -> T.concat ["import Static.AllOf.AllOf",T.pack $ show n]) serverAllOfs
-                         ,"import Update\n"
+                         ,T.unlines $ map (\(n,_) -> T.pack $ "import Update."++n) serverS2M
                          ,"import Utils.Utils"
                          ,"--Server state unwrappers"
                          ,T.concat $ map (createUnwrap True "Model" "S") $ fnub $ M.elems sStates
@@ -802,8 +798,9 @@ generateServer gsvg onlyStatic fp (startCs
         writeIfNew (fp </> "server" </> "src" </> "Static" </> "Decode" <.> "hs") $ T.unlines $ disclaimer currentTime : decoderHs
         writeIfNew (fp </> "server" </> "src" </> "Static" </> "Update" <.> "hs") $ T.unlines $ disclaimer currentTime : hiddenUpdateHs
         writeIfNew (fp </> "server" </> "src" </> "Static" </> "Init" <.> "hs")   $ T.unlines $ disclaimer currentTime : staticInitHs
+        createDirectoryIfMissing True $ fp </> "server" </> "src" </> "userApp" </> "Update"
         unless onlyStatic (do
-            writeIfNotExists (fp </> "server" </> "src" </> "userApp" </> "Update" <.> "hs") $ T.unlines userUpdateHs
+            mapM_ (\(n,txt) -> writeIfNotExists (fp </> "server" </> "src" </> "userApp" </> "Update" </> n <.> "hs") txt) serverUpdateModules
             writeIfNotExists (fp </> "server" </> "src" </> "userApp" </> "Types" <.> "hs")  $ T.unlines userTypesHs
             writeIfNotExists (fp </> "server" </> "src" </> "userApp" </> "Init" <.> "hs")   $ T.unlines userInitHs)
 
