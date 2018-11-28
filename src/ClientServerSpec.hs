@@ -22,12 +22,16 @@ login = msg "Login" []
 typeuser = msg "TypeUser" [edt ElmString "username" ""]
 typepass = msg "TypePass" [edt ElmString "password" ""]
 
-wait = cState "Wait" []
+wait = cState "Wait" 
+    [
+        edt ElmString "username" ""
+    ]
 
 viewingLobbies = cState "ViewingLobbies"
     [
         edt ElmString "currentUser" ""
     ,   edt (ElmList $ edt (ElmType "Lobby") "lobby" "") "lobbies" ""
+    ,   edt (ElmIntRange 0 1000000) "scrollPos" ""
     ]
 
 lobby = ec "Lobby"
@@ -37,13 +41,16 @@ lobby = ec "Lobby"
                 edt (ElmIntRange 0 10000000) "lobbyId" ""
             ,   edt (ElmIntRange 0 99) "icon" ""
             ,   edt ElmString "name" ""
-            ,   edt (ElmIntRange 0 4) "numPlayers" ""
+            ,   edt (ElmList (edt ElmString "player" "")) "players" ""
             ]
     ]
 
 --viewing lobby messages
 joinLobby = msg "JoinLobby" [edt (ElmIntRange 0 10000000) "lobbyId" ""]
 tapJoin = msg "TapJoin" [edt (ElmIntRange 0 10000000) "tappedLobbyId" ""]
+tapCreate = msg "TapCreate" []
+tapScrollUp = msg "ScrollUp" []
+tapScrollDn = msg "ScrollDown" []
 
 inLobby = cState "InLobby"
     [edt frac "fraction" ""
@@ -54,6 +61,8 @@ inLobby = cState "InLobby"
     ,edt (ElmIntRange 0 3) "numReady" "the number of players that are currently ready"
     ,playerNum
     ,edt (ElmMaybe channel) "draggingChannel" ""
+    ,edt ElmString "lobbyName" ""
+    ,edt (ElmIntRange 0 1000) "iconId" ""
     ,edt ElmString "objectToDraw" ""
     ]
 
@@ -86,6 +95,22 @@ xCoord = edt (ElmIntRange 0 maxX) "x" ""
 yCoord = edt (ElmIntRange 0 maxY) "y" ""
     
 
+gameWon = cState "GameWon" 
+    [edt frac "fraction" ""
+    ,edt colour "c1" ""
+    ,edt colour "c2" ""
+    ,edt colour "c3" ""
+    ,edt colour "c4" ""
+    ,edt (ElmIntRange 0 3) "playerNum" ""
+    ,edt (ElmDict (edt (ElmPair xCoord yCoord) "key" "coordinate") 
+                  (edt colour "c" "box colour")
+         )
+         "grid" ""
+    ]
+
+-- game won messages
+tapBackToLobby = msg "TapBackToLobby" []
+
 maybeColour = ElmMaybe (edt colour "colour" "")
 colour = (ElmType "Colour")
 channel = edt (ElmType "Channel") "channel" ""
@@ -104,6 +129,8 @@ tapReady = msg "TapReady" []
 tapStart = msg "TapStart" []
 x = edt (ElmFloatRange 0 0 0) "x" ""
 y = edt (ElmFloatRange 0 0 0) "y" ""
+incIcon = msg "IncIcon" []
+dcrIcon = msg "DecIcon" []
 
 --Playing messages
 startPainting = msg "StartPainting" [xCoord, yCoord]
@@ -116,12 +143,14 @@ listFrac = edt (ElmList $ edt frac "fraction" "") "listFrac" ""
 
 one = sState "One" 
     [listFrac
+    , edt ElmString "drawingWord" ""
     , edt colour "client1Colour" ""  
     , edt clientId "client1ID" ""
     ]
 clientId = ElmType "ClientID"
 two = sState "Two" 
     [listFrac
+    , edt ElmString "drawingWord" ""
     , edt colour "client1Colour" ""  
     , edt clientId "client1ID" ""
     , edt colour "client2Colour" ""  
@@ -130,6 +159,7 @@ two = sState "Two"
 
 three = sState "Three" 
     [listFrac
+    , edt ElmString "drawingWord" ""
     , edt colour "client1Colour" ""  
     , edt clientId "client1ID" ""
     , edt colour "client2Colour" ""  
@@ -140,6 +170,7 @@ three = sState "Three"
 
 four = sState "Four" 
     [listFrac
+    , edt ElmString "drawingWord" ""
     , edt colour "client1Colour" ""  
     , edt clientId "client1ID" ""
     , edt colour "client2Colour" ""  
@@ -156,6 +187,7 @@ four = sState "Four"
 
 playingS = sState "PlayingS" 
     [listFrac
+    , edt ElmString "drawingWord" ""
     , edt colour "client1Colour" ""  
     , edt clientId "client1ID" ""
     , edt colour "client2Colour" ""  
@@ -170,15 +202,19 @@ playingS = sState "PlayingS"
           "records who last tapped on boxes"
     ]
 
-gameState = ec "GameState" 
+gameState = ec "GameState"
     [one,two,three,four,playingS]
 
 serverState = sState "Idle"
     [
-        edt (ElmDict (edt clientId "cid" "") (edt ElmString "username" "")) "usersLoggedIn" ""
+        edt (ElmDict (edt ElmString "username" "") (edt ElmString "password" "")) "userAccounts" ""
+    ,   edt (ElmDict (edt clientId "cid" "") (edt ElmString "username" "")) "usersLoggedIn" ""
     ,   edt (ElmDict (edt clientId "cid" "") (edt (ElmIntRange 0 10000000) "gameId" "")) "user2GameId" ""
-    ,   edt (ElmDict (edt (ElmIntRange 0 10000000) "gameId" "") (edt (ElmType "GameState") "gameState" "")) "gameDict" ""
+    ,   edt (ElmDict (edt (ElmIntRange 0 10000000) "gameId" "") gameRecord) "gameDict" ""
+    ,   edt (ElmIntRange 0 1000000) "nextGid" ""
     ]
+
+gameRecord = edt (ElmPair (edt (ElmIntRange 0 1000) "iconId" "") (edt (ElmType "GameState") "gameState" "")) "gameRecord" ""
 
 --client outgoing messages
 changeColour = msg "ChangeColour" 
@@ -194,9 +230,11 @@ tapMsg = msg "Tap"
         xCoord
     ,   yCoord
     ]
-startMsg = msg "SendStart"
-    [
-    ]
+startMsg = msg "SendStart" []
+createLobbyMsg = msg "CreateNewLobby" []
+changeIconMsg = msg "ChangeIcon" [edt (ElmIntRange 0 1000) "iconId" ""]
+
+requestBackToLobby = msg "ReqBackToLobby" []
 --server outgoing messages
 sendFrac = msg "SendFrac" 
     [edt frac "newFrac" ""
@@ -218,6 +256,7 @@ acknowledgeJoin = msg "AcknowledgeJoinLobby"
     ,edt maybeColour "newP4C" ""
     ,edt (ElmIntRange 0 99) "icon" ""
     ,edt ElmString "lobbyName" ""
+    ,edt ElmString "drawingWord" ""
     ]
 
 refreshLobby = msg "RefreshLobby" 
@@ -255,15 +294,16 @@ sendLobbies = msg "SendLobbies"
         edt (ElmList $ edt (ElmType "Lobby") "lobby" "") "lobbies" ""
     ]
 sendGameWin = msg "SendGameWin" []
+updateIcon = msg "UpdateIcon" [edt (ElmIntRange 0 1000) "newIcon" ""]
 
 -- the actual app that is to be generated
 clientServerApp :: ClientServerApp
 clientServerApp = (
                 ("Start", Just initTime) --client start state
              ,  "Idle" --server start start
-             ,  [start,wait,viewingLobbies,inLobby,ready,playing] --client states
+             ,  [start,wait,viewingLobbies,inLobby,ready,playing,gameWon] --client states
              ,  [serverState]                                 --server states
-             ,  [channelType,testRGB,fracType]                            --extra client types
+             ,  [channelType,testRGB,fracType,lobby]                            --extra client types
              ,  [testRGB,fracType,gameState,lobby]        --extra server types
              ,  csDiagram --client state diagram
              ,  ssDiagram --server state diagram
@@ -279,27 +319,37 @@ csDiagram = M.fromList
             ,   (("Start",    typeuser)         ,("Start",      Nothing,Nothing))
             ,   (("Start",    typepass)         ,("Start",      Nothing,Nothing))
             ,   (("Start",    initTime)         ,("Start",      Nothing,Nothing))
-            ,   (("Wait",     sendFrac)         ,("InLobby",   Nothing,Nothing))
+            ,   (("Wait",     incorrectLogin)   ,("Start",   Nothing,Nothing))
+            ,   (("Wait",     sendLobbies)   ,("ViewingLobbies",   Nothing,Nothing))
             ,   (("ViewingLobbies", tapJoin)    ,("ViewingLobbies",   Nothing, Just joinLobby))
             ,   (("ViewingLobbies", couldNotJoin),("ViewingLobbies",   Nothing, Nothing))
             ,   (("ViewingLobbies", acknowledgeJoin),("InLobby",   Nothing, Nothing))
+            ,   (("ViewingLobbies", sendLobbies),("ViewingLobbies",   Nothing, Nothing))
+            ,   (("ViewingLobbies", tapScrollUp),("ViewingLobbies",   Nothing, Nothing))
+            ,   (("ViewingLobbies", tapScrollDn),("ViewingLobbies",   Nothing, Nothing))
+            ,   (("ViewingLobbies", tapCreate),("ViewingLobbies",   Nothing, Just createLobbyMsg))
             ,   (("InLobby", startDragging)    ,("InLobby",   Nothing,Nothing))
             ,   (("InLobby", stopDragging)     ,("InLobby",   Nothing,Nothing))
             ,   (("InLobby", dragging)         ,("InLobby",   Nothing,Just changeColour))
-            ,   (("InLobby", sendNewColours)   ,("InLobby",   Nothing,Nothing))
-            ,   (("InLobby", sendFrac)         ,("InLobby",   Nothing,Nothing))
+            ,   (("InLobby", refreshLobby)     ,("InLobby",   Nothing,Nothing))
+            ,   (("InLobby", updateIcon)          ,("InLobby",   Nothing,Nothing))
             ,   (("InLobby", tapReady)         ,("InLobby",   Nothing,Just readyMsg))
             ,   (("InLobby", tapStart)         ,("InLobby",   Nothing,Just startMsg))
             ,   (("InLobby", readyToStart)     ,("InLobby",   Nothing,Nothing))
             ,   (("InLobby", moreReady)        ,("InLobby",   Nothing,Nothing))
+            ,   (("InLobby", incIcon)    ,("InLobby",   Nothing,Just changeIconMsg))
+            ,   (("InLobby", dcrIcon)    ,("InLobby",   Nothing,Just changeIconMsg))
             ,   (("InLobby", acknowledgeReady) ,("Ready",      Nothing,Nothing))
             ,   (("InLobby", startGame)        ,("Playing",    Nothing,Nothing))
-            ,   (("Ready", startGame)           ,("Playing",    Nothing,Nothing))
-            ,   (("Ready", moreReady)           ,("Ready",    Nothing,Nothing))
-            ,   (("Playing", startPainting)     ,("Playing",    Nothing,Just tapMsg))
-            ,   (("Playing", enterBox)          ,("Playing",    Nothing,Just tapMsg))
-            ,   (("Playing", stopPainting)      ,("Playing",    Nothing,Nothing))
-            ,   (("Playing", sendTap)           ,("Playing",    Nothing,Nothing))
+            ,   (("Ready", startGame)          ,("Playing",    Nothing,Nothing))
+            ,   (("Ready", moreReady)          ,("Ready",    Nothing,Nothing))
+            ,   (("Playing", startPainting)    ,("Playing",    Nothing,Just tapMsg))
+            ,   (("Playing", enterBox)         ,("Playing",    Nothing,Just tapMsg))
+            ,   (("Playing", stopPainting)     ,("Playing",    Nothing,Nothing))
+            ,   (("Playing", sendTap)          ,("Playing",    Nothing,Nothing))
+            ,   (("Playing", sendGameWin)      ,("GameWon",    Nothing,Nothing))
+            ,   (("GameWon", tapBackToLobby)   ,("GameWon",    Nothing,Just requestBackToLobby))
+            ,   (("GameWon", sendLobbies)      ,("ViewingLobbies",    Nothing,Nothing))
             ]
 
 ssDiagram :: ServerStateDiagram
@@ -308,11 +358,14 @@ ssDiagram = M.fromList
                 (("Idle", clientConnect), ("Idle", NoClientMessage))
             ,   (("Idle", clientDisconnect), ("Idle",NoClientMessage))
             ,   (("Idle", submitLogin), ("Idle", OneOf [ToSender incorrectLogin, ToSender sendLobbies]))
-            ,   (("Idle", joinLobby), ("Idle", AllOf [OneOf [ToSender acknowledgeJoin, ToSender couldNotJoin], ToSet sendLobbies]))
-            ,   (("Idle", changeColour), ("Idle", ToSet sendNewColours))
+            ,   (("Idle", joinLobby), ("Idle", OneOf [AllOf [ToSender acknowledgeJoin, ToSet sendLobbies, ToSet refreshLobby], ToSender couldNotJoin]))
+            ,   (("Idle", changeColour), ("Idle", ToSet refreshLobby))
             ,   (("Idle", readyMsg), ("Idle", OneOf [AllOf [ToSet moreReady, ToSender acknowledgeReady], ToSender readyToStart]))
             ,   (("Idle", startMsg), ("Idle", ToSet startGame))
             ,   (("Idle", tapMsg), ("Idle", OneOf [ToSet sendTap, ToSet sendGameWin]))
+            ,   (("Idle", requestBackToLobby), ("Idle", ToSender sendLobbies))
+            ,   (("Idle", createLobbyMsg), ("Idle", AllOf [ToSender acknowledgeJoin, ToSet sendLobbies]))
+            ,   (("Idle", changeIconMsg), ("Idle", AllOf [ToSet updateIcon, ToSet sendLobbies]))
 
 
             {- (("Nobody", submitLogin), ("One", ToSet sendFrac))
