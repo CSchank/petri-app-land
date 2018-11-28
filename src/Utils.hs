@@ -54,3 +54,10 @@ writeIfNew fp txt = do
                 TIO.writeFile fp txt
             else
                 return ()
+
+disclaimer date = T.unlines ["{-"
+                        ,T.concat["    THIS FILE WAS AUTOMATICALLY GENERATED AT ", T.pack $ show date,"."]
+                        , "    IMPORTANT: USE THIS FILE FOR REFERENCE ONLY. YOU SHOULD NOT MODIFY THIS FILE. INSTEAD, MODIFY THE STATE DIAGRAM AND REGENERATE THIS FILE."
+                        , "    MODIFYING ANY FILES INSIDE THE Static DIRECTORY COULD LEAD TO UNEXPECTED ERRORS IN YOUR APP."
+                        ,"-}"
+                        ]

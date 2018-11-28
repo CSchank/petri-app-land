@@ -95,12 +95,6 @@ generateServer gsvg onlyStatic fp (startCs
         cExtraT = M.fromList $ map (\(ElmCustom n constrs) -> (n,ElmCustom n constrs)) cExtraTlst
         sExtraT = M.fromList $ map (\(ElmCustom n constrs) -> (n,ElmCustom n constrs)) sExtraTlst
     
-        disclaimer date = T.unlines ["{-"
-                                ,T.concat["    THIS FILE WAS AUTOMATICALLY GENERATED AT ", T.pack $ show date,"."]
-                                , "    IMPORTANT: USE THIS FILE FOR REFERENCE ONLY. YOU SHOULD NOT MODIFY THIS FILE. INSTEAD, MODIFY THE STATE DIAGRAM AND REGENERATE THIS FILE."
-                                , "    MODIFYING ANY FILES INSIDE THE static DIRECTORY COULD LEAD TO UNEXPECTED ERRORS IN YOUR APP."
-                                ,"-}"
-                                ]
         serverStateTypeTxt = 
             generateType True True [DOrd,DEq,DShow] $ ElmCustom "Model" $ map (\(n,t) -> ("S"++n,t)) $ M.elems sStates
         serverMsgs = S.toList $ serverTransFromClient `S.union` serverTransitions
@@ -134,10 +128,10 @@ generateServer gsvg onlyStatic fp (startCs
             (\(_,(_,mCt)) -> findAllOfs mCt) $ M.toList sDiagram
         
         clientStateTypeTxt = 
-            generateType False True [DOrd,DEq,DShow] $ ElmCustom "Model" $ map (\(n,_) -> (n,[(ElmType ("View."++n++".Model"),"","")])) $ M.elems cStates
+            generateType False True [DOrd,DEq,DShow] $ ElmCustom "Model" $ map (\(n,_) -> (n,[(ElmType ("Static.Types."++n++".Model"),"","")])) $ M.elems cStates
 
         clientUnionMsgTypeTxt = 
-            generateType False True [DOrd,DEq,DShow] $ ElmCustom "ClientMessage" $ map (\(n,_) -> (n,[(ElmType ("View."++n++".Msg"),"","")])) $ M.elems cStates
+            generateType False True [DOrd,DEq,DShow] $ ElmCustom "ClientMessage" $ map (\(n,_) -> (n,[(ElmType ("Static.Types."++n++".Msg"),"","")])) $ M.elems cStates
 
         clientMsgs = S.toList $ S.fromList $ map (\((_,trans),(_,_,_)) -> trans) $ M.toList cDiagram
         clientMsgType = ElmCustom "WrappedClientMessage" $ map (\(n,t) -> ("M"++n,t)) clientMsgs
@@ -168,6 +162,9 @@ generateServer gsvg onlyStatic fp (startCs
         clientViewModules =
             map (\(n,m) -> (n,clientViewModule (n,m))) clientS2M
         
+        clientTypeModules =
+            map (\(n,m) -> (n,clientTypeModule (n,m))) clientS2M
+        
         clientUpdateModules =
             map (\(n,m) -> (n,clientUpdateModule (n,m))) clientS2M        
         
@@ -193,7 +190,7 @@ generateServer gsvg onlyStatic fp (startCs
             in
                 T.unlines 
                     [
-                        T.concat ["module View.",stateTxt, " exposing(view,title,Model(..),Msg(..))\n"]
+                        T.concat ["module View.",stateTxt, " exposing(view,title)\n"]
                     ,   if gsvg then 
                             "import GraphicSVG exposing(..)"
                         else T.unlines 
@@ -201,14 +198,16 @@ generateServer gsvg onlyStatic fp (startCs
                         ,   "import Html.Attributes exposing(..)"
                         ,   "import Html.Events exposing(..)\n"
                         ]
-                    ,   "import Static.Types exposing(..)"
+                    ,   T.concat["import Static.Types.",stateTxt," exposing(..)"]
+                    ,   "import Static.ExtraUserTypes exposing(..)"
+                    ,   T.concat["import Static.Helpers.",stateTxt,"Model exposing(..)"]
                     ,   "import Utils.Utils exposing(error)"
                     ,   "import Dict exposing (Dict)"
                     ,   "-- These types are provided for reference only. Changing them will result in a failure to compile."
                     ,   "-- The model of the state"
-                    ,   generateType False True [DOrd,DEq,DShow] stateType,""
+                    ,   generateType False True [] stateType,""
                     ,   "-- The possible messages to send while in this state"
-                    ,   generateType False True [DOrd,DEq,DShow] moduleType,"\n"
+                    ,   generateType False True [] moduleType,"\n"
                     ,   "--Change the title of the tab / browser here."
                     ,   "title : Model -> String"
                     ,   "title model = "
@@ -219,6 +218,31 @@ generateServer gsvg onlyStatic fp (startCs
                     ,   T.concat["    error \"Please define the view function for the state ", T.pack stateName,"\""]
                     ]
 
+        clientTypeModule (stateName, messages) =
+            let 
+                stateTxt = T.pack stateName
+                justMessages = map (\(m,_,_,_) -> m) messages
+                moduleType = ElmCustom "Msg" justMessages
+                state = fromMaybe ("", []) (M.lookup stateName cStates)
+                stateType = ElmCustom "Model" [state]
+            in
+                T.unlines 
+                    [
+                        T.concat ["module Static.Types.",stateTxt, " exposing(Model(..),Msg(..))\n"]
+                    ,   if gsvg then 
+                            "import GraphicSVG exposing(..)"
+                        else T.unlines 
+                        [   "import Html exposing(..)"
+                        ,   "import Html.Attributes exposing(..)"
+                        ,   "import Html.Events exposing(..)\n"
+                        ]
+                    ,   "import Static.ExtraUserTypes exposing(..)"
+                    ,   "import Utils.Utils exposing(error)"
+                    ,   "import Dict exposing (Dict)"
+                    ,   generateType False True [] stateType,""
+                    ,   "-- The possible messages to send while in this state"
+                    ,   generateType False True [] moduleType,"\n"]
+
         --clientUpdateModule :: (String, (Constructor, String, Maybe ServerTransition))
         clientUpdateModule (stateName, messages) =
             let 
@@ -227,7 +251,9 @@ generateServer gsvg onlyStatic fp (startCs
                 T.unlines 
                     [
                         T.concat ["module Update.",stateTxt," exposing (..)"] -- \n    ( ",T.intercalate "\n    , " updateNames,"\n    )\n"]
-                    ,   T.concat ["import Static.Types exposing(..)"],"\n"
+                    ,   "import Static.Types exposing(..)"
+                    ,   "import Static.ExtraUserTypes exposing(..)"
+                    ,   T.concat["import Static.Helpers.",stateTxt," exposing(..)\n\n"]
                     ,   "import Utils.Utils exposing(error)"
                     ,   T.unlines $ map (\(m,s1,mCmd,mSt) -> createClientUserUpdate ((stateName,m),(s1,mCmd,mSt))) messages,"\n"
                     ]
@@ -240,7 +266,7 @@ generateServer gsvg onlyStatic fp (startCs
                     [
                         T.concat ["module Subs.",stateTxt," exposing (..)"]
                     ,   T.concat ["import Static.Types exposing(..)"]
-                    ,   T.concat ["import View.",stateTxt," exposing (Model)"],"\n"
+                    ,   T.concat ["import Static.Types.",stateTxt," exposing (Model)"],"\n"
                     ,   "import Utils.Utils exposing(error)"
                     ,   T.unlines $ map createClientUserSub subs,"\n"
                     ]
@@ -275,19 +301,19 @@ generateServer gsvg onlyStatic fp (startCs
                     [T.concat["module Static.Wrappers.",T.pack stateName," exposing (..)"]
                     ,"import Static.Types exposing (..)"
                     ,"import Utils.Utils exposing(error)"
-                    ,T.concat["import View.",T.pack stateName," exposing(Model,Msg)"] 
+                    ,T.concat["import Static.Types.",T.pack stateName," exposing(Model,Msg)"] 
                     ,"--Client message wrappers"
-                    ,T.concat $ map (createWrap (length justMessages > 1) False "Msg" ("View."++stateName++".")) justMessages
+                    ,T.concat $ map (createWrap (length justMessages > 1) False "Msg" ("Static.Types."++stateName++".")) justMessages
                     ,"--Client message unwrappers"                    
-                    ,T.concat $ map (createUnwrap False "Msg" ("View."++stateName++".")) justMessages
+                    ,T.concat $ map (createUnwrap False "Msg" ("Static.Types."++stateName++".")) justMessages
                     ,"unwrapCMessage: WrappedClientMessage -> Msg"
                     ,"unwrapCMessage cMsg = case cMsg of"
-                    ,T.unlines $ map (\(n,et) -> T.concat ["    ",generatePattern ("M"++n,et)," -> ",generatePattern ("View."++stateName++"."++n,et)]) justMessages
+                    ,T.unlines $ map (\(n,et) -> T.concat ["    ",generatePattern ("M"++n,et)," -> ",generatePattern ("Static.Types."++stateName++"."++n,et)]) justMessages
                     ,if length justMessages < length clientMsgs then T.concat["    _ -> error \"Incorrect message passed to ",T.pack stateName," state.\""] else ""
                     ,"--Client message wrappers"
                     ,"wrapCMessage: Msg -> WrappedClientMessage"
                     ,"wrapCMessage msg = case msg of"
-                    ,T.unlines $ map (\(n,et) -> T.concat ["    ",generatePattern ("View."++stateName++"."++n,et)," -> ",generatePattern ("M"++n,et)]) justMessages
+                    ,T.unlines $ map (\(n,et) -> T.concat ["    ",generatePattern ("Static.Types."++stateName++"."++n,et)," -> ",generatePattern ("M"++n,et)]) justMessages
                     ]
 
         hiddenClientView =
@@ -347,30 +373,40 @@ generateServer gsvg onlyStatic fp (startCs
                 ,"-}\n"
                 ,"module Static.Types exposing(..)\n"
                 ,"import Dict exposing (Dict)"
+                ,"import Static.ExtraUserTypes exposing(..)"
                 ,"-- Client transitions"
                 ,clientMsgTypeTxt,""
                 ,"-- Outgoing Messages"
                 ,clientOutgoingMsgTypeTxt,""
-                ,"-- Extra internal types"
-                ,clientExtraTypesTxt,""
                 ,"-- Wrapped state types"
                 ,clientWrappedStateTypesTxt
                 ,"-- Wrapped outgoing messages"
                 ,clientWrappedOutgoingMsgTxt
                 ,"-- Wrapped client messages"
                 ,clientWrappedMessagesTxt
-                ]        
+                ]
+
+        extraUserTypesElm =
+                ["{-"
+                ,"    Looking for a place to define your own algebraic data types for internal use? Look at you becoming a real Elm programmer! What a great idea."
+                ,"    However, instead of defining them here, why not define them in userApp/Types.hs instead? We've conveniently created it for you :)"
+                ,"-}\n"
+                ,"module Static.ExtraUserTypes exposing(..)\n"
+                ,"import Dict exposing (Dict)"
+                ,"-- Extra internal types"
+                ,clientExtraTypesTxt,""
+                ]
         
         modelElm = [
                    "module Static.Model exposing(Model(..))"
-                   ,T.unlines $ map (\(n,_) -> T.concat["import View.",T.pack n]) clientS2M
+                   ,T.unlines $ map (\(n,_) -> T.concat["import Static.Types.",T.pack n]) clientS2M
                    ,"-- Client states"
                    ,clientStateTypeTxt,""
                    ]
 
         msgElm = [
                    "module Static.Msg exposing(ClientMessage(..))"
-                   ,T.unlines $ map (\(n,_) -> T.concat["import View.",T.pack n]) clientS2M
+                   ,T.unlines $ map (\(n,_) -> T.concat["import Static.Types.",T.pack n]) clientS2M
                    ,"-- Client states"
                    ,clientUnionMsgTypeTxt,""
                    ]
@@ -395,6 +431,7 @@ generateServer gsvg onlyStatic fp (startCs
         clientExtraTypesEncoder = T.unlines $ map (generateEncoder False) clientOutgoingExtraTypes
         encoderElm = ["module Static.Encode exposing (..)\n"
                     ,"import Static.Types exposing (..)"
+                    ,"import Static.ExtraUserTypes exposing (..)"
                     ,"import Utils.Utils exposing (..)"
                     ,"import Dict exposing (Dict)"
                     ,clientOutgoingEncoder
@@ -422,7 +459,8 @@ generateServer gsvg onlyStatic fp (startCs
         decoderElm = ["module Static.Decode exposing (..)\n"
                      ,"import Utils.Utils exposing (..)"
                      ,"import String"
-                     ,"import Static.Types exposing(..)\n"
+                     ,"import Static.Types exposing(..)"
+                     ,"import Static.ExtraUserTypes exposing(..)\n"
                      ,clientDecoder
                      ,clientExtraTypesDecoder]
 
@@ -603,16 +641,17 @@ generateServer gsvg onlyStatic fp (startCs
 
         hiddenUpdateElm = ["module Static.Update exposing (..)"
                          ,"import Static.Types exposing (..)"
+                         ,"import Static.ExtraUserTypes exposing (..)"
                          ,"import Static.Model exposing (Model)"
                          ,"import Static.Msg exposing (ClientMessage)"
                          ,T.unlines $ map (\(n,_) -> T.pack $ "import Update."++n++" exposing(..)") clientS2M
-                         ,T.unlines $ map (\(n,_) -> T.pack $ "import View." ++ n) clientS2M
+                         ,T.unlines $ map (\(n,_) -> T.pack $ "import Static.Types." ++ n) clientS2M
                          ,T.unlines $ map (\(n,_) -> T.pack $ "import Static.Wrappers." ++ n) clientS2M
                          ,"import Utils.Utils exposing(error)"
                          ,"--Client state unwrappers"
-                         ,T.concat $ map (\(n,et) -> createUnwrap False ("View."++n++".Model") ("View."++n++".") (n,et)) $ M.elems cStates
+                         ,T.concat $ map (\(n,et) -> createUnwrap False ("Static.Types."++n++".Model") ("Static.Types."++n++".") (n,et)) $ M.elems cStates
                          ,"--Client state wrappers"
-                         ,T.concat $ map (\(n,et) -> createWrap False False ("View."++n++".Model") ("View."++n++".") (n,et)) $ M.elems cStates
+                         ,T.concat $ map (\(n,et) -> createWrap False False ("Static.Types."++n++".Model") ("Static.Types."++n++".") (n,et)) $ M.elems cStates
                          ,"--Outgoing message unwrappers"
                          ,T.concat $ map (\(n,et) -> createUnwrap False "ServerMessage" "M" (n,et)) $ clientOutgoingMsgs
                          ,"update : WrappedClientMessage -> Model -> (Model, Maybe (Cmd WrappedClientMessage), Maybe ServerMessage)"
@@ -769,18 +808,23 @@ generateServer gsvg onlyStatic fp (startCs
             writeIfNotExists (fp </> "server" </> "src" </> "userApp" </> "Init" <.> "hs")   $ T.unlines userInitHs)
 
 
-        writeIfNew (fp </> "client" </> "src" </> "static" </> "Types" <.> "elm") $ T.unlines $ disclaimer currentTime : typesElm
+        writeIfNew (fp </> "client" </> "src" </> "Static" </> "Types" <.> "elm") $ T.unlines $ disclaimer currentTime : typesElm
+        writeIfNew (fp </> "client" </> "src" </> "Static" </> "ExtraUserTypes" <.> "elm") $ T.unlines $ disclaimer currentTime : extraUserTypesElm
         --TIO.writeFile (fp </> "client" </> "app" </> "Main" <.> "elm") $ T.unlines $ disclaimer currentTime : [if gsvg then mainElmGSVG else mainElm]
-        writeIfNew (fp </> "client" </> "src" </> "static" </> "Encode" <.> "elm")      $ T.unlines $ disclaimer currentTime : encoderElm
-        writeIfNew (fp </> "client" </> "src" </> "static" </> "Decode" <.> "elm")      $ T.unlines $ disclaimer currentTime : decoderElm
-        writeIfNew (fp </> "client" </> "src" </> "static" </> "Update" <.> "elm")      $ T.unlines $ disclaimer currentTime : hiddenUpdateElm
-        writeIfNew (fp </> "client" </> "src" </> "static" </> "Model" <.> "elm")      $ T.unlines $ disclaimer currentTime : modelElm
-        writeIfNew (fp </> "client" </> "src" </> "static" </> "Msg" <.> "elm")      $ T.unlines $ disclaimer currentTime : msgElm
-        writeIfNew (fp </> "client" </> "src" </> "static" </> "Init" <.> "elm")      $ T.unlines $ disclaimer currentTime : staticInitElm
-        writeIfNew (fp </> "client" </> "src" </> "static" </> "View" <.> "elm")      $ T.unlines $ disclaimer currentTime : [hiddenClientView]
-        writeIfNew (fp </> "client" </> "src" </> "static" </> "Subs" <.> "elm")      $ T.unlines $ disclaimer currentTime : hiddenSubsElm
+        writeIfNew (fp </> "client" </> "src" </> "Static" </> "Encode" <.> "elm")      $ T.unlines $ disclaimer currentTime : encoderElm
+        writeIfNew (fp </> "client" </> "src" </> "Static" </> "Decode" <.> "elm")      $ T.unlines $ disclaimer currentTime : decoderElm
+        writeIfNew (fp </> "client" </> "src" </> "Static" </> "Update" <.> "elm")      $ T.unlines $ disclaimer currentTime : hiddenUpdateElm
+        writeIfNew (fp </> "client" </> "src" </> "Static" </> "Model" <.> "elm")      $ T.unlines $ disclaimer currentTime : modelElm
+        writeIfNew (fp </> "client" </> "src" </> "Static" </> "Msg" <.> "elm")      $ T.unlines $ disclaimer currentTime : msgElm
+        writeIfNew (fp </> "client" </> "src" </> "Static" </> "Init" <.> "elm")      $ T.unlines $ disclaimer currentTime : staticInitElm
+        writeIfNew (fp </> "client" </> "src" </> "Static" </> "View" <.> "elm")      $ T.unlines $ disclaimer currentTime : [hiddenClientView]
+        writeIfNew (fp </> "client" </> "src" </> "Static" </> "Subs" <.> "elm")      $ T.unlines $ disclaimer currentTime : hiddenSubsElm
         
-        mapM_ (\(n,txt) -> writeIfNew (fp </> "client" </> "src" </> "static" </> "Wrappers" </> n <.> "elm") $ T.concat [disclaimer currentTime, "\n", txt]) clientWrapModules
+        mapM_ (\(n,txt) -> writeIfNew (fp </> "client" </> "src" </> "Static" </> "Wrappers" </> n <.> "elm") $ T.concat [disclaimer currentTime, "\n", txt]) clientWrapModules
+        createDirectoryIfMissing True $ fp </> "client" </> "src" </> "Static" </> "Types"
+        mapM_ (\(n,txt) -> writeIfNew (fp </> "client" </> "src" </> "Static" </> "Types" </> n <.> "elm") $ T.concat [disclaimer currentTime, "\n", txt]) clientTypeModules
+
+
         unless onlyStatic (do
             mapM_ (\(n,txt) -> writeIfNotExists (fp </> "client" </> "src" </> "userApp" </> "View" </> n <.> "elm") txt) clientViewModules
             mapM_ (\(n,txt) -> writeIfNotExists (fp </> "client" </> "src" </> "userApp" </> "Update" </> n <.> "elm") txt) clientUpdateModules

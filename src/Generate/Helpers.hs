@@ -9,12 +9,14 @@ import                  System.FilePath.Posix   ((</>),(<.>))
 import Generate.Types
 import Data.Char (toUpper)
 import Utils
+import                  Data.Time               (getCurrentTime)
 
 generateHelpers :: FilePath -> [Constructor] -> [Constructor] -> IO ()
 generateHelpers fp cStates sStates = do
-    mapM_ (\(sn,edt) -> writeIfNew (fp </> "server" </> "src" </> "Static" </> "Helpers" </> sn <.> "hs") $ generateHelper True (sn,edt) False) sStates 
-    mapM_ (\(sn,edt) -> writeIfNew (fp </> "client" </> "src" </> "Static" </> "Helpers" </> sn <.> "elm") $ generateHelper False (sn,edt) False) cStates
-    mapM_ (\(sn,edt) -> writeIfNew (fp </> "client" </> "src" </> "Static" </> "Helpers" </> sn ++ "Model" <.> "elm") $ generateHelper False (sn,edt) True) cStates
+    currentTime <- getCurrentTime
+    mapM_ (\(sn,edt) -> writeIfNew (fp </> "server" </> "src" </> "Static" </> "Helpers" </> sn <.> "hs") $ T.unlines $ disclaimer currentTime : [generateHelper True (sn,edt) False]) sStates
+    mapM_ (\(sn,edt) -> writeIfNew (fp </> "client" </> "src" </> "Static" </> "Helpers" </> sn <.> "elm") $ T.unlines $ disclaimer currentTime : [generateHelper False (sn,edt) False]) cStates
+    mapM_ (\(sn,edt) -> writeIfNew (fp </> "client" </> "src" </> "Static" </> "Helpers" </> sn ++ "Model" <.> "elm") $ T.unlines $ disclaimer currentTime : [generateHelper False (sn,edt) True]) cStates
 
 generateHelper :: Bool -> Constructor -> Bool -> T.Text
 generateHelper h (sn,edts) getOnly =
@@ -30,7 +32,7 @@ generateHelper h (sn,edts) getOnly =
             in T.unlines
                 [
                     T.concat [fnName .::. if getOnly then "Model" else snTxt," -> ",et2Txt h False et]
-                ,   T.concat [fnName," ",generatePattern (if getOnly then "View."++sn++"."++sn else sn,newEdts)," = ",nTxt]
+                ,   T.concat [fnName," ",generatePattern (if getOnly then "Static.Types."++sn++"."++sn else sn,newEdts)," = ",nTxt]
                 ]
         generateSetter (et,n,_) =
             let
@@ -63,9 +65,9 @@ generateHelper h (sn,edts) getOnly =
                 if h then T.concat ["module Static.Helpers.",snTxt," where\n\nimport Data.Map as Dict"]
                 else      T.concat ["module Static.Helpers.",snTxt,if getOnly then "Model" else ""," exposing (..)\nimport Dict exposing (Dict)"]
             ,   if getOnly then 
-                    T.concat ["import View.",snTxt," exposing(Model(..))"] 
+                    T.concat ["import Static.Types.",snTxt," exposing(Model(..))"] 
                 else ""
-            ,   T.concat ["import Static.Types",if not h then " exposing(..)" else ""]
+            ,   T.concat ["import Static.Types",if not h then " exposing(..)\nimport Static.ExtraUserTypes exposing(..)" else ""]
             ,   T.unlines $ map generateGetter edts
             ] ++
                 if not getOnly then  
