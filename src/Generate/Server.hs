@@ -791,28 +791,8 @@ generateServer gsvg onlyStatic fp (startCs
 
         createDirectoryIfMissing True $ fp </> "client" </> "src" </> "Static" </> "Standalone" 
         generateStandalones cExtraTlst fp cStateslst
-       -- generateHelpers fp 
+        createDirectoryIfMissing True $ fp </> "server" </> "src" </> "Static" </> "Helpers"
+        createDirectoryIfMissing True $ fp </> "client" </> "src" </> "Static" </> "Helpers"
+        generateHelpers fp (M.elems cStates) sStateslst
 
         print serverTransitions
-
-writeIfNotExists :: FilePath -> T.Text -> IO ()
-writeIfNotExists fp txt = do
-    exists <- doesFileExist fp
-    Prelude.putStrLn $ fp ++ " exists:" ++ show exists
-    unless exists $ TIO.writeFile fp txt
-
--- write the file if more than one line (the date line) has changed
-writeIfNew :: FilePath -> T.Text -> IO ()
-writeIfNew fp txt = do
-    exists <- doesFileExist fp
-    if not exists then do
-            Prelude.putStrLn $ fp ++ " exists:" ++ show exists
-            unless exists $ TIO.writeFile fp txt
-         else do
-            currentLines <- return . T.lines =<< TIO.readFile fp
-            let diffLines = filter (\(a,b) -> a /= b) $ zip currentLines (T.lines txt)
-            Prelude.putStrLn $ "Differences in " ++ fp ++ " : " ++ show (length diffLines)
-            if length diffLines > 1 then
-                TIO.writeFile fp txt
-            else
-                return ()

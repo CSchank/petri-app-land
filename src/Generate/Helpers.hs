@@ -2,67 +2,80 @@
 
 
 module Generate.Helpers where
-{-
-import ClientServerSpec
+
 import Types
 import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
-import qualified Data.Set as S
-import qualified Data.Map as M
 import                  System.FilePath.Posix   ((</>),(<.>))
 import Generate.Types
 import Data.Char (toUpper)
+import Utils
 
-generateHelpers :: FilePath -> Bool -> [Constructor] -> IO ()
-generateHelpers fp h states =
-    mapM_ (\(sn,edt) -> TIO.writeFile (fp </> "server" </> "src" </> "Static" </> "Helpers" </> sn <.> "hs") $ generateHelper h (sn,edt)) states
+generateHelpers :: FilePath -> [Constructor] -> [Constructor] -> IO ()
+generateHelpers fp cStates sStates = do
+    mapM_ (\(sn,edt) -> writeIfNew (fp </> "server" </> "src" </> "Static" </> "Helpers" </> sn <.> "hs") $ generateHelper True (sn,edt) False) sStates 
+    mapM_ (\(sn,edt) -> writeIfNew (fp </> "client" </> "src" </> "Static" </> "Helpers" </> sn <.> "elm") $ generateHelper False (sn,edt) False) cStates
+    mapM_ (\(sn,edt) -> writeIfNew (fp </> "client" </> "src" </> "Static" </> "Helpers" </> sn ++ "Model" <.> "elm") $ generateHelper False (sn,edt) True) cStates
 
-
-
-generateHelper :: Bool -> Constructor -> T.Text
-generateHelper h (sn,edts) =
+generateHelper :: Bool -> Constructor -> Bool -> T.Text
+generateHelper h (sn,edts) getOnly =
     let
+        (.::.) t0 t1 = if h then T.concat [t0," :: ",t1] else T.concat[t0," : ",t1]
         snTxt = T.pack sn
 
-        generateGetter (et,n,d) =
+        generateGetter (et,n,_) =
             let
                 nTxt = T.pack n
                 fnName = T.concat["get",capitalize nTxt]
+                newEdts = map (\(et,nn,dd) -> if nn == n then (et,nn,dd) else (et,"_",dd)) edts 
             in T.unlines
                 [
-                    T.concat [fnName," :: Model -> ",et2Txt h False et]
-                ,   T.concat [fnName," (",generatePattern (sn,edts),") =",nTxt]
+                    T.concat [fnName .::. if getOnly then "Model" else snTxt," -> ",et2Txt h False et]
+                ,   T.concat [fnName," ",generatePattern (if getOnly then "View."++sn++"."++sn else sn,newEdts)," = ",nTxt]
                 ]
-        generateSetter (et,n,d) =
-            let
-                nTxt = T.pack n
-                fnName = T.concat["set",capitalize nTxt]
-            in T.unlines
-                [
-                    T.concat [fnName," :: Model -> ",et2Txt h False et]
-                ,   T.concat [fnName," (",generatePattern (sn,edts),") =",nTxt]
-                ]
-        {-generateUpdater (et,n,d) =
+        generateSetter (et,n,_) =
             let
                 nTxt = T.pack n
                 fnName = T.concat["update",capitalize nTxt]
+                newValue = map (\(ett,nn,dd) -> if nn == n then (ett,"new"++nn,dd) else (ett,nn,dd)) edts
             in T.unlines
                 [
-                    T.concat [fnName," : Model -> ",et2Txt h False et]
-                ,   T.concat [fnName," (",generatePattern (sn,edts),") =",nTxt]
-                ]-}
+                    T.concat [fnName .::. et2Txt h False et, " -> ",snTxt, " -> ",snTxt]
+                ,   T.concat [fnName," new",nTxt," ",generatePattern (sn,edts)," = ", generatePattern (sn,newValue)]
+                ]
+        generateUpdater (et,n,_) =
+            let
+                nTxt = T.pack n
+                fnName = T.concat["alter",capitalize nTxt]
+                newValue = map (\(ett,nn,dd) -> if nn == n then (ett,"new"++nn,dd) else (ett,nn,dd)) edts
+            in T.unlines
+                [
+                    T.concat [fnName .::. "(",et2Txt h False et," -> ",et2Txt h False et,") -> ",snTxt," -> ",snTxt]
+                ,   T.concat [fnName," f ",generatePattern (sn,edts)," = "]
+                ,   T.concat ["    let"]
+                ,   T.concat ["        new",nTxt," = f ",nTxt]
+                ,   T.concat ["    in"]
+                ,   T.concat ["        ",generatePattern (sn,newValue)]
+                ]
 
     in
         T.unlines 
-            [
-                T.concat ["module Helpers.",snTxt," where"]
-            ,   T.concat ["import Static.Types"]
+            ([
+                if h then T.concat ["module Static.Helpers.",snTxt," where\n\nimport Data.Map as Dict"]
+                else      T.concat ["module Static.Helpers.",snTxt,if getOnly then "Model" else ""," exposing (..)\nimport Dict exposing (Dict)"]
+            ,   if getOnly then 
+                    T.concat ["import View.",snTxt," exposing(Model(..))"] 
+                else ""
+            ,   T.concat ["import Static.Types",if not h then " exposing(..)" else ""]
             ,   T.unlines $ map generateGetter edts
-            ,   T.unlines $ map generateSetter edts
-            ]
+            ] ++
+                if not getOnly then  
+                [
+                    T.unlines $ map generateSetter edts
+                ,   T.unlines $ map generateUpdater edts
+                ] else [])
 
 capitalize :: T.Text -> T.Text
 capitalize txt =
     case T.unpack txt of
         h:rest -> T.pack $ toUpper h : rest
-        _ -> txt-}
+        _ -> txt

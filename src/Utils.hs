@@ -1,8 +1,17 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Utils where
 
 import System.Process ( spawnCommand, waitForProcess )
 import Data.List (intercalate)
 import                  System.FilePath.Posix
+import                  Data.Maybe              (mapMaybe,fromMaybe)
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
+import                  System.Directory
+import                  Control.Monad (unless)
+
+
 
 
 --mkCmd :: String -> [String] -> String
@@ -16,3 +25,32 @@ copyDirectory source target = do
     return ()
 
 (|>) = flip ($)
+
+--https://stackoverflow.com/questions/21349408/zip-with-default-value-instead-of-dropping-values
+zipWithDefault :: (Eq t0, Eq t1) => t0 -> t1 -> [t0] -> [t1] -> [(t0,t1)]
+zipWithDefault dx dy xl yl = 
+  map (\(x,y) -> (fromMaybe dx x, fromMaybe dy y)) $ 
+    takeWhile (/= (Nothing, Nothing)) $ 
+    zip ((map Just xl) ++ (repeat Nothing)) ((map Just yl) ++ (repeat Nothing))
+
+writeIfNotExists :: FilePath -> T.Text -> IO ()
+writeIfNotExists fp txt = do
+    exists <- doesFileExist fp
+    Prelude.putStrLn $ fp ++ " exists:" ++ show exists
+    unless exists $ TIO.writeFile fp txt
+
+-- write the file if more than one line (the date line) has changed
+writeIfNew :: FilePath -> T.Text -> IO ()
+writeIfNew fp txt = do
+    exists <- doesFileExist fp
+    if not exists then do
+            Prelude.putStrLn $ fp ++ " exists:" ++ show exists
+            unless exists $ TIO.writeFile fp txt
+         else do
+            currentLines <- return . T.lines =<< TIO.readFile fp
+            let diffLines = filter (\(a,b) -> a /= b) $ zipWithDefault "" "" currentLines (T.lines txt)
+            Prelude.putStrLn $ "Differences in " ++ fp ++ " : " ++ show (length diffLines)
+            if length diffLines > 1 then
+                TIO.writeFile fp txt
+            else
+                return ()
