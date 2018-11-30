@@ -30,14 +30,15 @@ generateStandalone ecMap (sn,edts) =
             [
                 T.concat ["module Standalone.",snTxt," exposing(..)"]
             ,   "import GraphicSVG exposing(..)"
-            ,   T.concat ["import View.",snTxt," exposing (Model,Msg)"]
+            ,   T.concat ["import View.",snTxt]
+            ,   T.concat ["import Static.Types.",snTxt," exposing (Model(..),Msg)"]
             ,   T.concat ["import Utils.Utils exposing (error)"]
-            ,   T.concat ["import Static.Types exposing(..)"]
+            ,   T.concat ["import Static.ExtraUserTypes exposing(..)"]
             ,   T.concat ["import Dict exposing (Dict)"]
             ,   T.concat ["import Json.Decode as D"],""
             ,   "main : EllieApp D.Value Model Msg"
             ,   T.concat ["main = ellieApp { init = \\_ -> (model, Cmd.none), view = \\m -> { body = View.",snTxt,".view m, title = View.",snTxt,".title m }, update = \\_ m -> (m,Cmd.none), subscriptions = \\_ -> Sub.none }"],""
             ,   "--Change the model here to preview your state"
             ,   T.concat["model : Model"]
-            ,   T.concat["model = View.",snTxt,".",constr2Def ecMap (sn,edts)]
+            ,   T.concat["model = ",constr2Def ecMap (sn,edts)]
             ]

@@ -347,7 +347,8 @@ csDiagram = M.fromList
             ,   (("Playing", enterBox)         ,("Playing",    Nothing,Just tapMsg))
             ,   (("Playing", stopPainting)     ,("Playing",    Nothing,Nothing))
             ,   (("Playing", sendTap)          ,("Playing",    Nothing,Nothing))
-            ,   (("Playing", sendGameWin)      ,("GameWon",    Nothing,Nothing))
+            ,   (("Playing", sendGameWin)      ,("Playing",    Nothing,Nothing))
+           -- ,   (("Playing", sendGameNotWon)   ,("Playing",    Nothing,Nothing))
             ,   (("GameWon", tapBackToLobby)   ,("GameWon",    Nothing,Just requestBackToLobby))
             ,   (("GameWon", sendLobbies)      ,("ViewingLobbies",    Nothing,Nothing))
             ]
