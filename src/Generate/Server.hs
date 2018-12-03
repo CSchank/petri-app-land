@@ -75,7 +75,7 @@ generateStateMsgs csD cStates =
     in
         foldl createDict initDict csL
 
-generateStateMsgsServer :: ServerStateDiagram -> [ServerState] -> M.Map String [(Constructor, String, OutgoingClientMessage)]
+generateStateMsgsServer :: ServerStateDiagram -> [ServerState] -> M.Map String [(Constructor, String, Maybe ServerCmd, OutgoingClientMessage)]
 generateStateMsgsServer ssD sStates =
     let
         initDict = M.fromList $ map 
@@ -83,12 +83,12 @@ generateStateMsgsServer ssD sStates =
                             (n,_) -> (n,[])
                     ) sStates
         ssL = M.toList ssD
-        createDict currDict ((s0,trans),(s1,mCt)) = 
-            M.alter (alterOne (trans,s1,mCt)) s0 currDict
-        alterOne (trans,s1,mCt) mState = 
+        createDict currDict ((s0,trans),(s1,mCmd,mCt)) = 
+            M.alter (alterOne (trans,s1,mCmd,mCt)) s0 currDict
+        alterOne (trans,s1,mCmd,mCt) mState = 
             case mState of 
-                Just transs -> Just $ (trans,s1,mCt):transs
-                Nothing     -> Just [(trans,s1,mCt)]
+                Just transs -> Just $ (trans,s1,mCmd,mCt):transs
+                Nothing     -> Just [(trans,s1,mCmd,mCt)]
     in
         foldl createDict initDict ssL
 
@@ -122,7 +122,7 @@ generateServer gsvg onlyStatic fp (startCs
         serverTransFromClient = S.fromList $ mapMaybe (\(_,(_,_,trans)) -> trans) $ M.toList cDiagram
         serverTransitions = S.fromList $ map (\((_,trans),_) -> trans) $ M.toList sDiagram
 
-        serverOutgoingMsgs = S.toList $ S.fromList $ mapMaybe (\(_,(_,trans)) -> cm2maybe trans) $ M.toList sDiagram
+        serverOutgoingMsgs = S.toList $ S.fromList $ mapMaybe (\(_,(_,_,trans)) -> cm2maybe trans) $ M.toList sDiagram
         serverOutgoingMsgType = ElmCustom "ClientMessage" $ map (\(n,t) -> ("M"++n,t)) $ S.toList $ S.fromList $ concat $ mapMaybe cm2constr serverOutgoingMsgs
         serverOutgoingMsgTypeTxt = generateType True True [DOrd,DEq,DShow] serverOutgoingMsgType
 
@@ -134,7 +134,7 @@ generateServer gsvg onlyStatic fp (startCs
                 _ -> Nothing
 
         serverOneOfs = S.toList $ S.fromList $ concat $ mapMaybe
-            (\(_,(_,mCt)) -> findOneOfs mCt) $ M.toList sDiagram
+            (\(_,(_,_,mCt)) -> findOneOfs mCt) $ M.toList sDiagram
         
         findAllOfs ct = 
             case ct of
@@ -143,7 +143,7 @@ generateServer gsvg onlyStatic fp (startCs
                 _ -> Nothing
         
         serverAllOfs = S.toList $ S.fromList $ concat $ mapMaybe
-            (\(_,(_,mCt)) -> findAllOfs mCt) $ M.toList sDiagram
+            (\(_,(_,_,mCt)) -> findAllOfs mCt) $ M.toList sDiagram
         
         clientStateTypeTxt = 
             generateType False True [DOrd,DEq,DShow] $ ElmCustom "Model" $ map (\(n,_) -> (n,[(ElmType ("Static.Types."++n++".Model"),"","")])) $ M.elems cStates
@@ -159,7 +159,7 @@ generateServer gsvg onlyStatic fp (startCs
         clientOutgoingMsgType = ElmCustom "ServerMessage" $ map (\(n,t) -> ("M"++n,t)) clientOutgoingMsgs
         clientOutgoingMsgTypeTxt = generateType False True [DOrd,DEq,DShow] clientOutgoingMsgType
 
-        clientTransFromServer = S.fromList $ concat $ mapMaybe (\(_,(_,trans)) -> cm2constr trans) $ M.toList sDiagram
+        clientTransFromServer = S.fromList $ concat $ mapMaybe (\(_,(_,_,trans)) -> cm2constr trans) $ M.toList sDiagram
 
         serverWrappedMessagesTxt = T.unlines $ map (\(name,constrs) -> generateType True True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) serverMsgs
         serverWrappedStateTypesTxt = T.unlines $ map (\(name,constrs) -> generateType True True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) $ M.elems sStates
@@ -486,8 +486,8 @@ generateServer gsvg onlyStatic fp (startCs
                      ,clientDecoder
                      ,clientExtraTypesDecoder]
 
-        createServerUserUpdate :: ((String, ServerTransition), (String, OutgoingClientMessage)) -> T.Text
-        createServerUserUpdate ((s0,(tn,tetd)),(s1,mCt)) =
+        createServerUserUpdate :: ((String, ServerTransition), (String, Maybe ServerCmd, OutgoingClientMessage)) -> T.Text
+        createServerUserUpdate ((s0,(tn,tetd)),(s1,mCmd,mCt)) =
             let
                 (.::.) = " :: "
                 (_,s0Cons) = case M.lookup s0 sStates of
@@ -504,9 +504,11 @@ generateServer gsvg onlyStatic fp (startCs
                 ocm2Txt (ToAll (ctn,_))             = T.concat["ToAll ",T.pack ctn]
                 ocm2Txt (OneOf ocms)                = T.concat["OneOf",T.pack $ show $ length ocms," (",T.intercalate ") (" $ map ocm2Txt ocms,")"]
                 ocm2Txt (AllOf ocms)                = T.concat["AllOf",T.pack $ show $ length ocms," (",T.intercalate ") (" $ map ocm2Txt ocms,")"]
-                typE = case mCt of                                                    
-                            NoClientMessage -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> ",T.pack s1]
-                            ocm             -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> (",T.pack s1,",",ocm2Txt ocm,")"]
+                typE = case (mCt,mCmd) of                                                    
+                    (NoClientMessage, Nothing)          -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> ",T.pack s1]
+                    (NoClientMessage, Just (cmdn,_))    -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", Cmd ",T.pack cmdn,")"]
+                    (ocm,Nothing)                       -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> (",T.pack s1,",",ocm2Txt ocm,")"]
+                    (ocm,Just (cmdn,_))                 -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", Cmd ",T.pack cmdn,")",",",ocm2Txt ocm,")"]
 
                 decl = T.concat [name, " clientId ", generatePattern (tn,tetd), generatePattern (s0,s0Cons), "=\n    ","error \"Update function ",name," not defined. Please define it in userApp/Update.hs.\""]
             in
@@ -544,9 +546,9 @@ generateServer gsvg onlyStatic fp (startCs
         serverUpdateModule (stateName, messages) = 
             let
                 oneOfs = fnub $ concat $ mapMaybe
-                    (\(_,_,mCt) -> findOneOfs mCt) $ messages
+                    (\(_,_,_,mCt) -> findOneOfs mCt) $ messages
                 allOfs = fnub $ concat $ mapMaybe
-                    (\(_,_,mCt) -> findAllOfs mCt) $ messages
+                    (\(_,_,_,mCt) -> findAllOfs mCt) $ messages
                 stateTxt = T.pack stateName
             in
                 T.unlines [
@@ -569,7 +571,7 @@ generateServer gsvg onlyStatic fp (startCs
                 ,"         - Message is the message being received"
                 ,"         - Next is the next server state"
                 ,"-}"
-                ,T.unlines $ map (\(m,s1,mCt) -> createServerUserUpdate ((stateName,m),(s1,mCt))) messages,"\n"
+                ,T.unlines $ map (\(m,s1,mCmd,mCt) -> createServerUserUpdate ((stateName,m),(s1,mCmd,mCt))) messages,"\n"
                 ]
         userTypesHs = ["{-"
                       ,"    Define your own types for internal use here. Note that any types used in the state or messages should be defined in the state"
@@ -627,9 +629,11 @@ generateServer gsvg onlyStatic fp (startCs
                          ,T.concat $ map (createWrap (length (M.elems sStates) > 1) True "Model" "S") $ fnub $ M.elems sStates
                          ,"--Server message wrappers"
                          ,T.concat $ map (createWrap (length serverMsgs > 1) True "ServerMessage" "M") $ fnub serverMsgs
+                         ,"--Server message unwrappers"
+                         ,T.concat $ map (createUnwrap (length serverMsgs > 1) "ServerMessage" "M") $ fnub serverMsgs
                          ,"--Client message unwrappers"
                          ,T.concat $ map (createUnwrap True "ClientMessage" "M") $ fnub $ concat $ mapMaybe cm2constr serverOutgoingMsgs
-                         ,"update :: ClientID -> ServerMessage -> Model -> IO (Model, Maybe (InternalCM ClientMessage))"
+                         ,"update :: ClientID -> ServerMessage -> Model -> IO (Model, Maybe (Cmd ServerMessage), Maybe (InternalCM ClientMessage))"
                          ,"update clientId msg model ="
                          ,"    case (msg, model) of"
                          ,T.concat $ map createServerUpdateCase $ M.toList sDiagram
@@ -711,8 +715,8 @@ generateServer gsvg onlyStatic fp (startCs
                     ,   ""
                     ]
 
-        createServerUpdateCase :: ((String, ServerTransition), (String, OutgoingClientMessage)) -> T.Text
-        createServerUpdateCase ((s0,(tn,tetd)),(s1,mCt)) =
+        createServerUpdateCase :: ((String, ServerTransition), (String, Maybe ServerCmd,OutgoingClientMessage)) -> T.Text
+        createServerUpdateCase ((s0,(tn,tetd)),(s1,mCmd,mCt)) =
             let
                 (_,s0Cons) = case M.lookup s0 sStates of
                             Just constr -> constr
@@ -737,9 +741,11 @@ generateServer gsvg onlyStatic fp (startCs
                         AllOf              cts -> T.concat ["Static.AllOf.AllOf",T.pack $ show $ length cts,".unwrap (",T.intercalate ") (" $ map unwrapMct cts,") ICMAllOf"]
                         NoClientMessage        -> "ICMNoClientMessage"
             in
-                case mCt of
-                    NoClientMessage -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> return $ (unwrap",T.pack s1," <| update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel,", Nothing)\n"] 
-                    mCt0            -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Just <| ",unwrapMct mCt0," wrappedMsg)\n"]                    
+                case (mCt,mCmd) of
+                    (NoClientMessage, Nothing)  -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> return $ (unwrap",T.pack s1," <| update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel,", Nothing, Nothing)\n"] 
+                    (NoClientMessage, Just cmd) -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedCmd) = update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Just <| cmdMap ",unwrapMsg cmd," wrappedCmd, Nothing)\n"]                    
+                    (mCt0, Nothing)             -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Nothing, Just <| ",unwrapMct mCt0," wrappedMsg)\n"]                    
+                    (mCt0, Just cmd)            -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",",generatePattern ("S"++s0,s0Cons),") -> let (wrappedModel, wrappedMsg) = update",T.pack s0,T.pack tn,T.pack s1," clientId ", wrapMsg," ",wrapModel," in return (unwrap",T.pack s1," wrappedModel, Just <| cmdMap ",unwrapMsg cmd," ,Just <| ",unwrapMct mCt0," wrappedMsg)\n"]                    
 
         createClientUpdateCase :: ((String, ClientTransition), (String, Maybe ClientCmd, Maybe ServerTransition)) -> T.Text
         createClientUpdateCase ((s0,(tn,tetd)),(s1,mCmd,mCt)) =

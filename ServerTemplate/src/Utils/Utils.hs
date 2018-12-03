@@ -394,3 +394,8 @@ lFoldl :: (a -> b -> b) -> b -> [a] -> b
 lFoldl f init lst = foldl (flip f) init lst
 
 lRange a b = [a..b]
+
+cmdMap :: (a -> b) -> Cmd a -> Cmd b
+cmdMap f ca =
+    case ca of 
+        Cmd msg -> Cmd (fmap f msg)

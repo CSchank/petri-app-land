@@ -1,5 +1,5 @@
 module ClientServerSpecOld where
-
+{-
 import Types
 import TypeHelpers
 import Data.Map as M
@@ -272,3 +272,5 @@ testRGB = ElmCustom "Colour" [("RGB",
                                      ]
                               )
                           ]
+
+-}

@@ -44,12 +44,13 @@ data OutgoingClientMessage   =
 type ClientTransition   = Constructor
 type ClientCmd          = Constructor
 type ServerTransition   = Constructor
+type ServerCmd          = Constructor
 
 type ClientStateDiagram =
     M.Map (String, ClientTransition) (String, Maybe ClientCmd, Maybe ServerTransition)
 
 type ServerStateDiagram =
-    M.Map (String, ServerTransition) (String, OutgoingClientMessage)
+    M.Map (String, ServerTransition) (String, Maybe ServerCmd, OutgoingClientMessage)
 
 type ExtraClientTypes =
     [ElmCustom]

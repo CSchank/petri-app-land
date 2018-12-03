@@ -11,6 +11,7 @@ module Static.ServerTypes
     , ToSet(..)
     , ToAll(..)
     , InternalCM(..)
+    , Cmd(..)
     ) where
 
 import           Control.Concurrent.STM (STM, TQueue)
@@ -73,3 +74,6 @@ data ServerState = ServerState
     , nextClientId :: ClientID
     , internalServerState :: Model
     }
+
+data Cmd msg =
+    Cmd (IO msg)

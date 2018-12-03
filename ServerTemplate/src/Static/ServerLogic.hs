@@ -8,7 +8,7 @@ module Static.ServerLogic
 
 import           Control.Concurrent.STM (STM, TQueue, atomically, newTQueue,
                                          readTQueue, writeTQueue)
-import           Control.Monad          (forever)
+import           Control.Monad          (forever,void)
 import qualified Data.Map.Strict        as M'
 import qualified Data.IntMap.Strict     as IM'
 import           Data.Text              (Text)
@@ -98,7 +98,7 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
     -- Provide the new state back to the loop.
     return nextState
 
-processCentralMessage _ state (ReceivedMessage clientId incomingMsg) = 
+processCentralMessage centralMessageChan state (ReceivedMessage clientId incomingMsg) = 
     let
         connectedClients = clients state
         
@@ -108,7 +108,13 @@ processCentralMessage _ state (ReceivedMessage clientId incomingMsg) =
                 Just (Client chan) -> atomically $ writeTQueue chan $ SendMessage cm
                 Nothing -> Prelude.putStrLn $ "Unable to send message to client " ++ show clientId ++ " because that client doesn't exist or is logged out."    
     in do
-    (nextServerState,mMessage) <- update clientId incomingMsg $ internalServerState state
+    (nextServerState,mCmd,mMessage) <- update clientId incomingMsg $ internalServerState state
+    case mCmd of
+        Just (Cmd msg) -> void $ forkIO $ do
+            result <- msg
+            atomically $ writeTQueue centralMessageChan $ ReceivedMessage (-1) result
+        Nothing -> return ()
+
     let nextState = state { internalServerState = nextServerState }
         processICM icm =
             case icm of

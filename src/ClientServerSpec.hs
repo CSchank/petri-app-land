@@ -356,17 +356,17 @@ csDiagram = M.fromList
 ssDiagram :: ServerStateDiagram
 ssDiagram = M.fromList 
             [
-                (("Idle", clientConnect), ("Idle", NoClientMessage))
-            ,   (("Idle", clientDisconnect), ("Idle",NoClientMessage))
-            ,   (("Idle", submitLogin), ("Idle", OneOf [ToSender incorrectLogin, ToSender sendLobbies]))
-            ,   (("Idle", joinLobby), ("Idle", OneOf [AllOf [ToSender acknowledgeJoin, ToSet sendLobbies, ToSet refreshLobby], ToSender couldNotJoin]))
-            ,   (("Idle", changeColour), ("Idle", ToSet refreshLobby))
-            ,   (("Idle", readyMsg), ("Idle", OneOf [AllOf [ToSet moreReady, ToSender acknowledgeReady], ToSender readyToStart]))
-            ,   (("Idle", startMsg), ("Idle", ToSet startGame))
-            ,   (("Idle", tapMsg), ("Idle", OneOf [ToSet sendTap, ToSet sendGameWin]))
-            ,   (("Idle", requestBackToLobby), ("Idle", ToSender sendLobbies))
-            ,   (("Idle", createLobbyMsg), ("Idle", AllOf [ToSender acknowledgeJoin, ToSet sendLobbies]))
-            ,   (("Idle", changeIconMsg), ("Idle", AllOf [ToSet updateIcon, ToSet sendLobbies]))
+                (("Idle", clientConnect),       ("Idle", Nothing, NoClientMessage))
+            ,   (("Idle", clientDisconnect),    ("Idle", Nothing, NoClientMessage))
+            ,   (("Idle", submitLogin),         ("Idle", Nothing, OneOf [ToSender incorrectLogin, ToSender sendLobbies]))
+            ,   (("Idle", joinLobby),           ("Idle", Nothing, OneOf [AllOf [ToSender acknowledgeJoin, ToSet sendLobbies, ToSet refreshLobby], ToSender couldNotJoin]))
+            ,   (("Idle", changeColour),        ("Idle", Nothing, ToSet refreshLobby))
+            ,   (("Idle", readyMsg),            ("Idle", Nothing, OneOf [AllOf [ToSet moreReady, ToSender acknowledgeReady], ToSender readyToStart]))
+            ,   (("Idle", startMsg),            ("Idle", Nothing, ToSet startGame))
+            ,   (("Idle", tapMsg),              ("Idle", Nothing, OneOf [ToSet sendTap, ToSet sendGameWin]))
+            ,   (("Idle", requestBackToLobby),  ("Idle", Nothing, ToSender sendLobbies))
+            ,   (("Idle", createLobbyMsg),      ("Idle", Nothing, AllOf [ToSender acknowledgeJoin, ToSet sendLobbies]))
+            ,   (("Idle", changeIconMsg),       ("Idle", Nothing, AllOf [ToSet updateIcon, ToSet sendLobbies]))
 
 
             {- (("Nobody", submitLogin), ("One", ToSet sendFrac))
