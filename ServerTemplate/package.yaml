@@ -34,6 +34,8 @@ dependencies:
 - stm
 - time
 - random
+- ixset
+- acid-state
 
 library:
   source-dirs: 
