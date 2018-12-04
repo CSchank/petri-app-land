@@ -6,4 +6,4 @@ import qualified Data.Time.Clock.POSIX         as Time
 
 getPosixTime :: (Int -> msg) -> Cmd msg
 getPosixTime msg =
-    Cmd (return . msg =<< Time.getPOSIXTime)
+    Cmd (return . msg . round =<< Time.getPOSIXTime)

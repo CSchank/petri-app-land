@@ -59,6 +59,7 @@ et2Txt h c (ElmType name)               = T.pack name
 et2Txt h c (ElmWildcardType s)          = T.pack s
 et2Txt h c (ElmMaybe edt)               = T.concat ["(Maybe ",edt2Txt h c edt,")"]
 et2Txt h c ElmBool                      = T.concat ["Bool"]
+et2Txt h c (ElmResult edt0 edt1)        = T.concat ["Result ",edt2Txt h c edt0," ",edt2Txt h c edt1]
 
      
 ec2Def :: M.Map String ElmCustom -> ElmCustom -> T.Text
@@ -74,6 +75,7 @@ constr2Def ecMap (name,edts) =
 etd2Def :: M.Map String ElmCustom -> ElmDocType -> T.Text
 etd2Def ecMap (ElmPair edt0 edt1, _, _)       = T.concat ["(",etd2Def ecMap edt0,", ",etd2Def ecMap edt1,")"]
 etd2Def ecMap (ElmTriple edt0 edt1 edt2,_,_)  = T.concat ["(",etd2Def ecMap edt0,", ",etd2Def ecMap edt1,", ",etd2Def ecMap edt2,")"]
+etd2Def ecMap (ElmResult _ edt,_,_)           = T.concat ["(Err ",etd2Def ecMap edt,")"]
 etd2Def ecMap (ElmType name,_,_)              = 
     case M.lookup name ecMap of
         Just ec -> ec2Def ecMap ec
@@ -94,6 +96,7 @@ et2Def (ElmType name)                   = T.concat["default", T.pack name]
 et2Def (ElmWildcardType s)              = T.concat["default", T.pack s]
 et2Def (ElmMaybe _)                     = "Nothing"
 et2Def ElmBool                          = "False"
+et2Def (ElmResult _ (et,_,_))           = T.concat["Err ",et2Def et]
 {-
 et2Def :: ElmType -> T.Text
 et2Def (ElmIntRange _ _)            = "Int"

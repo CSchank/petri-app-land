@@ -10,6 +10,7 @@ import qualified        Data.Map                as M
 import qualified        Data.Set                as S
 import qualified        Data.Text               as T
 import qualified        Data.Text.IO            as TIO
+import qualified        Data.Char               as Char
 import                  Types
 import                  Utils
 import                  Generate.Types
@@ -225,11 +226,6 @@ generateServer gsvg onlyStatic fp (startCs
                     ,   T.concat["import Static.Helpers.",stateTxt,"Model exposing(..)"]
                     ,   "import Utils.Utils exposing(error)"
                     ,   "import Dict exposing (Dict)"
-                    ,   "-- These types are provided for reference only. Changing them will result in a failure to compile."
-                    ,   "-- The model of the state"
-                    ,   generateType False True [] stateType,""
-                    ,   "-- The possible messages to send while in this state"
-                    ,   generateType False True [] moduleType,"\n"
                     ,   "--Change the title of the tab / browser here."
                     ,   "title : Model -> String"
                     ,   "title model = "
@@ -416,6 +412,7 @@ generateServer gsvg onlyStatic fp (startCs
                 ,"module Static.ExtraUserTypes exposing(..)\n"
                 ,"import Dict exposing (Dict)"
                 ,"-- Extra internal types"
+                ,if length cExtraTlst == 0 then "x = Nothing" else ""
                 ,clientExtraTypesTxt,""
                 ]
         
@@ -490,6 +487,9 @@ generateServer gsvg onlyStatic fp (startCs
         createServerUserUpdate ((s0,(tn,tetd)),(s1,mCmd,mCt)) =
             let
                 (.::.) = " :: "
+                lcs0 = case s0 of
+                    h:rest -> (Char.toLower h):rest
+                    "" -> ""
                 (_,s0Cons) = case M.lookup s0 sStates of
                             Just constr -> constr
                             Nothing -> error $ "State " ++ s0 ++ " does not exist in the map."
@@ -510,7 +510,7 @@ generateServer gsvg onlyStatic fp (startCs
                     (ocm,Nothing)                       -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> (",T.pack s1,",",ocm2Txt ocm,")"]
                     (ocm,Just (cmdn,_))                 -> T.concat [name, (.::.),"ClientID -> ",T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", Cmd ",T.pack cmdn,")",",",ocm2Txt ocm,")"]
 
-                decl = T.concat [name, " clientId ", generatePattern (tn,tetd), generatePattern (s0,s0Cons), "=\n    ","error \"Update function ",name," not defined. Please define it in userApp/Update.hs.\""]
+                decl = T.concat [name, " clientId ", generatePattern (tn,tetd), T.pack lcs0, " =\n    ","error \"Update function ",name," not defined. Please define it in userApp/Update.hs.\""]
             in
                 T.unlines
                     [
@@ -523,6 +523,9 @@ generateServer gsvg onlyStatic fp (startCs
         createClientUserUpdate ((s0,(tn,tetd)),(s1,mCmd,mCt)) =
             let
                 (.::.) = " : "
+                lcs0 = case s0 of
+                            h:rest -> (Char.toLower h):rest
+                            "" -> ""
                 (_,s0Cons) = case M.lookup s0 cStates of
                             Just constr -> constr
                             Nothing -> error $ "State " ++ s0 ++ " does not exist in the map."
@@ -533,7 +536,7 @@ generateServer gsvg onlyStatic fp (startCs
                 typE = case mCt of                        
                             Just (ctn,ct) -> T.concat [name, (.::.),T.pack tn," -> ",T.pack s0," -> (",T.pack s1,", ",T.pack ctn,")"]
                             Nothing       -> T.concat [name, (.::.),T.pack tn," -> ",T.pack s0," -> ",T.pack s1]
-                decl = T.concat [name, " ", generatePattern (tn,tetd), generatePattern (s0,s0Cons), "=\n    ","error \"Update function ",name," not defined. Please define it in userApp/Update.hs.\""]
+                decl = T.concat [name, " ", generatePattern (tn,tetd), T.pack lcs0, " =\n    ","error \"Update function ",name," not defined. Please define it in userApp/Update.hs.\""]
             in
                 T.unlines
                     [
@@ -556,7 +559,7 @@ generateServer gsvg onlyStatic fp (startCs
                 ,"import Static.Types --types are generated from the state diagram, don't remove this import"
                 ,"import Static.ServerTypes"
                 ,T.concat["import Static.Helpers.",stateTxt]
-                ,"import Utils ((|>),(<|))"
+                ,"import Utils.Utils ((|>),(<|))"
                 ,T.unlines $ map (\n -> T.concat ["import Static.OneOf.OneOf",T.pack $ show n," as OneOf",T.pack $ show n]) oneOfs
                 ,T.unlines $ map (\n -> T.concat ["import Static.AllOf.AllOf",T.pack $ show n," (AllOf",T.pack $ show n,"(..))"]) allOfs
                 ,""
@@ -596,7 +599,9 @@ generateServer gsvg onlyStatic fp (startCs
                      ,"    the same arguments. This \"R\"-type will be unwrapped for you in the background. This ensures consistency with your state diagram."
                      ,"-}\n"
                      ,"-- Hint: replace error with the return value of your initial state"
-                     ,T.concat["init :: ",T.pack startSs]
+                     ,case startSs of
+                        (n, Just (cmdn,_)) -> T.concat["init : (",T.pack n,", Cmd ",T.pack cmdn,")"]
+                        (_,Nothing)        -> T.concat ["init : ",T.pack $ fst startCs]
                      ,"init = error \"Initial server state not defined. Please define it in userApp/Init.hs.\""
                      ]
 
@@ -766,13 +771,16 @@ generateServer gsvg onlyStatic fp (startCs
                     (Nothing, Nothing)  -> T.concat ["        ","(",generatePattern ("M"++tn,tetd),",Static.Model.",T.pack s0," m) -> (Static.Model.",T.pack s1," <| unwrap",T.pack s1," <| update",T.pack s0,T.pack tn,T.pack s1," ", wrapMsg," ",wrapModel,", Nothing, Nothing)\n"]
         
 
-        staticInitHs = [
+        staticInitHs = 
+                       [
                             "module Static.Init where\n"
                        ,    "import Static.Types"
                        ,    "import Static.Update"
                        ,    "import qualified Init"
                        ,    "init :: Model",""
-                       ,    T.concat["init = unwrap", T.pack startSs, " ", "Init.init"]
+                       ,    case startSs of
+                                (n, Just (cmdn,_)) -> T.concat["init = unwrap", T.pack n, " <| fst Init.init, Just <| cmdMap unwrap",T.pack cmdn," $ snd Init.init)"]
+                                (n, Nothing)   -> T.concat["init = unwrap", T.pack n, " Init.init"]
                        ]          
         staticInitElm = let
                             startN = T.pack $ fst startCs

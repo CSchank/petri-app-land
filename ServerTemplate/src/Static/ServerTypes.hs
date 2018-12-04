@@ -76,4 +76,4 @@ data ServerState = ServerState
     }
 
 data Cmd msg =
-    Cmd (IO msg)
+      Cmd (IO msg)

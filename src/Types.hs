@@ -23,6 +23,7 @@ data ElmType = ElmIntRange Int Int -- upper and lower bounds (used for optimizin
              | ElmWildcardType String -- a type parameter
              | ElmMaybe ElmDocType
              | ElmBool
+             | ElmResult ElmDocType ElmDocType
   deriving (Ord,Eq,Show)
 
 type Constructor = (String,[ElmDocType]) -- (name, arguments)
@@ -64,7 +65,7 @@ data ClientState =
 
 type ClientServerApp =
     ( (String, Maybe Constructor)                   --starting state and command of client
-    , String                --starting state of server
+    , (String, Maybe Constructor)                --starting state of server
     , [ClientState]          --all possible client states
     , [ServerState]          --all possible server states
     , ExtraClientTypes        --extra client types used in states or messages

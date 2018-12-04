@@ -69,6 +69,7 @@ generateHelper h (sn,edts) getOnly =
                 else ""
             ,   T.concat ["import Static.Types",if not h then " exposing(..)\nimport Static.ExtraUserTypes exposing(..)" else ""]
             ,   T.unlines $ map generateGetter edts
+            ,   if length edts == 0 then "x = Nothing" else ""
             ] ++
                 if not getOnly then  
                 [
