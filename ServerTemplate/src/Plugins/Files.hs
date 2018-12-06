@@ -1,4 +1,4 @@
-module Static.Plugins.Files where
+module Plugins.Files where
 
 import Static.ServerTypes
 import Utils.Utils

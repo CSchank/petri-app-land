@@ -21,12 +21,15 @@ import           Control.Exception      (finally)
 
 import           Data.Text.IO                   as Tio
 import qualified Data.Set               as S
+import qualified Data.TMap              as TM
+import Data.Maybe (fromJust)
 
 import Static.Types
 import Static.ServerTypes
 import Static.Encode
 import Static.Decode
 import Static.Init (init)
+import Static.Cmd
 import Utils.Utils (Result(..))
 import Static.Update (update)
 
@@ -49,14 +52,16 @@ processCentralChan chan =
         loop state =
             atomically (readTQueue chan) >>= processCentralMessage chan state >>= loop
 
-        initial :: ServerState
-        initial = ServerState
+        initial :: PluginState -> ServerState
+        initial ps = ServerState
             { clients = IM'.empty
             , internalServerState = Static.Init.init
             , nextClientId = 0
+            , pluginState = ps
             }
-    in
-        loop initial
+    in do
+        ps <- initStateCmds
+        loop (initial ps)
 
 
 processCentralMessage :: (TQueue CentralMessage) -> ServerState -> CentralMessage -> IO ServerState
@@ -101,6 +106,8 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
 processCentralMessage centralMessageChan state (ReceivedMessage clientId incomingMsg) = 
     let
         connectedClients = clients state
+
+        ps = pluginState state
         
         sendToID :: ClientMessage -> ClientID -> IO ()
         sendToID cm clientId =
@@ -112,6 +119,9 @@ processCentralMessage centralMessageChan state (ReceivedMessage clientId incomin
     case mCmd of
         Just (Cmd msg) -> void $ forkIO $ do
             result <- msg
+            atomically $ writeTQueue centralMessageChan $ ReceivedMessage (-1) result
+        Just (StateCmd msg) -> void $ forkIO $ do
+            result <- msg (fromJust $ TM.lookup ps)
             atomically $ writeTQueue centralMessageChan $ ReceivedMessage (-1) result
         Nothing -> return ()
 

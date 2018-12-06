@@ -36,6 +36,7 @@ dependencies:
 - random
 - ixset
 - acid-state
+- typerep-map
 
 library:
   source-dirs: 

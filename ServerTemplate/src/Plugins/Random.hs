@@ -1,4 +1,4 @@
-module Static.Plugins.Random where
+module Plugins.Random where
 
 import Static.ServerTypes
 import System.Random

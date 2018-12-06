@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, ExistentialQuantification #-}
 module Static.ServerTypes
     ( CentralMessage(..)
     , ClientThreadMessage(..)
@@ -12,6 +12,8 @@ module Static.ServerTypes
     , ToAll(..)
     , InternalCM(..)
     , Cmd(..)
+    , Plugin(..)
+    , PluginState
     ) where
 
 import           Control.Concurrent.STM (STM, TQueue)
@@ -20,6 +22,8 @@ import qualified Data.IntMap.Strict     as IM'
 import           Static.Types
 import           Network.WebSockets.Connection (Connection)
 import Data.Set as Set
+import Data.TMap (TMap)
+import Data.Typeable (Typeable)
 
 data CentralMessage
     = NewUser (TQueue ClientThreadMessage) Connection    --register a new user on the server
@@ -73,7 +77,14 @@ data ServerState = ServerState
     { clients :: IM'.IntMap Client
     , nextClientId :: ClientID
     , internalServerState :: Model
+    , pluginState :: PluginState
     }
+
+type PluginState = TMap
 
 data Cmd msg =
       Cmd (IO msg)
+    | forall state. Plugin state => StateCmd (state -> IO msg)
+
+class (Typeable state) => Plugin state where
+    initPlugin :: IO state --initialize the plugin and return its singleton state

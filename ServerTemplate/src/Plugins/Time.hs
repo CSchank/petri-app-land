@@ -1,4 +1,4 @@
-module Static.Plugins.Time where
+module Plugins.Time where
 
 import Static.ServerTypes
 import qualified Data.Time.Clock.POSIX         as Time

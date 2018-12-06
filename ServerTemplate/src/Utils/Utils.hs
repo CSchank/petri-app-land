@@ -399,3 +399,4 @@ cmdMap :: (a -> b) -> Cmd a -> Cmd b
 cmdMap f ca =
     case ca of 
         Cmd msg -> Cmd (fmap f msg)
+        StateCmd msg -> StateCmd (fmap f . msg)
