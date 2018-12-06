@@ -37,6 +37,7 @@ dependencies:
 - ixset
 - acid-state
 - typerep-map
+- threads
 
 library:
   source-dirs: 

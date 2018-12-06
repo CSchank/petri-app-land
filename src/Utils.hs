@@ -40,8 +40,8 @@ writeIfNotExists fp txt = do
     unless exists $ TIO.writeFile fp txt
 
 -- write the file if more than one line (the date line) has changed
-writeIfNew :: FilePath -> T.Text -> IO ()
-writeIfNew fp txt = do
+writeIfNew :: Int -> FilePath -> T.Text -> IO ()
+writeIfNew n fp txt = do
     exists <- doesFileExist fp
     if not exists then do
             Prelude.putStrLn $ fp ++ " exists:" ++ show exists
@@ -50,7 +50,7 @@ writeIfNew fp txt = do
             currentLines <- return . T.lines =<< TIO.readFile fp
             let diffLines = filter (\(a,b) -> a /= b) $ zipWithDefault "" "" currentLines (T.lines txt)
             Prelude.putStrLn $ "Differences in " ++ fp ++ " : " ++ show (length diffLines)
-            if length diffLines > 1 then
+            if length diffLines > n then
                 TIO.writeFile fp txt
             else
                 return ()

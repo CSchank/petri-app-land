@@ -18,7 +18,8 @@ generateDot (startClient
                   ,cExtraT
                   ,sExtraT
                   ,cDiagram
-                  ,sDiagram)= error ""
+                  ,sDiagram
+                  ,plugins)= error ""
     {-let
         replace :: [T.Text] -> [T.Text]
         replace (l1:ls) = ( case lookup l1 swaps of

@@ -81,6 +81,7 @@ clientServerApp = (
              ,  []        --extra server types
              ,  csDiagram --client state diagram
              ,  ssDiagram --server state diagram
+             ,  [Plugin "Incrementer"]
              )
 
 clientConnect = ("ClientConnect",[])

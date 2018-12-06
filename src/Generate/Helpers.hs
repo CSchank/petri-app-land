@@ -14,9 +14,9 @@ import                  Data.Time               (getCurrentTime)
 generateHelpers :: FilePath -> [Constructor] -> [Constructor] -> IO ()
 generateHelpers fp cStates sStates = do
     currentTime <- getCurrentTime
-    mapM_ (\(sn,edt) -> writeIfNew (fp </> "server" </> "src" </> "Static" </> "Helpers" </> sn <.> "hs") $ T.unlines $ disclaimer currentTime : [generateHelper True (sn,edt) False]) sStates
-    mapM_ (\(sn,edt) -> writeIfNew (fp </> "client" </> "src" </> "Static" </> "Helpers" </> sn <.> "elm") $ T.unlines $ disclaimer currentTime : [generateHelper False (sn,edt) False]) cStates
-    mapM_ (\(sn,edt) -> writeIfNew (fp </> "client" </> "src" </> "Static" </> "Helpers" </> sn ++ "Model" <.> "elm") $ T.unlines $ disclaimer currentTime : [generateHelper False (sn,edt) True]) cStates
+    mapM_ (\(sn,edt) -> writeIfNew 1 (fp </> "server" </> "src" </> "Static" </> "Helpers" </> sn <.> "hs") $ T.unlines $ disclaimer currentTime : [generateHelper True (sn,edt) False]) sStates
+    mapM_ (\(sn,edt) -> writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Helpers" </> sn <.> "elm") $ T.unlines $ disclaimer currentTime : [generateHelper False (sn,edt) False]) cStates
+    mapM_ (\(sn,edt) -> writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Helpers" </> sn ++ "Model" <.> "elm") $ T.unlines $ disclaimer currentTime : [generateHelper False (sn,edt) True]) cStates
 
 generateHelper :: Bool -> Constructor -> Bool -> T.Text
 generateHelper h (sn,edts) getOnly =

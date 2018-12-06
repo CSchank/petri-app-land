@@ -29,7 +29,7 @@ import Static.ServerTypes
 import Static.Encode
 import Static.Decode
 import Static.Init (init)
-import Static.Cmd
+import Static.Plugins
 import Utils.Utils (Result(..))
 import Static.Update (update)
 

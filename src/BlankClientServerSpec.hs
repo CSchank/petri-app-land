@@ -57,6 +57,7 @@ clientServerApp = (
              ,  []        --extra server types
              ,  csDiagram --client state diagram
              ,  ssDiagram --server state diagram
+             ,  []
              )
 
 clientConnect = ("ClientConnect",[])

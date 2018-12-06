@@ -17,6 +17,7 @@ import                  Generate.Types
 import                  Generate.OneOf
 import                  Generate.AllOf
 import                  Generate.Helpers
+import                  Generate.Plugins
 import                  System.Directory
 import                  System.FilePath.Posix   ((</>),(<.>))
 import                  Data.Maybe              (mapMaybe,fromMaybe)
@@ -102,6 +103,7 @@ generateServer gsvg onlyStatic fp (startCs
                   ,sExtraTlst
                   ,cDiagram
                   ,sDiagram
+                  ,plugins
                   ) = 
     let
         cExtraTypeMap = M.fromList $ map (\(ElmCustom n a) -> (n,ElmCustom n a)) cExtraTlst
@@ -805,13 +807,13 @@ generateServer gsvg onlyStatic fp (startCs
         unless (null serverOneOfs) $ createDirectoryIfMissing True $ fp </> "server" </> "src" </> "Static" </> "OneOf" 
         unless (null serverAllOfs) $ createDirectoryIfMissing True $ fp </> "server" </> "src" </> "Static" </> "AllOf"
         unless (null clientS2Subs) $ createDirectoryIfMissing True $ fp </> "client" </> "src" </> "userApp" </> "Subs"
-        mapM_ (\n -> writeIfNew (fp </> "server" </> "src" </> "Static" </> "OneOf" </> "OneOf" ++ show n <.> "hs") $ T.concat [disclaimer currentTime, generateOneOf True n]) serverOneOfs
-        mapM_ (\n -> writeIfNew (fp </> "server" </> "src" </> "Static" </> "AllOf" </> "AllOf" ++ show n <.> "hs") $ T.concat [disclaimer currentTime, generateAllOf True n]) serverAllOfs
-        writeIfNew (fp </> "server" </> "src" </> "Static" </> "Types" <.> "hs")  $ T.unlines $ disclaimer currentTime : typesHs
-        writeIfNew (fp </> "server" </> "src" </> "Static" </> "Encode" <.> "hs") $ T.unlines $ disclaimer currentTime : encoderHs
-        writeIfNew (fp </> "server" </> "src" </> "Static" </> "Decode" <.> "hs") $ T.unlines $ disclaimer currentTime : decoderHs
-        writeIfNew (fp </> "server" </> "src" </> "Static" </> "Update" <.> "hs") $ T.unlines $ disclaimer currentTime : hiddenUpdateHs
-        writeIfNew (fp </> "server" </> "src" </> "Static" </> "Init" <.> "hs")   $ T.unlines $ disclaimer currentTime : staticInitHs
+        mapM_ (\n -> writeIfNew 1 (fp </> "server" </> "src" </> "Static" </> "OneOf" </> "OneOf" ++ show n <.> "hs") $ T.concat [disclaimer currentTime, generateOneOf True n]) serverOneOfs
+        mapM_ (\n -> writeIfNew 1 (fp </> "server" </> "src" </> "Static" </> "AllOf" </> "AllOf" ++ show n <.> "hs") $ T.concat [disclaimer currentTime, generateAllOf True n]) serverAllOfs
+        writeIfNew 1 (fp </> "server" </> "src" </> "Static" </> "Types" <.> "hs")  $ T.unlines $ disclaimer currentTime : typesHs
+        writeIfNew 1 (fp </> "server" </> "src" </> "Static" </> "Encode" <.> "hs") $ T.unlines $ disclaimer currentTime : encoderHs
+        writeIfNew 1 (fp </> "server" </> "src" </> "Static" </> "Decode" <.> "hs") $ T.unlines $ disclaimer currentTime : decoderHs
+        writeIfNew 1 (fp </> "server" </> "src" </> "Static" </> "Update" <.> "hs") $ T.unlines $ disclaimer currentTime : hiddenUpdateHs
+        writeIfNew 1 (fp </> "server" </> "src" </> "Static" </> "Init" <.> "hs")   $ T.unlines $ disclaimer currentTime : staticInitHs
         createDirectoryIfMissing True $ fp </> "server" </> "src" </> "userApp" </> "Update"
         unless onlyStatic (do
             mapM_ (\(n,txt) -> writeIfNotExists (fp </> "server" </> "src" </> "userApp" </> "Update" </> n <.> "hs") txt) serverUpdateModules
@@ -819,21 +821,21 @@ generateServer gsvg onlyStatic fp (startCs
             writeIfNotExists (fp </> "server" </> "src" </> "userApp" </> "Init" <.> "hs")   $ T.unlines userInitHs)
 
 
-        writeIfNew (fp </> "client" </> "src" </> "Static" </> "Types" <.> "elm") $ T.unlines $ disclaimer currentTime : typesElm
-        writeIfNew (fp </> "client" </> "src" </> "Static" </> "ExtraUserTypes" <.> "elm") $ T.unlines $ disclaimer currentTime : extraUserTypesElm
+        writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Types" <.> "elm") $ T.unlines $ disclaimer currentTime : typesElm
+        writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "ExtraUserTypes" <.> "elm") $ T.unlines $ disclaimer currentTime : extraUserTypesElm
         --TIO.writeFile (fp </> "client" </> "app" </> "Main" <.> "elm") $ T.unlines $ disclaimer currentTime : [if gsvg then mainElmGSVG else mainElm]
-        writeIfNew (fp </> "client" </> "src" </> "Static" </> "Encode" <.> "elm")      $ T.unlines $ disclaimer currentTime : encoderElm
-        writeIfNew (fp </> "client" </> "src" </> "Static" </> "Decode" <.> "elm")      $ T.unlines $ disclaimer currentTime : decoderElm
-        writeIfNew (fp </> "client" </> "src" </> "Static" </> "Update" <.> "elm")      $ T.unlines $ disclaimer currentTime : hiddenUpdateElm
-        writeIfNew (fp </> "client" </> "src" </> "Static" </> "Model" <.> "elm")      $ T.unlines $ disclaimer currentTime : modelElm
-        writeIfNew (fp </> "client" </> "src" </> "Static" </> "Msg" <.> "elm")      $ T.unlines $ disclaimer currentTime : msgElm
-        writeIfNew (fp </> "client" </> "src" </> "Static" </> "Init" <.> "elm")      $ T.unlines $ disclaimer currentTime : staticInitElm
-        writeIfNew (fp </> "client" </> "src" </> "Static" </> "View" <.> "elm")      $ T.unlines $ disclaimer currentTime : [hiddenClientView]
-        writeIfNew (fp </> "client" </> "src" </> "Static" </> "Subs" <.> "elm")      $ T.unlines $ disclaimer currentTime : hiddenSubsElm
+        writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Encode" <.> "elm")      $ T.unlines $ disclaimer currentTime : encoderElm
+        writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Decode" <.> "elm")      $ T.unlines $ disclaimer currentTime : decoderElm
+        writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Update" <.> "elm")      $ T.unlines $ disclaimer currentTime : hiddenUpdateElm
+        writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Model" <.> "elm")      $ T.unlines $ disclaimer currentTime : modelElm
+        writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Msg" <.> "elm")      $ T.unlines $ disclaimer currentTime : msgElm
+        writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Init" <.> "elm")      $ T.unlines $ disclaimer currentTime : staticInitElm
+        writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "View" <.> "elm")      $ T.unlines $ disclaimer currentTime : [hiddenClientView]
+        writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Subs" <.> "elm")      $ T.unlines $ disclaimer currentTime : hiddenSubsElm
         
-        mapM_ (\(n,txt) -> writeIfNew (fp </> "client" </> "src" </> "Static" </> "Wrappers" </> n <.> "elm") $ T.concat [disclaimer currentTime, "\n", txt]) clientWrapModules
+        mapM_ (\(n,txt) -> writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Wrappers" </> n <.> "elm") $ T.concat [disclaimer currentTime, "\n", txt]) clientWrapModules
         createDirectoryIfMissing True $ fp </> "client" </> "src" </> "Static" </> "Types"
-        mapM_ (\(n,txt) -> writeIfNew (fp </> "client" </> "src" </> "Static" </> "Types" </> n <.> "elm") $ T.concat [disclaimer currentTime, "\n", txt]) clientTypeModules
+        mapM_ (\(n,txt) -> writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Types" </> n <.> "elm") $ T.concat [disclaimer currentTime, "\n", txt]) clientTypeModules
 
 
         unless onlyStatic (do
@@ -849,5 +851,6 @@ generateServer gsvg onlyStatic fp (startCs
         createDirectoryIfMissing True $ fp </> "server" </> "src" </> "Static" </> "Helpers"
         createDirectoryIfMissing True $ fp </> "client" </> "src" </> "Static" </> "Helpers"
         generateHelpers fp (M.elems cStates) sStateslst
+        writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Plugins" <.> "hs") $ generatePlugins plugins
 
         print serverTransitions

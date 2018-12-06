@@ -72,4 +72,8 @@ type ClientServerApp =
     , ExtraServerTypes        --extra server types used in states or messages
     , ClientStateDiagram    --the client state diagram
     , ServerStateDiagram    --the client state diagram
+    , [Plugin]              --a list of plugins to be installed
     )
+
+data Plugin = 
+    Plugin String
