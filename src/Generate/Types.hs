@@ -9,7 +9,15 @@ import qualified Data.Set       as S
 import Data.Maybe (mapMaybe)
 
 data Deriving = 
-    DOrd | DShow | DEq
+    DOrd | DShow | DEq | DData | DTypeable
+
+
+deriv2Txt DOrd = "Ord"
+deriv2Txt DShow = "Show"
+deriv2Txt DEq = "Eq"
+deriv2Txt DData = "Data"
+deriv2Txt DTypeable = "Typeable"
+derivTxt deriv = T.concat ["(",T.intercalate "," $ map deriv2Txt deriv,")"]
 
 generateType :: Bool -> Bool -> [Deriving] -> ElmCustom -> T.Text
 generateType haskell commentsEnabled deriv (ElmCustom typeName constrs) =
@@ -24,17 +32,31 @@ generateType haskell commentsEnabled deriv (ElmCustom typeName constrs) =
                                 _ -> Nothing                
                             ) constr
                         ) constrs
-        deriv2Txt DOrd = "Ord"
-        deriv2Txt DShow = "Show"
-        deriv2Txt DEq = "Eq"
-        derivTxt = T.concat ["(",T.intercalate "," $ map deriv2Txt deriv,")"]
     in
         if length constrs > 0 then
         T.concat [ typ, " ", T.pack typeName, " ", T.intercalate " " typeParams ," =\n      "
                  , T.intercalate "\n    | " constrs2Txt
-                 , if length deriv > 0 && haskell then T.concat ["\n    deriving",derivTxt] else ""
+                 , if length deriv > 0 && haskell then T.concat ["\n    deriving",derivTxt deriv] else ""
                  ]
         else ""
+
+generateTypeAlias :: Bool -> Bool -> [Deriving] -> String -> ElmType -> T.Text
+generateTypeAlias haskell commentsEnabled deriv typeName et =
+    let
+        typ = if haskell then "type" else "type alias"
+    in
+        T.concat [ typ, " ", T.pack typeName, " = ",T.pack typeName, " ", et2Txt haskell commentsEnabled et
+                 , if length deriv > 0 && haskell then T.concat ["   deriving",derivTxt deriv] else ""
+                 ]
+
+generateNewtype :: Bool -> [Deriving] -> String -> ElmType -> T.Text
+generateNewtype commentsEnabled deriv typeName et =
+    let
+        typ = "newtype"
+    in
+        T.concat [ typ, " ", T.pack typeName, " = ", et2Txt True commentsEnabled et
+                 , if length deriv > 0 then T.concat ["   deriving",derivTxt deriv] else ""
+                 ]
 
 generateConstructor :: Bool -> Bool -> Constructor -> T.Text
 generateConstructor haskell commentsEnabled (constrName,elmDocTypes) =

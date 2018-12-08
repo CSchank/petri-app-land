@@ -3,6 +3,7 @@ module ClientServerSpec where
 import Types
 import TypeHelpers
 import Data.Map as M
+import Generate.Plugins.Database
 
 --where to output generated files
 outputDirectory = "../elm-number-race/"
@@ -81,7 +82,9 @@ clientServerApp = (
              ,  []        --extra server types
              ,  csDiagram --client state diagram
              ,  ssDiagram --server state diagram
-             ,  [Plugin "Incrementer"]
+             ,  [ Plugin "Incrementer"
+                --, PluginGen "Database" (generateDatabase [Table "People" [(ElmString,"name","")] []])
+                ]
              )
 
 clientConnect = ("ClientConnect",[])

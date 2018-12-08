@@ -10,6 +10,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import                  System.Directory
 import                  Control.Monad (unless)
+import Data.Char (toUpper)
 
 
 
@@ -61,3 +62,15 @@ disclaimer date = T.unlines ["{-"
                         , "    MODIFYING ANY FILES INSIDE THE Static DIRECTORY COULD LEAD TO UNEXPECTED ERRORS IN YOUR APP."
                         ,"-}"
                         ]
+
+capitalize :: T.Text -> T.Text
+capitalize txt =
+    case T.unpack txt of
+        h:rest -> T.pack $ toUpper h : rest
+        _ -> txt
+
+capStr :: String -> String
+capStr str =
+    case str of
+        h:rest -> toUpper h : rest
+        _ -> str

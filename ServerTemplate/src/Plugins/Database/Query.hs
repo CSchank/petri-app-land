@@ -1,8 +1,11 @@
+{-# LANGUAGE ExistentialQuantification #-}
+
 module Plugins.Database.Query where
 import Data.Data (Data, Typeable)
 import Data.IxSet ( Indexable(..), IxSet(..), Proxy(..), getOne
                   , ixFun, ixSet, getEQ, getLT, getGT, getLTE, getGTE
                   , union, intersection )
+import Data.Word (Word64)
 
 
 {-data Query a key where 
@@ -33,47 +36,72 @@ type Query r = IxSet r -> IxSet r
 (@==) :: (Indexable r, Typeable r, Ord r, Typeable key) => (a -> key) -> a -> Query r
 (@==) keyFn a =
     getEQ (keyFn a)
+infix 6 @==
 
 (@<) :: (Indexable r, Typeable r, Ord r, Typeable key) => (a -> key) -> a -> Query r
 (@<) keyFn a =
     getLT (keyFn a)
+infix 6 @<
 
 (@>) :: (Indexable r, Typeable r, Ord r, Typeable key) => (a -> key) -> a -> Query r
 (@>) keyFn a =
     getGT (keyFn a)
+infix 6 @>
 
 (@<=) :: (Indexable r, Typeable r, Ord r, Typeable key) => (a -> key) -> a -> Query r
 (@<=) keyFn a =
     getLTE (keyFn a)
+infix 6 @<=
 
 (@>=) :: (Indexable r, Typeable r, Ord r, Typeable key) => (a -> key) -> a -> Query r
 (@>=) keyFn a =
     getGTE (keyFn a)
+infix 6 @>=
 
 (@><) :: (Indexable r, Typeable r, Ord r, Typeable key) => (a -> key) -> (a,a) -> Query r
 (@><) keyFn (a,b) =
     getGT (keyFn a) . getLT (keyFn b)
+infix 6 @><
 
 (@><=) :: (Indexable r, Typeable r, Ord r, Typeable key) => (a -> key) -> (a,a) -> Query r
 (@><=) keyFn (a,b) =
     getGT (keyFn a) . getLTE (keyFn b)
+infix 6 @><=
 
 (@=><) :: (Indexable r, Typeable r, Ord r, Typeable key) => (a -> key) -> (a,a) -> Query r
 (@=><) keyFn (a,b) =
     getGTE (keyFn a) . getLT (keyFn b)
+infix 6 @=><
 
 (@=><=) :: (Indexable r, Typeable r, Ord r, Typeable key) => (a -> key) -> (a,a) -> Query r
 (@=><=) keyFn (a,b) =
     getGTE (keyFn a) . getLTE (keyFn b)
+infix 6 @=><=
 
 (&&&) :: (Indexable r, Typeable r, Ord r) => Query r -> Query r -> Query r
 (&&&) q0 q1 =
     \ix -> intersection (q0 ix) (q1 ix)
+infixl 5 &&&
 
 (|||) :: (Indexable r, Typeable r, Ord r) => Query r -> Query r -> Query r
 (|||) q0 q1 =
     \ix -> union (q0 ix) (q1 ix)
+infixl 5 |||
 
+type Index = Word64
+type Row r = (Index, r)
+
+data QueryOptions =
+      forall k. Typeable k => Asc k
+    | forall k. Typeable k => Dsc k
+    | LimitTo Word64
+    | OffsetBy Word64
+
+--commands
+{-
+doQuery :: Query (Row r) -> ([Row r] -> msg) -> Cmd msg
+doQuery = StateCmd $ \()
+-}
 {-
 (@==) :: Typeable key => (a -> key) -> a -> Query r
 (@==) keyFn a =

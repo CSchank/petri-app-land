@@ -7,7 +7,6 @@ import Types
 import qualified Data.Text as T
 import                  System.FilePath.Posix   ((</>),(<.>))
 import Generate.Types
-import Data.Char (toUpper)
 import Utils
 import                  Data.Time               (getCurrentTime)
 
@@ -76,9 +75,3 @@ generateHelper h (sn,edts) getOnly =
                     T.unlines $ map generateSetter edts
                 ,   T.unlines $ map generateUpdater edts
                 ] else [])
-
-capitalize :: T.Text -> T.Text
-capitalize txt =
-    case T.unpack txt of
-        h:rest -> T.pack $ toUpper h : rest
-        _ -> txt

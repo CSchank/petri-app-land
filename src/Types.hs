@@ -4,6 +4,7 @@ module Types where
 
 import Data.Map as M
 import Data.String
+import qualified Data.Text as T
 
 -- paper 1 will stick to messages arriving in order (websockets)
 -- paper 2 will allow messages out of order (webrtc)
@@ -76,4 +77,5 @@ type ClientServerApp =
     )
 
 data Plugin = 
-    Plugin String
+      Plugin String {-name-}
+    | PluginGen String {-name-} (IO [(FilePath,T.Text)]) {-function to generate the plugin-}

@@ -851,6 +851,6 @@ generateServer gsvg onlyStatic fp (startCs
         createDirectoryIfMissing True $ fp </> "server" </> "src" </> "Static" </> "Helpers"
         createDirectoryIfMissing True $ fp </> "client" </> "src" </> "Static" </> "Helpers"
         generateHelpers fp (M.elems cStates) sStateslst
-        writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Plugins" <.> "hs") $ generatePlugins plugins
+        generatePlugins fp plugins
 
         print serverTransitions
