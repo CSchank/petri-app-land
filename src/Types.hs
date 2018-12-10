@@ -6,6 +6,7 @@ import Data.Map as M
 import Data.String
 import qualified Data.Text as T
 
+
 -- paper 1 will stick to messages arriving in order (websockets)
 -- paper 2 will allow messages out of order (webrtc)
 
@@ -54,6 +55,30 @@ type ClientStateDiagram =
 type ServerStateDiagram =
     M.Map (String, ServerTransition) (String, Maybe ServerCmd, OutgoingClientMessage)
 
+data Place =
+    Place 
+        T.Text      --name of the place
+        [ElmDocType] --place state
+        [ElmDocType] --player state at this place
+
+data NetTransition =
+    NetTransition
+        (M.Map
+            (T.Text, Constructor)   --from place (must appear in map above), message which attempts to fire this transition (must be unique)
+            T.Text                  --to place (must appear in map above)
+        )
+        OutgoingClientMessage       --message to send if this transition is fired
+        (Maybe ServerCmd)           --whether to issue a command when this transition is fired
+
+-- a net describing a collections of places and transitions
+data ServerNet = 
+    ServerNet
+        T.Text              --net name
+        [Place]             --all the places in this net
+        [NetTransition]     --transitions between the places
+        
+
+
 type ExtraClientTypes =
     [ElmCustom]
 
@@ -65,15 +90,15 @@ data ClientState =
     | ClientStateWithSubs Constructor [Constructor] {-subs-}
 
 type ClientServerApp =
-    ( (String, Maybe Constructor)                   --starting state and command of client
-    , (String, Maybe Constructor)                --starting state of server
-    , [ClientState]          --all possible client states
-    , [ServerState]          --all possible server states
-    , ExtraClientTypes        --extra client types used in states or messages
-    , ExtraServerTypes        --extra server types used in states or messages
-    , ClientStateDiagram    --the client state diagram
-    , ServerStateDiagram    --the client state diagram
-    , [Plugin]              --a list of plugins to be installed
+    ( (String, Maybe Constructor)       --starting state and command of client
+    , (String, Maybe Constructor)       --starting state of server
+    , [ClientState]                     --all possible client states
+    , [ServerState]                     --all possible server states
+    , ExtraClientTypes                  --extra client types used in states or messages
+    , ExtraServerTypes                  --extra server types used in states or messages
+    , ClientStateDiagram                --the client state diagram
+    , ServerStateDiagram                --the client state diagram
+    , [Plugin]                          --a list of plugins to be installed
     )
 
 data Plugin = 
