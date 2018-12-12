@@ -9,7 +9,7 @@ import qualified Data.Set       as S
 import Data.Maybe (mapMaybe)
 
 data Deriving = 
-    DOrd | DShow | DEq | DData | DTypeable
+    DOrd | DShow | DEq | DData | DTypeable | DCustom T.Text
 
 
 deriv2Txt DOrd = "Ord"
@@ -17,6 +17,7 @@ deriv2Txt DShow = "Show"
 deriv2Txt DEq = "Eq"
 deriv2Txt DData = "Data"
 deriv2Txt DTypeable = "Typeable"
+deriv2Txt (DCustom d) = d
 derivTxt deriv = T.concat ["(",T.intercalate "," $ map deriv2Txt deriv,")"]
 
 generateType :: Bool -> Bool -> [Deriving] -> ElmCustom -> T.Text

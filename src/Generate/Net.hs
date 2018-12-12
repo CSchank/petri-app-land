@@ -11,8 +11,8 @@ import Utils
 import                  System.FilePath.Posix   ((</>),(<.>))
 
 
-generateNet :: M.Map String ElmCustom -> FilePath -> ServerNet -> IO ()
-generateNet extraTypes fp (ServerNet name places transitions) =
+generateNet :: M.Map String ElmCustom -> FilePath -> Net -> IO ()
+generateNet extraTypes fp (Net name netType places transitions) =
     let
         inits = T.unlines 
             [
@@ -34,7 +34,7 @@ generateNet extraTypes fp (ServerNet name places transitions) =
 -- the functions that the user changes
 -- FIXME: needs to know about extra user types
 generateNetInit :: M.Map String ElmCustom -> Place -> T.Text
-generateNetInit extraTypes (Place name placeState playerPlaceState) = 
+generateNetInit extraTypes (Place name placeState playerPlaceState mSubnet) = 
     let
         fnName = T.concat ["init",name]
     in
@@ -49,10 +49,10 @@ generateNetTypes netName places =
     let
         placeModel = 
             generateType True True [DOrd,DEq,DShow] $ 
-                ElmCustom (T.unpack netName) $ map (\(Place n m _) -> (T.unpack $ T.concat["P",n],m)) places
+                ElmCustom (T.unpack netName) $ map (\(Place n m _ _) -> (T.unpack $ T.concat["P",n],m)) places
         allFields :: [(ElmType, T.Text)]
         allFields = S.toList $ S.fromList $
-                        concat $ map (\(Place _ edts _) -> map (\(et,n,_) -> (et,T.pack n)) edts) places
+                        concat $ map (\(Place _ edts _ _) -> map (\(et,n,_) -> (et,T.pack n)) edts) places
         createClass :: (ElmType, T.Text) -> T.Text
         createClass (et,f) = 
             let

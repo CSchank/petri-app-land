@@ -55,26 +55,31 @@ type ClientStateDiagram =
 type ServerStateDiagram =
     M.Map (String, ServerTransition) (String, Maybe ServerCmd, OutgoingClientMessage)
 
+{-data NetType =
+      ClientNet     --a net only on the client
+    | HybridNet     --a net on the server and on the client
+    | ServerNet     --a net only on the server
+-}
 data Place =
     Place 
-        T.Text      --name of the place
-        [ElmDocType] --place state
-        [ElmDocType] --player state at this place
+        T.Text          --name of the place
+        [ElmDocType]    --place state
+        [ElmDocType]    --player state at this place
+        (Maybe T.Text)  --Maybe the name of a subnet
 
 data NetTransition =
     NetTransition
         (M.Map
             (T.Text, Constructor)   --from place (must appear in map above), message which attempts to fire this transition (must be unique)
-            T.Text                  --to place (must appear in map above)
+            [(T.Text, OutgoingClientMessage)]   --to places (must appear in map above) and client message
         )
-        OutgoingClientMessage       --message to send if this transition is fired
         (Maybe ServerCmd)           --whether to issue a command when this transition is fired
 
 -- a net describing a collections of places and transitions
-data ServerNet = 
-    ServerNet
+data Net = 
+    HybridNet
         T.Text              --net name
-        [Place]             --all the places in this net
+        [(Place)]           --all the places in this net
         [NetTransition]     --transitions between the places
         
 
