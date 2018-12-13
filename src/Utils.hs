@@ -10,7 +10,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import                  System.Directory
 import                  Control.Monad (unless)
-import Data.Char (toUpper)
+import Data.Char (toUpper,toLower)
 
 
 
@@ -67,6 +67,13 @@ capitalize :: T.Text -> T.Text
 capitalize txt =
     case T.unpack txt of
         h:rest -> T.pack $ toUpper h : rest
+        _ -> txt
+    
+
+uncapitalize :: T.Text -> T.Text
+uncapitalize txt =
+    case T.unpack txt of
+        h:rest -> T.pack $ toLower h : rest
         _ -> txt
 
 capStr :: String -> String

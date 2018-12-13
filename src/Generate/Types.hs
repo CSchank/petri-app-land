@@ -2,7 +2,7 @@
 
 module Generate.Types where
 
-import Types                 (ElmDocType, ElmType(..), ElmCustom(..), ClientStateDiagram, ServerStateDiagram, ClientServerApp, Constructor)
+import Types                 (ElmDocType, ElmType(..), ElmCustom(..), ClientStateDiagram, ServerStateDiagram, ClientServerApp, Constructor, OutgoingClientMessage(..))
 import qualified Data.Map       as M
 import qualified Data.Text      as T
 import qualified Data.Set       as S
@@ -154,3 +154,11 @@ generatePattern haskell commentsEnabled (ElmCustom typeName constrs) =
         T.concat [ typ, " ", T.pack typeName, " =\n    "
                  , T.intercalate "\n    | " constrs2Txt
                  ]-}
+
+ocm2Txt (ToSender (ctn,_))          = T.concat["ToSender ",T.pack ctn]
+ocm2Txt (ToAllExceptSender (ctn,_)) = T.concat["ToAllExceptSender ",T.pack ctn]
+ocm2Txt (ToSenderAnd (ctn,_))       = T.concat["ToSenderAnd ",T.pack ctn]
+ocm2Txt (ToSet (ctn,_))             = T.concat["ToSet ",T.pack ctn]
+ocm2Txt (ToAll (ctn,_))             = T.concat["ToAll ",T.pack ctn]
+ocm2Txt (OneOf ocms)                = T.concat["OneOf",T.pack $ show $ length ocms," (",T.intercalate ") (" $ map ocm2Txt ocms,")"]
+ocm2Txt (AllOf ocms)                = T.concat["AllOf",T.pack $ show $ length ocms," (",T.intercalate ") (" $ map ocm2Txt ocms,")"]

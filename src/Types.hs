@@ -79,7 +79,7 @@ data NetTransition =
     NetTransition
         Constructor                         --message which attempts to fire this transition (must be unique) 
         [(T.Text                            --from place (must appear in map above)
-        , (T.Text, OutgoingClientMessage))  --to places (must appear in map above) and client message
+        ,(T.Text, Maybe Constructor))   --to places (must appear in map above) and client message
         ]
         (Maybe ServerCmd)                   --whether to issue a command when this transition is fired
 
@@ -92,7 +92,7 @@ data HybridTransition =
 data Net = 
     HybridNet
         T.Text                                  --net name
-        [HybridPlace]                               --all the places in this net
+        [HybridPlace]                           --all the places in this net
         [(HybridTransition,NetTransition)]      --transitions between the places
         
 
