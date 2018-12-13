@@ -11,6 +11,8 @@ import TypeHelpers
 import Utils
 import                  System.FilePath.Posix   ((</>),(<.>))
 import System.Directory
+import Data.Maybe (mapMaybe)
+import Generate.Helpers
 
 testNet =
     let
@@ -93,53 +95,31 @@ generateServerNet extraTypes fp net =
                         placeModel = 
                             generateType True False [DOrd,DEq,DShow] $ 
                                 ElmCustom (T.unpack netName) $ map (\(HybridPlace n m _ _ _) -> (T.unpack n++"Player",[edt (ElmType $ T.unpack n) "" ""])) places
-                        allFields :: [(ElmType, T.Text)]
-                        allFields = S.toList $ S.fromList $
-                                        concat $ map (\(HybridPlace _ edts edts1 _ _) -> map (\(et,n,_) -> (et,T.pack n)) (edts ++ edts1)) places
-                        createClass :: (ElmType, T.Text) -> T.Text
-                        createClass (et,f) = 
-                            let
-                                field = capitalize f
-                                fieldType = et2Txt True True et
-                            in
-                            T.unlines 
-                            [
-                                T.concat ["class Has",field," a where"]
-                            ,   T.concat ["    get",field," :: a -> ",fieldType]
-                            ,   T.concat ["    update",field," :: ",fieldType, " -> a -> a"]
-                            ,   T.concat ["    alter",field," :: (",fieldType, " -> ", fieldType,") -> a -> a"]
-                            ]
-                        createInstance :: Constructor -> ElmDocType -> T.Text
-                        createInstance constr (et,n,d) = 
-                            let
-                                f = T.pack n
-                                field = capitalize $ T.pack n
-                                fieldType = et2Txt True True et 
-                                newValue = (fst constr, map (\(ett,nn,dd) -> if nn == T.unpack f then (ett,"new"++nn,dd) else (ett,nn,dd)) $ snd constr)
-                            in
-                            T.unlines 
-                            [
-                                T.concat ["instance Has",field," ",T.pack $ fst constr," where"]
-                            ,   T.concat ["    get",field," ",generatePattern constr," = ",f]
-                            ,   T.concat ["    update",field," new",f," ",generatePattern constr," = ",generatePattern newValue]
-                            ,   T.concat ["    alter",field," f ",generatePattern constr," = let new",f, " = f ",f," in ", generatePattern newValue]
-                            ]
                         placeTypes = T.unlines $ map generatePlaceType places
                         generatePlaceType :: HybridPlace -> T.Text
                         generatePlaceType (HybridPlace name serverPlaceState playerPlaceState _ _) =
                             T.unlines
                                 [
                                     generateType True True [DOrd,DEq,DShow] $ ElmCustom (T.unpack name) [(T.unpack name, serverPlaceState)],""
-                                ,   T.unlines $ map (createInstance (T.unpack name,serverPlaceState)) serverPlaceState
                                 ,   generateType True True [DOrd,DEq,DShow] $ ElmCustom (T.unpack name++"Player") [(T.unpack name++"Player",playerPlaceState)],""
-                                ,   T.unlines $ map (createInstance (T.unpack name ++"Player",playerPlaceState)) playerPlaceState
                                 ]
+                        clientMsgType :: T.Text
+                        clientMsgType =
+                            let
+                                msgs :: [(String,Constructor)]
+                                msgs = concat $ map (\(_,NetTransition (n,_) lstTrans _) -> 
+                                            mapMaybe (\(from,(to,mConstr)) -> case mConstr of 
+                                                                                        Just msg -> Just (n,msg)
+                                                                                        Nothing -> Nothing)
+                                                                                          lstTrans) transitions
+                            in
+                                T.unlines $ map (\(_,msg@(msgN,edts)) -> generateType True True [DOrd,DEq,DShow] $ ElmCustom msgN [msg]) msgs
+                                ++ [generateType True True [DOrd,DEq,DShow] $ ElmCustom "ClientMessage" $ map (\(qual,(msgN,edts)) -> (qual++"_"++msgN,edts)) msgs]
                     in
                         T.unlines 
                             [
-                                T.unlines $ map createClass allFields   --classes for helpers
-                            --,   placeModel,""
-                            ,   placeTypes
+                                placeTypes
+                            ,   clientMsgType
                             ]
                 update :: T.Text
                 update =
@@ -186,11 +166,7 @@ generateServerNet extraTypes fp net =
                         singularTransFns :: [T.Text]
                         singularTransFns = map (\(from,lst) -> 
                                                 let 
-                                                    oneOfs = map (\(to,mConstr) -> case mConstr of 
-                                                        Just (msg,_) -> T.concat["(P",to,", ",T.pack msg,")"]
-                                                        Nothing  -> T.concat[to,"Player"]
-                                                        ) lst
-                                                    output = T.concat ["OneOf ",T.intercalate " " oneOfs]
+                                                    output = T.concat [from,"to",T.intercalate "or" $ placeOutputs]
                                                 in
                                                     T.concat [from," -> ",output]) grouped
 
@@ -214,7 +190,7 @@ generateServerNet extraTypes fp net =
                                                         Just (msg,_) -> T.concat["(P",to,", ",T.pack msg,")"]
                                                         Nothing  -> T.concat[to,"Player"]
                                                         ) lst
-                                                    output = T.concat ["OneOf ",T.intercalate " " oneOfs]
+                                                    output = T.concat [from,"to",T.intercalate "or" $ placeOutputs]
                                                     name = T.concat ["        from",from]
                                                     typ = T.concat [name, " :: ",from," -> ",output]
                                                 in
@@ -240,3 +216,6 @@ generateServerNet extraTypes fp net =
                 writeIfNew 0 (fp </> T.unpack name </> "userApp" </> "Init" <.> "hs") inits 
                 writeIfNew 0 (fp </> T.unpack name </> "Static" </> "Types" <.> "hs") types
                 writeIfNew 0 (fp </> T.unpack name </> "userApp" </> "Update" <.> "hs") update
+                createDirectoryIfMissing True $ fp </> T.unpack name </> "Static" </> "Helpers"
+                mapM_ (\(HybridPlace pName edts _ _ _) -> writeIfNew 1 (fp </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper False (T.unpack pName,edts) False]) places
+
