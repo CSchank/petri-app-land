@@ -74,12 +74,14 @@ data HybridPlace =
         [ElmDocType]    --player state
         [ElmDocType]    --client place state
         (Maybe T.Text)  --Maybe the name of a subnet
+        (Maybe T.Text, Maybe T.Text) --initial commands
+        (Maybe T.Text) --client-side subscription
 
 data NetTransition =
     NetTransition
         Constructor                         --message which attempts to fire this transition (must be unique) 
         [(T.Text                            --from place (must appear in map above)
-        ,(T.Text, Maybe Constructor))       --to places (must appear in map above) and client message
+        ,(T.Text, Maybe Constructor))       --to place (must appear in map above) and client message
         ]
         (Maybe ServerCmd)                   --whether to issue a command when this transition is fired
 
@@ -87,6 +89,7 @@ data HybridTransition =
         ClientOnlyTransition
     |   HybridTransition
     |   ServerOnlyTransition
+    deriving (Eq)
 
 -- a net describing a collections of places and transitions
 data Net = 
@@ -108,15 +111,11 @@ data ClientState =
     | ClientStateWithSubs Constructor [Constructor] {-subs-}
 
 type ClientServerApp =
-    ( (String, Maybe Constructor)       --starting state and command of client
-    , (String, Maybe Constructor)       --starting state of server
-    , [ClientState]                     --all possible client states
-    , [ServerState]                     --all possible server states
+    ( String                            --starting place for a client
+    , [Net]                             --all the nets in this client/server app
     , ExtraClientTypes                  --extra client types used in states or messages
     , ExtraServerTypes                  --extra server types used in states or messages
-    , ClientStateDiagram                --the client state diagram
-    , ServerStateDiagram                --the client state diagram
-    , [Plugin]                          --a list of plugins to be installed
+    , [Plugin]                          --a list of plugins to be generated / installed on the server
     )
 
 data Plugin = 

@@ -95,24 +95,14 @@ generateStateMsgsServer ssD sStates =
         foldl createDict initDict ssL
 
 generateServer :: Bool -> Bool -> FilePath -> ClientServerApp -> IO ()
-generateServer gsvg onlyStatic fp (startCs
-                  ,startSs
-                  ,cStateslst
-                  ,sStateslst
+generateServer gsvg onlyStatic fp (startCp
+                  ,startPlace
+                  ,netLst
                   ,cExtraTlst
                   ,sExtraTlst
-                  ,cDiagram
-                  ,sDiagram
                   ,plugins
                   ) = 
     let
-        cExtraTypeMap = M.fromList $ map (\(ElmCustom n a) -> (n,ElmCustom n a)) cExtraTlst
-        sExtraTypeMap = M.fromList $ map (\(ElmCustom n a) -> (n,ElmCustom n a)) sExtraTlst
-        
-        cState2ConstrMap (ClientState (n,edt)) = (n,(n,edt))
-        cState2ConstrMap (ClientStateWithSubs (n,edt) _) = (n,(n,edt))
-        cStates = M.fromList $ map cState2ConstrMap cStateslst
-        sStates = M.fromList $ map (\(n,const) -> (n,(n,const))) sStateslst
         cExtraT = M.fromList $ map (\(ElmCustom n constrs) -> (n,ElmCustom n constrs)) cExtraTlst
         sExtraT = M.fromList $ map (\(ElmCustom n constrs) -> (n,ElmCustom n constrs)) sExtraTlst
     
@@ -122,10 +112,6 @@ generateServer gsvg onlyStatic fp (startCs
         serverMsgType = ElmCustom "ServerMessage" $ map (\(n,t) -> ("M"++n,t)) serverMsgs
         serverMsgTypeTxt = generateType True True [DOrd,DEq,DShow] serverMsgType
 
-        serverTransFromClient = S.fromList $ mapMaybe (\(_,(_,_,trans)) -> trans) $ M.toList cDiagram
-        serverTransitions = S.fromList $ map (\((_,trans),_) -> trans) $ M.toList sDiagram
-
-        serverOutgoingMsgs = S.toList $ S.fromList $ mapMaybe (\(_,(_,_,trans)) -> cm2maybe trans) $ M.toList sDiagram
         serverOutgoingMsgType = ElmCustom "ClientMessage" $ map (\(n,t) -> ("M"++n,t)) $ S.toList $ S.fromList $ concat $ mapMaybe cm2constr serverOutgoingMsgs
         serverOutgoingMsgTypeTxt = generateType True True [DOrd,DEq,DShow] serverOutgoingMsgType
 
@@ -135,75 +121,12 @@ generateServer gsvg onlyStatic fp (startCs
                 AllOf cts -> Just $ concat $ mapMaybe findOneOfs cts
                 OneOf cts -> Just [length cts]
                 _ -> Nothing
-
-        serverOneOfs = S.toList $ S.fromList $ concat $ mapMaybe
-            (\(_,(_,_,mCt)) -> findOneOfs mCt) $ M.toList sDiagram
         
         findAllOfs ct = 
             case ct of
                 AllOf cts -> Just [length cts]
                 OneOf cts -> Just $ concat $ mapMaybe findAllOfs cts
                 _ -> Nothing
-        
-        serverAllOfs = S.toList $ S.fromList $ concat $ mapMaybe
-            (\(_,(_,_,mCt)) -> findAllOfs mCt) $ M.toList sDiagram
-        
-        clientStateTypeTxt = 
-            generateType False True [DOrd,DEq,DShow] $ ElmCustom "Model" $ map (\(n,_) -> (n,[(ElmType ("Static.Types."++n++".Model"),"","")])) $ M.elems cStates
-
-        clientUnionMsgTypeTxt = 
-            generateType False True [DOrd,DEq,DShow] $ ElmCustom "ClientMessage" $ map (\(n,_) -> (n,[(ElmType ("Static.Types."++n++".Msg"),"","")])) $ M.elems cStates
-
-        clientMsgs = S.toList $ S.fromList $ map (\((_,trans),(_,_,_)) -> trans) $ M.toList cDiagram
-        clientMsgType = ElmCustom "WrappedClientMessage" $ map (\(n,t) -> ("M"++n,t)) clientMsgs
-        clientMsgTypeTxt = generateType False True [DOrd,DEq,DShow] clientMsgType
-
-        clientOutgoingMsgs = S.toList $ S.fromList $ mapMaybe (\(_,(_,_,trans)) -> trans) $ M.toList cDiagram
-        clientOutgoingMsgType = ElmCustom "ServerMessage" $ map (\(n,t) -> ("M"++n,t)) clientOutgoingMsgs
-        clientOutgoingMsgTypeTxt = generateType False True [DOrd,DEq,DShow] clientOutgoingMsgType
-
-        clientTransFromServer = S.fromList $ concat $ mapMaybe (\(_,(_,_,trans)) -> cm2constr trans) $ M.toList sDiagram
-
-        serverWrappedMessagesTxt = T.unlines $ map (\(name,constrs) -> generateType True True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) serverMsgs
-        serverWrappedStateTypesTxt = T.unlines $ map (\(name,constrs) -> generateType True True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) $ M.elems sStates
-        serverWrappedOutgoingMsgTxt = T.unlines $ map (\(name,constrs) -> generateType True True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) $ S.toList $ S.fromList $ concat $ mapMaybe cm2constr serverOutgoingMsgs
-
-        serverExtraTypes = map snd $ M.toList sExtraT
-        serverExtraTypesTxt = T.unlines $ map (generateType True True [DOrd,DEq,DShow]) serverExtraTypes
-        
-        clientExtraTypes = map snd $ M.toList cExtraT
-        clientExtraTypesTxt = T.unlines $ map (generateType False True [DOrd,DEq,DShow]) clientExtraTypes
-
-        clientWrappedMessagesTxt = T.unlines $ map (\(name,constrs) -> generateType False True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) clientMsgs
-        clientWrappedStateTypesTxt = T.unlines $ map (\(name,constrs) -> generateType False True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) $ M.elems cStates
-        clientWrappedOutgoingMsgTxt = T.unlines $ map (\(name,constrs) -> generateType False True [DOrd,DEq,DShow] $ ElmCustom name [(name,constrs)]) clientOutgoingMsgs
-
-        clientS2M = M.toList $ generateStateMsgs cDiagram cStateslst
-        serverS2M = M.toList $ generateStateMsgsServer sDiagram sStateslst
-
-        clientViewModules =
-            map (\(n,m) -> (n,clientViewModule (n,m))) clientS2M
-        
-        clientTypeModules =
-            map (\(n,m) -> (n,clientTypeModule (n,m))) clientS2M
-        
-        clientUpdateModules =
-            map (\(n,m) -> (n,clientUpdateModule (n,m))) clientS2M        
-        
-        clientWrapModules =
-            map (\(n,m) -> (n,hiddenWrapModule (n,m))) clientS2M
-
-        serverUpdateModules =
-            map (\(n,m) -> (n,serverUpdateModule (n,m))) serverS2M 
-
-        clientS2Subs = mapMaybe (\cs -> 
-                        case cs of 
-                            ClientStateWithSubs (stn,_) subs -> Just (stn,subs)
-                            _ -> Nothing 
-                        ) cStateslst
-
-        clientSubModules =
-            map (\(n,m) -> (n,clientSubsModule (n,m))) clientS2Subs
 
         clientViewModule (stateName, messages) =
             let 
@@ -688,39 +611,6 @@ generateServer gsvg onlyStatic fp (startCs
                 subsTxt = map (\(sn,_) -> T.concat ["Sub.map (Static.Wrappers.",snTxt,".wrapCMessage << Static.Wrappers.",snTxt,".unwrap",T.pack sn,") <| Subs.",T.pack stateName,".sub",T.pack sn," m"]) subs
             in
                 T.concat ["        Static.Model.",snTxt," m -> Sub.batch [",T.intercalate "," subsTxt,"]"]
-
-        createUnwrap :: Bool -> String -> String -> Constructor -> T.Text
-        createUnwrap h outputType inputPrefix (n,args) =
-            let
-                (.::.) = if h then " :: " else " : "
-                name = T.concat ["unwrap", T.pack n]
-                typE = T.concat [name, (.::.), T.pack n, " -> ", T.pack outputType]
-                decl = T.concat [name," ",generatePattern (n,args)," = ",generatePattern (inputPrefix++n,args)]
-            in
-                T.unlines
-                    [
-                        typE
-                    ,   decl
-                    ,   ""
-                    ]
-
-        createWrap :: Bool -> Bool -> String -> String -> Constructor -> T.Text
-        createWrap def h inputType outputPrefix (n,args) =
-            let
-                (.::.) = if h then " :: " else " : "
-                name = T.concat ["wrap", T.pack n]
-                typE = T.concat [name, (.::.),T.pack inputType," -> ",T.pack n]
-                decl = T.concat [name," x__ ="]
-            in
-                T.unlines
-                    [
-                        typE
-                    ,   decl
-                    ,   "    case x__ of"
-                    ,   T.concat["        ",generatePattern (outputPrefix++n,args)," -> ",generatePattern (n,args)]
-                    ,   if def then T.concat["        _ -> error \"Tried to wrap a value at the wrong time!\""] else ""
-                    ,   ""
-                    ]
 
         createServerUpdateCase :: ((String, ServerTransition), (String, Maybe ServerCmd,OutgoingClientMessage)) -> T.Text
         createServerUpdateCase ((s0,(tn,tetd)),(s1,mCmd,mCt)) =

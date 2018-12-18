@@ -11,15 +11,13 @@ import Types
 import Generate.Types
 
 generateDot :: ClientServerApp -> IO ()
-generateDot (startClient
-                  ,startServer
-                  ,clientStates
-                  ,serverStates
-                  ,cExtraT
-                  ,sExtraT
-                  ,cDiagram
-                  ,sDiagram
-                  ,plugins)= error ""
+generateDot (startCp
+                  ,startPlace
+                  ,netLst
+                  ,cExtraTlst
+                  ,sExtraTlst
+                  ,plugins
+                  )= error ""
     {-let
         replace :: [T.Text] -> [T.Text]
         replace (l1:ls) = ( case lookup l1 swaps of

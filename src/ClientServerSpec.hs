@@ -1,115 +1,69 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module ClientServerSpec where
 
 import Types
-import TypeHelpers
 import Data.Map as M
-import Generate.Plugins.Database
+import TypeHelpers
+import Generate.Net
 
---where to output generated files
-outputDirectory = "../elm-number-race/"
+testNet :: Net
+testNet =
+    let
+        place1 = 
+            HybridPlace "A" 
+                [edt (ElmIntRange 0 1000) "n" "",edt (ElmList $ edt (ElmIntRange 0 1000) "n" "") "nLst" ""] --server state
+                [edt (ElmIntRange 0 1000) "playerN" ""] --player state
+                [edt (ElmIntRange 0 1000) "n" ""]
+                Nothing
+                (Nothing, Nothing)
+                Nothing
 
---client states
-login = cState "Login" []
---login messages
-tapLogin = msg "TapLogin" []
-sendLogin = msg "SendLogin" []
+        place2 = 
+            HybridPlace "B" 
+                [edt (ElmIntRange 0 1000) "n" "",edt (ElmList $ edt (ElmIntRange 0 1000) "n" "") "nLst" ""] --server state
+                [edt (ElmIntRange 0 1000) "playerN" ""] --player state
+                [edt (ElmIntRange 0 1000) "n" ""]
+                Nothing
+                (Nothing, Nothing)
+                Nothing
 
-waiting = cState "Waiting" 
-    [
-        edt (ElmIntRange 0 1000) "clientN" "The number that this client will increment by"
-    ]
---waiting messages
-tapStart = msg "TapStart" []
-sendStart = msg "SendStart" []
-startGame = msg "StartGame" 
-    [
-        edt (ElmIntRange 0 1000) "goal" "The goal of the counter"
-    ]
-
-playingC = cState "InGame" 
-    [
-        edt (ElmIntRange 0 1000) "clientN" "The number that this client will increment by"
-    ,   edt (ElmIntRange 0 1000) "currentNum" "The current state of the counter"
-    ,   edt (ElmIntRange 0 1000) "goal" "The goal of the counter"
-    ]
---client playing messages
-tapIncrement = msg "TapIncrement" [] --Tell the server to increase the number
-sendIncrement = msg "SendIncrement" [] --Tell the server to increase the number
-newValue = msg "NewValue" 
-    [
-        edt (ElmIntRange 0 10000) "n" "The new value of the counter"
-    ]
-tapTryAgain = msg "TapTryAgain" [] --Tell the server to increase the number
-sendTryAgain = msg "SendTryAgain" [] --Tell the server to increase the number
-
-
-
---server states
-idle = sState "Idle"
-    [
-        edt (ElmDict clientId incrementN) "pIncs" "All players and their amount of incrementing"
-    ]
-
-incrementN = edt (ElmIntRange 0 1000) "n" "The number that this client will increment by"
-clientId = edt (ElmType "ClientID") "clientID" ""
-
-
-playingS = sState "PlayingS"
-    [
-        edt (ElmDict clientId incrementN) "pIncs" "All players and their amount of incrementing"
-    ,   edt (ElmIntRange 0 1000) "currentNum" "The current state of the counter"
-    ,   edt (ElmIntRange 0 1000) "goal" "The goal of the counter"
-    ]
-
---server messages
-loginSuccess = msg "LoginSuccess"
-    [
-        edt (ElmIntRange 0 1000) "clientN" "The number that this client will increment by"
-    ]
-randomGoal = msg "RandomGoal"
-    [
-        edt (ElmIntRange 0 1000) "randomGoal" ""
-    ]
-
--- the actual app that is to be generated
-clientServerApp :: ClientServerApp
-clientServerApp = (
-                ("Login", Nothing) --client start state
-             ,  ("Idle", Nothing) --server start start
-             ,  [login,waiting,playingC] --client states
-             ,  [idle,playingS]                                 --server states
-             ,  []                            --extra client types
-             ,  []        --extra server types
-             ,  csDiagram --client state diagram
-             ,  ssDiagram --server state diagram
-             ,  [ Plugin "Incrementer"
-                --, PluginGen "Database" (generateDatabase [Table "People" [(ElmString,"name","")] []])
+        place3 = 
+            HybridPlace "C" 
+                [edt (ElmIntRange 0 1000) "n" "",edt (ElmList $ edt (ElmIntRange 0 1000) "n" "") "nLst" ""] --server state
+                [edt (ElmIntRange 0 1000) "playerN" ""] --player state
+                [edt (ElmIntRange 0 1000) "n" ""]
+                Nothing
+                (Nothing, Nothing)
+                Nothing
+        trans1 =
+            NetTransition
+                (constructor "AB" [edt (ElmIntRange 0 1000) "n" ""])
+                [("A", ("B", Just $ constructor "StartGameAB" [edt (ElmIntRange 0 1000) "n" ""]))]
+                Nothing
+        trans2 =
+            NetTransition
+                (constructor "CA" [edt (ElmIntRange 0 1000) "n" ""])
+                [("C", ("A", Just $ constructor "StartGameCA" [edt (ElmIntRange 0 1000) "n" ""]))]
+                Nothing
+        trans3 =
+            NetTransition
+                (constructor "ABC" [edt (ElmIntRange 0 1000) "n" ""])
+                [("A", ("B", Just $ constructor "StartGameAB2" [edt (ElmIntRange 0 1000) "n" ""]))
+                ,("A", ("C", Just $ constructor "StartGameAC" [edt (ElmIntRange 0 1000) "n" ""]))
                 ]
-             )
+                Nothing
+    in
+        HybridNet
+            "TestNet"
+            [place1,place2,place3]
+            [(ServerOnlyTransition,trans1),(ClientOnlyTransition,trans2),(HybridTransition,trans3)]
 
-clientConnect = ("ClientConnect",[])
-clientDisconnect = ("ClientDisconnect",[])
-
-csDiagram ::  M.Map (String, ClientTransition) (String, Maybe ClientCmd, Maybe ServerTransition)
-csDiagram = M.fromList
-            [
-                (("Login",   tapLogin)            ,("Login",       Nothing, Just sendLogin))
-            ,   (("Login",   loginSuccess)        ,("Waiting",        Nothing, Nothing))
-            ,   (("Waiting",   tapStart)          ,("Waiting",        Nothing, Just sendStart))
-            ,   (("Waiting",   startGame)         ,("InGame",        Nothing, Nothing))
-            ,   (("InGame",   tapIncrement)       ,("InGame",        Nothing, Just sendIncrement))
-            ,   (("InGame",   newValue)           ,("InGame",        Nothing, Nothing))
-            ,   (("InGame",   tapTryAgain)        ,("InGame",        Nothing, Just sendTryAgain))
-            ]
-
-ssDiagram :: ServerStateDiagram
-ssDiagram = M.fromList 
-            [
-                (("Idle", clientConnect),       ("Idle", Nothing, NoClientMessage))
-            ,   (("Idle", clientDisconnect),    ("Idle", Nothing, NoClientMessage))
-            ,   (("Idle", sendLogin),           ("Idle", Nothing, ToSender loginSuccess))
-            ,   (("Idle", sendStart),           ("Idle", Just randomGoal, NoClientMessage))
-            ,   (("Idle", randomGoal),          ("PlayingS", Nothing, ToSet startGame))
-            ,   (("PlayingS", sendIncrement),    ("PlayingS", Nothing, ToSet newValue))
-            ,   (("PlayingS", sendTryAgain),     ("PlayingS", Nothing, ToSet newValue))
-            ]
+clientServerApp :: ClientServerApp
+clientServerApp =
+    ( "A"                 --starting place for a client
+    , [testNet]           --all the nets in this client/server app
+    , []                  --extra client types used in states or messages
+    , []                  --extra server types used in states or messages
+    , []                  --a list of plugins to be generated / installed on the server
+    )
