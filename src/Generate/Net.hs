@@ -246,9 +246,10 @@ generateServerNet extraTypes fp net =
                         T.concat ["module ",name,".Static.Init where"]
                     ,   T.concat ["import ",name,".Static.Types"]
                     ,   T.concat ["import ",name,".Init"]
-                    ,   "import Data.TMap as TM"
+                    ,   "import Data.TMap as TM\n"
+                    ,   "-- Initialize a TMap of the places in this Net"
                     ,   "init :: TMap"
-                    ,   T.concat ["init = TM.insert ",T.intercalate " $ TM.insert " $ map (\(HybridPlace name _ _ _ _) -> T.concat["init",name]) places," $ TM.empty"]
+                    ,   T.concat ["init = ",T.concat $ map (\(HybridPlace name _ _ _ _) -> T.concat["TM.insert init",name," $ "]) places,"TM.empty"]
                     ]
             in do
                 createDirectoryIfMissing True $ fp </> T.unpack name </> "userApp"
