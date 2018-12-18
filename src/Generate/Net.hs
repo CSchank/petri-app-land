@@ -241,12 +241,21 @@ generateServerNet extraTypes fp net =
                                                          ,")"]
                                                          ]
                                     ]
-                    
+                hiddenInit = T.unlines 
+                    [
+                        T.concat ["module ",name,".Static.Init where"]
+                    ,   T.concat ["import ",name,".Static.Types"]
+                    ,   T.concat ["import ",name,".Init"]
+                    ,   "import Data.TMap as TM"
+                    ,   "init :: TMap"
+                    ,   T.concat ["init = TM.insert ",T.intercalate " $ TM.insert " $ map (\(HybridPlace name _ _ _ _) -> T.concat["init",name]) places," $ TM.empty"]
+                    ]
             in do
                 createDirectoryIfMissing True $ fp </> T.unpack name </> "userApp"
                 createDirectoryIfMissing True $ fp </> T.unpack name </> "Static"
                 writeIfNew 0 (fp </> T.unpack name </> "userApp" </> "Init" <.> "hs") inits 
                 writeIfNew 0 (fp </> T.unpack name </> "Static" </> "Types" <.> "hs") types
+                writeIfNew 0 (fp </> T.unpack name </> "Static" </> "Init" <.> "hs") hiddenInit
                 writeIfNew 0 (fp </> T.unpack name </> "userApp" </> "Update" <.> "hs") update
                 createDirectoryIfMissing True $ fp </> T.unpack name </> "Static" </> "Helpers"
                 mapM_ (\(HybridPlace pName edts _ _ _) -> writeIfNew 1 (fp </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper False (T.unpack pName,edts) False]) places
