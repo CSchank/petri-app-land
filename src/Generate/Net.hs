@@ -37,18 +37,18 @@ testNet =
         trans1 =
             NetTransition
                 (constructor "AB" [edt (ElmIntRange 0 1000) "n" ""])
-                [("A", ("B", Just $ constructor "AtoB" [edt (ElmIntRange 0 1000) "n" ""]))]
+                [("A", ("B", Just $ constructor "StartGameAB" [edt (ElmIntRange 0 1000) "n" ""]))]
                 Nothing
         trans2 =
             NetTransition
                 (constructor "CA" [edt (ElmIntRange 0 1000) "n" ""])
-                [("C", ("A", Just $ constructor "CtoA" [edt (ElmIntRange 0 1000) "n" ""]))]
+                [("C", ("A", Just $ constructor "StartGameCA" [edt (ElmIntRange 0 1000) "n" ""]))]
                 Nothing
         trans3 =
             NetTransition
                 (constructor "ABC" [edt (ElmIntRange 0 1000) "n" ""])
-                [("A", ("B", Just $ constructor "AtoB" [edt (ElmIntRange 0 1000) "n" ""]))
-                ,("A", ("C", Just $ constructor "AtoC" [edt (ElmIntRange 0 1000) "n" ""]))
+                [("A", ("B", Just $ constructor "StartGameAB2" [edt (ElmIntRange 0 1000) "n" ""]))
+                ,("A", ("C", Just $ constructor "StartGameAC" [edt (ElmIntRange 0 1000) "n" ""]))
                 ]
                 Nothing
         net = HybridNet
@@ -115,11 +115,35 @@ generateServerNet extraTypes fp net =
                             in
                                 T.unlines $ map (\(_,msg@(msgN,edts)) -> generateType True True [DOrd,DEq,DShow] $ ElmCustom msgN [msg]) msgs
                                 ++ [generateType True True [DOrd,DEq,DShow] $ ElmCustom "ClientMessage" $ map (\(qual,(msgN,edts)) -> (qual++"_"++msgN,edts)) msgs]
+                        transitionType :: (HybridTransition,NetTransition) -> T.Text
+                        transitionType (transType, NetTransition (msgN,msg) connections mCmd) =
+                            let
+                                grouped :: [(T.Text, [(T.Text, Maybe Constructor)])]
+                                grouped = M.toList $ M.fromListWith (\ a b -> a ++ b) $ map (\(a,b) -> (a,[b])) connections        
+                                
+                                output (from,lst) = T.concat [T.pack msgN,"Transition"]--from,"to",T.intercalate "or" $ placeOutputs]
+                                placeInputs :: [T.Text]
+                                placeInputs = 
+                                    S.toList $ S.fromList $ map (\(from,_) -> from) connections
+                                placeOutputs :: [T.Text]
+                                placeOutputs = 
+                                    S.toList $ S.fromList $ map (\(_,(to,_)) -> to) connections
+                                constructors :: (T.Text, [(T.Text, Maybe Constructor)]) -> [Constructor]
+                                constructors (from,toLst) =
+                                    map (\(to,mConstr) -> 
+                                        case mConstr of 
+                                            Just (msgName,_) -> constructor (T.unpack $ T.concat[T.pack msgN,"_",from,"to",to]) [edt (ElmType $ T.unpack $ T.concat [to,"Player"]) "" "", edt (ElmType msgName) "" ""]
+                                            Nothing          -> constructor (T.unpack $ T.concat[T.pack msgN,"_",from,"to",to]) [edt (ElmType $ T.unpack $ T.concat [to,"Player"]) "" ""]
+                                                ) toLst
+                            in
+                                T.unlines $
+                                        map (\(from,toLst) -> generateType True False [DOrd,DEq,DShow] $ ElmCustom (T.unpack $ output (from,toLst)) $ constructors (from,toLst)) grouped
                     in
                         T.unlines 
                             [
                                 placeTypes
                             ,   clientMsgType
+                            ,   T.unlines $ map transitionType transitions
                             ]
                 update :: T.Text
                 update =
@@ -159,7 +183,7 @@ generateServerNet extraTypes fp net =
                             ServerOnlyTransition -> ""
 
                         fnName = T.concat["update",T.pack msgN]
-                        outputs = placeInputs ++ placeOutputs ++ singularTransFns
+                        outputs = placeInputs ++ placeOutputs ++ singularTransFns ++ cmds
                         grouped :: [(T.Text, [(T.Text, Maybe Constructor)])]
                         grouped = M.toList $ M.fromListWith (\ a b -> a ++ b) $ map (\(a,b) -> (a,[b])) connections
 
@@ -192,13 +216,17 @@ generateServerNet extraTypes fp net =
                                                         ) lst
                                                     output = T.concat [from,"to",T.intercalate "or" $ placeOutputs]
                                                     name = T.concat ["        from",from]
-                                                    typ = T.concat [name, " :: ",from," -> ",output]
+                                                    typ = T.concat [name, " :: ",from,"Player -> ",output]
                                                 in
                                                     T.unlines 
                                                     [
                                                         typ
                                                     ,   T.concat [name," p",uncapitalize from," = error \"Please fill in function stub.\""]
                                                     ]) grouped
+                        cmds = 
+                            case mCmd of 
+                                Just (msgN,msg) -> [T.pack msgN]
+                                Nothing -> []
 
                     in T.unlines 
                         [
@@ -207,8 +235,12 @@ generateServerNet extraTypes fp net =
                         ,   "    let"
                         ,   T.unlines singularStubs
                         ,   "    in"
-                        ,   T.concat["        ",T.concat ["(",T.intercalate ", " $ map uncapitalize (placeInputs ++ placeOutputs),", ",T.intercalate ", " $ map (\txt -> T.concat ["from",txt]) placeInputs,")"]]
-                        ]
+                        ,   T.concat["        ",T.concat ["(",T.intercalate ", " $ map uncapitalize (placeInputs ++ placeOutputs),", "
+                                                         ,T.intercalate ", " $ map (\txt -> T.concat ["from",txt]) placeInputs
+                                                         ,T.replicate (length cmds) ", Cmd.none"
+                                                         ,")"]
+                                                         ]
+                                    ]
                     
             in do
                 createDirectoryIfMissing True $ fp </> T.unpack name </> "userApp"
