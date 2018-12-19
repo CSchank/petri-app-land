@@ -292,8 +292,7 @@ generateServerNet extraTypes fp net =
                         ,   T.concat ["import ",name,".Static.Types\n"]
                         ,   T.unlines $ map (createUnwrap True "ClientMessage" "M") outgoingCM
                         ,   T.unlines $ map (createUnwrap True "ClientMessage" "M") outgoingCM
-                        ]
-                                
+                        ]        
             in do
                 createDirectoryIfMissing True $ fp </> T.unpack name </> "userApp"
                 createDirectoryIfMissing True $ fp </> T.unpack name </> "Static"
@@ -302,7 +301,8 @@ generateServerNet extraTypes fp net =
                 writeIfNew 0 (fp </> T.unpack name </> "Static" </> "Init" <.> "hs") hiddenInit
                 writeIfNew 0 (fp </> T.unpack name </> "userApp" </> "Update" <.> "hs") update
                 createDirectoryIfMissing True $ fp </> T.unpack name </> "Static" </> "Helpers"
-                mapM_ (\(HybridPlace pName edts _ _ _ _ _) -> writeIfNew 1 (fp </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper False (T.unpack pName,edts) False]) places
+                mapM_ (\(HybridPlace pName edts _ _ _ _ _)  -> writeIfNew 1 (fp </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper True (T.unpack pName,edts) False]) places
+                mapM_ (\(HybridPlace pName _ pEdts _ _ _ _) -> writeIfNew 1 (fp </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName ++ "Player" <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper True (T.unpack pName ++ "Player",pEdts) False]) places
                 writeIfNew 0 (fp </> T.unpack name </> "Static" </> "Encode" <.> "hs") encoder
                 writeIfNew 0 (fp </> T.unpack name </> "Static" </> "Decode" <.> "hs") decoder
                 writeIfNew 0 (fp </> T.unpack name </> "Static" </> "Wrappers" <.> "hs") wrappers
