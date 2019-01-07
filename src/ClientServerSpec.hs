@@ -7,6 +7,8 @@ import Data.Map as M
 import TypeHelpers
 import Generate.Net
 
+outputDirectory = "testnetserver"
+
 testNet :: Net
 testNet =
     let
@@ -56,8 +58,10 @@ testNet =
     in
         HybridNet
             "TestNet"
+            "A"
             [place1,place2,place3]
             [(ServerOnlyTransition,trans1),(ClientOnlyTransition,trans2),(HybridTransition,trans3)]
+            []
 
 clientServerApp :: ClientServerApp
 clientServerApp =
@@ -65,5 +69,4 @@ clientServerApp =
     , [testNet]           --all the nets in this client/server app
     , []                  --extra client types used in states or messages
     , []                  --extra server types used in states or messages
-    , []                  --a list of plugins to be generated / installed on the server
     )

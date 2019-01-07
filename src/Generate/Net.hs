@@ -15,64 +15,12 @@ import Data.Maybe (mapMaybe, isJust)
 import Generate.Helpers
 import Generate.Codec
 import Generate.Wrappers
-
-testNet =
-    let
-        place1 = 
-            HybridPlace "A" 
-                [edt (ElmIntRange 0 1000) "n" "",edt (ElmList $ edt (ElmIntRange 0 1000) "n" "") "nLst" ""] --server state
-                [edt (ElmIntRange 0 1000) "playerN" ""] --player state
-                [edt (ElmIntRange 0 1000) "n" ""]
-                Nothing
-                (Nothing, Nothing)
-                Nothing
-
-        place2 = 
-            HybridPlace "B" 
-                [edt (ElmIntRange 0 1000) "n" "",edt (ElmList $ edt (ElmIntRange 0 1000) "n" "") "nLst" ""] --server state
-                [edt (ElmIntRange 0 1000) "playerN" ""] --player state
-                [edt (ElmIntRange 0 1000) "n" ""]
-                Nothing
-                (Nothing, Nothing)
-                Nothing
-
-        place3 = 
-            HybridPlace "C" 
-                [edt (ElmIntRange 0 1000) "n" "",edt (ElmList $ edt (ElmIntRange 0 1000) "n" "") "nLst" ""] --server state
-                [edt (ElmIntRange 0 1000) "playerN" ""] --player state
-                [edt (ElmIntRange 0 1000) "n" ""]
-                Nothing
-                (Nothing, Nothing)
-                Nothing
-        trans1 =
-            NetTransition
-                (constructor "AB" [edt (ElmIntRange 0 1000) "n" ""])
-                [("A", ("B", Just $ constructor "StartGameAB" [edt (ElmIntRange 0 1000) "n" ""]))]
-                Nothing
-        trans2 =
-            NetTransition
-                (constructor "CA" [edt (ElmIntRange 0 1000) "n" ""])
-                [("C", ("A", Just $ constructor "StartGameCA" [edt (ElmIntRange 0 1000) "n" ""]))]
-                Nothing
-        trans3 =
-            NetTransition
-                (constructor "ABC" [edt (ElmIntRange 0 1000) "n" ""])
-                [("A", ("B", Just $ constructor "StartGameAB2" [edt (ElmIntRange 0 1000) "n" ""]))
-                ,("A", ("C", Just $ constructor "StartGameAC" [edt (ElmIntRange 0 1000) "n" ""]))
-                ]
-                Nothing
-        net = HybridNet
-                "TestNet"
-                [place1,place2,place3]
-                [(ServerOnlyTransition,trans1),(ClientOnlyTransition,trans2),(HybridTransition,trans3)]
-    in
-        generateServerNet M.empty "testnet" net
-
+import Generate.Plugins
 
 generateServerNet :: M.Map String ElmCustom -> FilePath -> Net -> IO ()
 generateServerNet extraTypes fp net =
     case net of 
-        (HybridNet name places transitions) ->
+        (HybridNet name _ places transitions plugins) ->
             let
                 inits = T.unlines 
                     [
@@ -269,7 +217,7 @@ generateServerNet extraTypes fp net =
                     ,   "import Data.TMap as TM\n"
                     ,   "-- Initialize a TMap of the places in this Net"
                     ,   "init :: TMap"
-                    ,   T.concat ["init = ",T.concat $ map (\(HybridPlace name _ _ _ _ (mCmd,_) _) -> T.concat["TM.insert",if isJust mCmd then "(fst init) " else "init ",name," $ "]) places,"TM.empty"]
+                    ,   T.concat ["init = ",T.concat $ map (\(HybridPlace name _ _ _ _ (mCmd,_) _) -> T.concat["TM.insert",if isJust mCmd then T.concat[" (fst init",name] else T.concat[" init",name]," $ "]) places,"TM.empty"]
                     ]
                 encoder = T.unlines 
                     [
@@ -294,15 +242,16 @@ generateServerNet extraTypes fp net =
                         ,   T.unlines $ map (createUnwrap True "ClientMessage" "M") outgoingCM
                         ]        
             in do
-                createDirectoryIfMissing True $ fp </> T.unpack name </> "userApp"
-                createDirectoryIfMissing True $ fp </> T.unpack name </> "Static"
-                writeIfNew 0 (fp </> T.unpack name </> "userApp" </> "Init" <.> "hs") inits 
-                writeIfNew 0 (fp </> T.unpack name </> "Static" </> "Types" <.> "hs") types
-                writeIfNew 0 (fp </> T.unpack name </> "Static" </> "Init" <.> "hs") hiddenInit
-                writeIfNew 0 (fp </> T.unpack name </> "userApp" </> "Update" <.> "hs") update
-                createDirectoryIfMissing True $ fp </> T.unpack name </> "Static" </> "Helpers"
-                mapM_ (\(HybridPlace pName edts _ _ _ _ _)  -> writeIfNew 1 (fp </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper True (T.unpack pName,edts) False]) places
-                mapM_ (\(HybridPlace pName _ pEdts _ _ _ _) -> writeIfNew 1 (fp </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName ++ "Player" <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper True (T.unpack pName ++ "Player",pEdts) False]) places
-                writeIfNew 0 (fp </> T.unpack name </> "Static" </> "Encode" <.> "hs") encoder
-                writeIfNew 0 (fp </> T.unpack name </> "Static" </> "Decode" <.> "hs") decoder
-                writeIfNew 0 (fp </> T.unpack name </> "Static" </> "Wrappers" <.> "hs") wrappers
+                createDirectoryIfMissing True $ fp </> "server" </> "src" </> T.unpack name </> "userApp"
+                createDirectoryIfMissing True $ fp </> "server" </> "src" </> T.unpack name </> "Static"
+                writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "userApp" </> "Init" <.> "hs") inits 
+                writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Types" <.> "hs") types
+                writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Init" <.> "hs") hiddenInit
+                writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "userApp" </> "Update" <.> "hs") update
+                createDirectoryIfMissing True $ fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers"
+                mapM_ (\(HybridPlace pName edts _ _ _ _ _)  -> writeIfNew 1 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper True (T.unpack pName,edts) False]) places
+                mapM_ (\(HybridPlace pName _ pEdts _ _ _ _) -> writeIfNew 1 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName ++ "Player" <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper True (T.unpack pName ++ "Player",pEdts) False]) places
+                writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Encode" <.> "hs") encoder
+                writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Decode" <.> "hs") decoder
+                writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Wrappers" <.> "hs") wrappers
+                generatePlugins (fp </> "server" </> "src" </> T.unpack name) plugins

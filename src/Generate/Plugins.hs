@@ -16,7 +16,7 @@ generatePlugins fp ps =
         oneResult n               = T.concat["    p",T.pack $ show n," <- result =<< rp", T.pack $ show n]
         ret n                     = T.concat["    return $ ",T.concat $ map (\n -> T.concat ["TM.insert p",T.pack $ show n," $ "]) [0..length ps - 1], "TM.empty"]
     in do
-        writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Plugins" <.> "hs") $ T.unlines
+        writeIfNew 0 (fp </> "Static" </> "Plugins" <.> "hs") $ T.unlines
             ([
                 "module Static.Plugins where"
             ,   "import Static.ServerTypes"
@@ -41,6 +41,6 @@ generatePlugins fp ps =
                         PluginGen name gen -> do
                             g <- gen
                             mapM_ (\(n,t) -> 
-                                    writeIfNew 0 (if n == "" then fp </> "server" </> "src" </> "Plugins" </> name <.> "hs"
-                                                  else fp </> "server" </> "src" </> "Plugins" </> name </> n <.> "hs") t) g
+                                    writeIfNew 0 (if n == "" then fp </> "Static" </> "Plugins" </> name <.> "hs"
+                                                  else fp </> "Static" </> "Plugins" </> name </> n <.> "hs") t) g
             ) ps -- generate other files for plugins

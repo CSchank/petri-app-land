@@ -12,12 +12,10 @@ import Generate.Types
 
 generateDot :: ClientServerApp -> IO ()
 generateDot (startCp
-                  ,startPlace
-                  ,netLst
-                  ,cExtraTlst
-                  ,sExtraTlst
-                  ,plugins
-                  )= error ""
+            ,netLst
+            ,cExtraTlst
+            ,sExtraTlst
+            )= error ""
     {-let
         replace :: [T.Text] -> [T.Text]
         replace (l1:ls) = ( case lookup l1 swaps of

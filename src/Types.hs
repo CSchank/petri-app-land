@@ -95,9 +95,11 @@ data HybridTransition =
 data Net = 
     HybridNet
         T.Text                                  --net name
+        T.Text                                  --starting place for client
         [HybridPlace]                           --all the places in this net
         [(HybridTransition,NetTransition)]      --transitions between the places
-        
+        [Plugin]                                --a list of plugins to be generated / installed on this net
+
 
 
 type ExtraClientTypes =
@@ -111,11 +113,10 @@ data ClientState =
     | ClientStateWithSubs Constructor [Constructor] {-subs-}
 
 type ClientServerApp =
-    ( String                            --starting place for a client
+    ( T.Text                            --starting net for client
     , [Net]                             --all the nets in this client/server app
     , ExtraClientTypes                  --extra client types used in states or messages
     , ExtraServerTypes                  --extra server types used in states or messages
-    , [Plugin]                          --a list of plugins to be generated / installed on the server
     )
 
 data Plugin = 
