@@ -65,7 +65,7 @@ testNet =
 
 clientServerApp :: ClientServerApp
 clientServerApp =
-    ( "A"                 --starting place for a client
+    ( "TestNet"           --starting net for a client
     , [testNet]           --all the nets in this client/server app
     , []                  --extra client types used in states or messages
     , []                  --extra server types used in states or messages

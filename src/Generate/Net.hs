@@ -5,7 +5,6 @@ module Generate.Net where
 import Types
 import qualified Data.Map as M
 import qualified Data.Text as T
-import qualified Data.Set as S
 import Generate.Types
 import TypeHelpers
 import Utils
@@ -52,6 +51,7 @@ generateServerNet extraTypes fp net =
                     T.concat ["module ", name, ".Static.Types where"]
                     , "import Data.Typeable (Typeable)"
                     , ""
+                    , "-- the initial state of all places in this net"
                     , generateNetTypes name places -- the initial places
                     ]
                 clientMsgs :: [(String,Constructor)]
@@ -61,7 +61,7 @@ generateServerNet extraTypes fp net =
                                                                                         Nothing -> Nothing)
                                                                                           lstTrans) transitions
                 outgoingCM = map (\(_,(msgN,edts)) -> (msgN,edts)) clientMsgs
-                clientMsg = ElmCustom "ClientMessage" $ map (\(n,t) -> ("M",t)) outgoingCM
+                clientMsg = ElmCustom "ClientMessage" $ map (\(n,t) -> ("M"++n,t)) outgoingCM
                 generateNetTypes :: T.Text -> [HybridPlace] -> T.Text
                 generateNetTypes netName places = 
                     let
@@ -76,6 +76,8 @@ generateServerNet extraTypes fp net =
                                     generateType True True [DOrd,DEq,DShow,DTypeable] $ ElmCustom (T.unpack name) [(T.unpack name, serverPlaceState)],""
                                 ,   generateType True True [DOrd,DEq,DShow,DTypeable] $ ElmCustom (T.unpack name++"Player") [(T.unpack name++"Player",playerPlaceState)],""
                                 ]
+                        playerUnionType = 
+                            ElmCustom "Player" $ map (\(HybridPlace name _ playerPlaceState _ _ _ _) -> (T.unpack $ T.concat ["P",name],playerPlaceState)) places
                         clientMsgType :: T.Text
                         clientMsgType =
                             let
@@ -92,10 +94,10 @@ generateServerNet extraTypes fp net =
                                 output = T.concat [T.pack msgN,"Transition"]
                                 placeInputs :: [T.Text]
                                 placeInputs = 
-                                    S.toList $ S.fromList $ map (\(from,_) -> from) connections
+                                    fnub $ map (\(from,_) -> from) connections
                                 placeOutputs :: [T.Text]
                                 placeOutputs = 
-                                    S.toList $ S.fromList $ map (\(_,(to,_)) -> to) connections
+                                    fnub $ map (\(_,(to,_)) -> to) connections
                                 constructors :: (T.Text, [(T.Text, Maybe Constructor)]) -> [Constructor]
                                 constructors (from,toLst) =
                                     map (\(to,mConstr) -> 
@@ -112,6 +114,7 @@ generateServerNet extraTypes fp net =
                                 placeTypes
                             ,   clientMsgType
                             ,   T.unlines $ map transitionType transitions
+                            ,   generateType True False [DOrd,DEq,DShow] playerUnionType
                             ]
                 update :: T.Text
                 update =
@@ -136,10 +139,10 @@ generateServerNet extraTypes fp net =
 
                         placeInputs :: [T.Text]
                         placeInputs = 
-                            S.toList $ S.fromList $ map (\(from,_) -> from) connections
+                            fnub $ map (\(from,_) -> from) connections
                         placeOutputs :: [T.Text]
                         placeOutputs = 
-                            S.toList $ S.fromList $ map (\(_,(to,_)) -> to) connections
+                            fnub $ map (\(_,(to,_)) -> to) connections
                         clientIdType = case transType of 
                             HybridTransition -> "Maybe ClientID ->"
                             ClientOnlyTransition -> "ClientID ->"
@@ -238,7 +241,6 @@ generateServerNet extraTypes fp net =
                         [
                             T.concat ["module ",name,".Static.Wrappers where"]
                         ,   T.concat ["import ",name,".Static.Types\n"]
-                        ,   T.unlines $ map (createUnwrap True "ClientMessage" "M") outgoingCM
                         ,   T.unlines $ map (createUnwrap True "ClientMessage" "M") outgoingCM
                         ]        
             in do

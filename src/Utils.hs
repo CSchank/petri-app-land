@@ -11,7 +11,7 @@ import qualified Data.Text.IO as TIO
 import                  System.Directory
 import                  Control.Monad (unless)
 import Data.Char (toUpper,toLower)
-
+import qualified Data.Set as S
 
 
 
@@ -81,3 +81,6 @@ capStr str =
     case str of
         h:rest -> toUpper h : rest
         _ -> str
+
+fnub :: Ord a => [a] -> [a]
+fnub = S.toList . S.fromList
