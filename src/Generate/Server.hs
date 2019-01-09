@@ -49,17 +49,9 @@ generateServer gsvg onlyStatic fp
             [
                 "module Static.Init where"
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Init"]) netNames
-            ,   "import Data.TMap as TM"
-            ,   "import Static.Types",""
-            ,   "-- the player state of the top-level net"
-            ,   T.concat["type TopLevelPlayerState = ",startNet,".Static.Types.Player"],""
-            ,   "init :: NetState"
-            ,   "init = NetState {"
-            ,   "        playerStates = IM'.empty"
-            ,   T.concat["        placeStates = ",startNet,".Static.Init.init"]
-            ,   T.concat["        pluginStates = TMap.empty"]
-            ,   T.concat["        initalPlayerState = TMap.empty"]
-            ,   "        }"
+            ,   "import Data.TMap as TM",""
+            ,   "init :: TMap"
+            ,   T.concat["init = ",startNet,".Static.Init.init"]
             ]
 
     in do
