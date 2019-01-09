@@ -29,59 +29,41 @@ data CentralMessage
     = NewUser (TQueue ClientThreadMessage) Connection    --register a new user on the server
     | UserConnectionLost ClientID
     | ReceivedMessage ClientID ServerMessage
-    | GetCurrentState (TQueue ServerState)
-    | SetInternalState Model
-    | ResetClients
 
 data ClientThreadMessage 
-    = SendMessage ClientMessage
+    = SendMessage T.Text    -- send message to client
     | ResetState
 
---types of messages that can be sent back from the user update function
+data Client = 
+    Client NetID
 
-data ToSender clientMessage =
-      ToSender clientMessage
-
-data ToAllExceptSender clientMessage =
-      ToAllExceptSender clientMessage
-    | ToAllExceptSenderF (ClientID -> clientMessage)
-
-data ToSenderAnd clientMessage =
-      ToSenderAnd (Set.Set ClientID) clientMessage
-    | ToSenderAndF (Set.Set ClientID) (ClientID -> clientMessage)
-
-data ToSet clientMessage =
-      ToSet (Set.Set ClientID) clientMessage
-    | ToSetF (Set.Set ClientID) (ClientID -> clientMessage)
-
-data ToAll clientMessage =
-      ToAll clientMessage
-    | ToAllF (ClientID -> clientMessage)
-
-data InternalCM clientMessage =
-      ICMNoClientMessage
-    | ICMToSender clientMessage
-    | ICMToAllExceptSender clientMessage
-    | ICMToAllExceptSenderF (ClientID -> clientMessage)
-    | ICMToSenderAnd (Set.Set ClientID) clientMessage
-    | ICMToSenderAndF (Set.Set ClientID) (ClientID -> clientMessage)
-    | ICMToSet (Set.Set ClientID) clientMessage
-    | ICMToSetF (Set.Set ClientID) (ClientID -> clientMessage)
-    | ICMToAll clientMessage
-    | ICMToAllF (ClientID -> clientMessage)
-    | ICMAllOf [InternalCM clientMessage]
-
-newtype Client = Client (TQueue ClientThreadMessage)
+type NetID = Int
 
 data ServerState = ServerState
-    { clients :: IM'.IntMap Client
+    { clients :: IM'.IntMap NetID
     , nextClientId :: ClientID
-    , internalServerState :: Model
-    , pluginState :: PluginState
+    , serverState :: TMap                   -- all the nets
+    , startTime :: Int                      -- Unix time the server was started
     }
 
-type PluginState = TMap
+data NetState playerState = NetState
+    { playerStates :: IM'.IntMap playerState    -- the clients in the net (parameterized by that net's player state)
+    , placeStates :: TMap                       -- the place states in this net
+    , pluginStates :: TMap                      -- state of the plugins in this net
+    }
 
+-- data that the top-level update functions receive
+type TopLevelData = 
+    (Int {-start time-}, Int {-time-})
+
+{- message type for each net's STM loop
+data NetMsg netMsg = 
+      ConnectClient ClientID
+    | DisconnectClient ClientID
+    | ReceiveClientMessage ClientID netMsg
+    | ReceiveServerMessage netMsg
+    -- | MoveClient ClientID NetID -- move a client to another net, gotta think this through a bit better
+-}
 data Cmd msg =
       Cmd (IO msg)
     | forall state. Plugin state => StateCmd (state -> IO msg)

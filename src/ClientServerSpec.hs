@@ -5,7 +5,6 @@ module ClientServerSpec where
 import Types
 import Data.Map as M
 import TypeHelpers
-import Generate.Net
 
 outputDirectory = "testnetserver"
 

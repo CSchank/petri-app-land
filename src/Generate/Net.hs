@@ -19,7 +19,7 @@ import Generate.Plugins
 generateServerNet :: M.Map String ElmCustom -> FilePath -> Net -> IO ()
 generateServerNet extraTypes fp net =
     case net of 
-        (HybridNet name _ places transitions plugins) ->
+        (HybridNet name startingPlace places transitions plugins) ->
             let
                 inits = T.unlines 
                     [
@@ -29,6 +29,7 @@ generateServerNet extraTypes fp net =
                     , "-- the initial states of each place in this net"
                     , T.unlines $ map (generateNetInit extraTypes) places -- the initial places
                     ]
+                placePlayerStates = map (\(HybridPlace name _ playerPlaceState _ _ _ _) -> (T.unpack $ T.concat[name,"Player"],playerPlaceState)) places
                 -- the functions that the user changes
                 generateNetInit :: M.Map String ElmCustom -> HybridPlace -> T.Text
                 generateNetInit extraTypes (HybridPlace name serverPlaceState playerPlaceState _ mSubnet (mCmd,_) _) = 
@@ -77,7 +78,7 @@ generateServerNet extraTypes fp net =
                                 ,   generateType True True [DOrd,DEq,DShow,DTypeable] $ ElmCustom (T.unpack name++"Player") [(T.unpack name++"Player",playerPlaceState)],""
                                 ]
                         playerUnionType = 
-                            ElmCustom "Player" $ map (\(HybridPlace name _ playerPlaceState _ _ _ _) -> (T.unpack $ T.concat ["P",name],playerPlaceState)) places
+                            ElmCustom "Player" $ map (\(n,t) -> ("P"++n,t)) placePlayerStates
                         clientMsgType :: T.Text
                         clientMsgType =
                             let
@@ -199,6 +200,16 @@ generateServerNet extraTypes fp net =
                                 Just (msgN,msg) -> [T.pack msgN]
                                 Nothing -> []
 
+                    {-hiddenUpdate :: T.Text
+                    hiddenUpdate = 
+                        let
+                            decl = T.concat ["update",]
+                        in T.unlines
+                            [
+                                T.concat ["module ",name,".Static.Update where"]
+                            ,   T.concat ["import ",name,".Update"]
+                            ,   T.unlines $ map generateHiddenUpdate transitions
+                            ]-}
                     in T.unlines 
                         [
                             typ
@@ -215,12 +226,16 @@ generateServerNet extraTypes fp net =
                 hiddenInit = T.unlines 
                     [
                         T.concat ["module ",name,".Static.Init where"]
-                    ,   T.concat ["import ",name,".Static.Types"]
-                    ,   T.concat ["import ",name,".Init"]
+                    ,   T.concat ["import ",name,".Static.Types (Player)"]
+                    ,   T.concat ["import ",name,".Init as Init"]
                     ,   "import Data.TMap as TM\n"
-                    ,   "-- Initialize a TMap of the places in this Net"
-                    ,   "init :: TMap"
-                    ,   T.concat ["init = ",T.concat $ map (\(HybridPlace name _ _ _ _ (mCmd,_) _) -> T.concat["TM.insert",if isJust mCmd then T.concat[" (fst init",name] else T.concat[" init",name]," $ "]) places,"TM.empty"]
+                    ,   T.concat["init :: NetState Player"]
+                    ,   "init = NetState"
+                    ,   "    {"
+                    ,   "      playerStates = IM'.empty"
+                    ,   T.concat["    , placeStates = ",T.concat $ map (\(HybridPlace name _ _ _ _ (mCmd,_) _) -> T.concat["TM.insert",if isJust mCmd then T.concat[" (fst init",name] else T.concat[" init",name]," $ "]) places,"TM.empty"]
+                    ,   T.concat["    , pluginStates = TM.empty"]
+                    ,   "    }"
                     ]
                 encoder = T.unlines 
                     [
@@ -242,6 +257,9 @@ generateServerNet extraTypes fp net =
                             T.concat ["module ",name,".Static.Wrappers where"]
                         ,   T.concat ["import ",name,".Static.Types\n"]
                         ,   T.unlines $ map (createUnwrap True "ClientMessage" "M") outgoingCM
+                        ,   T.unlines $ map (createWrap (length places > 1) True "ClientMessage" "M") outgoingCM
+                        ,   T.unlines $ map (createUnwrap True "Player" "P") placePlayerStates
+                        ,   T.unlines $ map (createWrap (length places > 1) True "Player" "P") placePlayerStates
                         ]        
             in do
                 createDirectoryIfMissing True $ fp </> "server" </> "src" </> T.unpack name </> "userApp"

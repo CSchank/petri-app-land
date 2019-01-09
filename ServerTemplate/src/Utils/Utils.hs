@@ -400,3 +400,9 @@ cmdMap f ca =
     case ca of 
         Cmd msg -> Cmd (fmap f msg)
         StateCmd msg -> StateCmd (fmap f . msg)
+
+{-
+processCmd :: Cmd a -> IO ()
+processCmd cmd =
+    case cmd of
+-}

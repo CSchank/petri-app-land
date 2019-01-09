@@ -52,16 +52,15 @@ processCentralChan chan =
         loop state =
             atomically (readTQueue chan) >>= processCentralMessage chan state >>= loop
 
-        initial :: PluginState -> ServerState
-        initial ps = ServerState
+        initial :: ServerState
+        initial = ServerState
             { clients = IM'.empty
             , internalServerState = Static.Init.init
             , nextClientId = 0
-            , pluginState = ps
+            , startTime = 0
             }
     in do
-        ps <- initStateCmds
-        loop (initial ps)
+        loop initial
 
 
 processCentralMessage :: (TQueue CentralMessage) -> ServerState -> CentralMessage -> IO ServerState
