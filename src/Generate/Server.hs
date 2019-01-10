@@ -49,9 +49,13 @@ generateServer gsvg onlyStatic fp
             T.unlines
             [
                 "module Static.Init where"
+            ,   "import Static.Types"
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Init"]) netNames
             ,   ""
             ,   T.concat["init = ",startNet,".Static.Init.init"]
+            ,   "-- reference to the initial Net"
+            ,   T.concat["initNet :: NetModel"]
+            ,   T.concat["initNet = ",startNet]
             ]
         types :: T.Text
         types = 

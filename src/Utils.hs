@@ -3,7 +3,7 @@
 module Utils where
 
 import System.Process ( spawnCommand, waitForProcess )
-import Data.List (intercalate)
+import Data.List (intercalate, nub)
 import                  System.FilePath.Posix
 import                  Data.Maybe              (mapMaybe,fromMaybe)
 import qualified Data.Text as T
@@ -83,4 +83,4 @@ capStr str =
         _ -> str
 
 fnub :: Ord a => [a] -> [a]
-fnub = S.toList . S.fromList
+fnub = nub --S.toList . S.fromList

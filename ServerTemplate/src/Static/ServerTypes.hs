@@ -16,7 +16,7 @@ module Static.ServerTypes
     , PluginState
     ) where
 
-import           Control.Concurrent.STM (STM, TQueue)
+import           Control.Concurrent.STM (STM, TQueue, TVar)
 import qualified Data.Map.Strict        as M'
 import qualified Data.IntMap.Strict     as IM'
 import           Static.Types
@@ -32,18 +32,18 @@ data CentralMessage
 
 data OutgoingClientThreadMessage
     = SendMessage T.Text    -- send message to client
-    | ResetState
+   -- | ResetState
 
 data Client = 
-    Client (TQueue OutgoingClientThreadMessage) NetID NetModel {-current net for this user, for decoding-}
+    Client (TVar NetModel) (TQueue OutgoingClientThreadMessage) NetID NetModel {-current net for this user, for decoding-}
 
 type NetID = Int
 
 data ServerState = ServerState
     { clients :: IM'.IntMap Client
     , nextClientId :: ClientID
-    , serverState :: TMap                   -- all the nets
-    , startTime :: Int                      -- Unix time the server was started
+    , serverState :: TMap                       -- TMap of all the nets
+    , startTime :: Int                          -- Unix time the server was started
     }
 
 data NetState playerState = NetState

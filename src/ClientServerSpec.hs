@@ -52,6 +52,7 @@ testNet =
                 (constructor "ABC" [edt (ElmIntRange 0 1000) "n" ""])
                 [("A", ("B", Just $ constructor "StartGameAB2" [edt (ElmIntRange 0 1000) "n" ""]))
                 ,("A", ("C", Just $ constructor "StartGameAC" [edt (ElmIntRange 0 1000) "n" ""]))
+                ,("B", ("C", Just $ constructor "StartGameAC" [edt (ElmIntRange 0 1000) "n" ""]))
                 ]
                 Nothing
     in

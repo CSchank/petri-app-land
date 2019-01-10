@@ -6,8 +6,8 @@ module Static.ServerLogic
     , processClienTQueue
     ) where
 
-import           Control.Concurrent.STM (STM, TQueue, atomically, newTQueue,
-                                         readTQueue, writeTQueue)
+import           Control.Concurrent.STM (STM, TQueue, TVar, atomically, newTQueue,
+                                         readTQueue, writeTQueue, newTVar)
 import           Control.Monad          (forever,void)
 import qualified Data.Map.Strict        as M'
 import qualified Data.IntMap.Strict     as IM'
@@ -75,11 +75,14 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
 
     let newClientId = (nextClientId state)
 
+    tvar <- atomically $ newTVar    --stores the user's current net (to know how to decode the message)
+    atomically $ writeTVar tvar Init.initNet
+
     Prelude.putStrLn $ "Processing new client with ID " ++ show newClientId
     Prelude.putStrLn $ "Current clients: " ++ show (IM'.keys $ clients state)
 
     -- Add the new Client to the server state.
-    let nextClients = IM'.insert newClientId (Client clientMessageChan 0) (clients state)
+    let nextClients = IM'.insert newClientId (Client tvar clientMessageChan 0) (clients state)
 
     -- Construct the next state with the new list of Clients and new
     -- Dict of scores.
@@ -91,8 +94,9 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
     --     message channel.
     forkIO $ finally (race_ (processClienTQueue conn clientMessageChan) $ forever (do
         msg <- WS.receiveData conn
+        netToDecode <- atomically $ readTVar tvar --read which decoder to use
         Prelude.putStrLn $ "Received " ++ T.unpack msg ++ " from clientID " ++ show newClientId
-        parseIncomingMsg newClientId centralMessageChan msg
+        parseIncomingMsg newClientId netToDecode centralMessageChan msg
         ))  -- We don't care about the results of `race`
         -- when the connection closes, catch the exception or disconnect and inform our runtime
         (atomically $ writeTQueue centralMessageChan $ UserConnectionLost newClientId)
@@ -173,16 +177,15 @@ processCentralMessage centralMessageChan state ResetClients = do
     return state
 -}
 --a new message has been received from a client. Process it and inform the central message about it.
-parseIncomingMsg :: ClientID -> TQueue CentralMessage -> Text -> IO ()
-parseIncomingMsg clientId chan msg = do
-    case (decodeServerMessage (Err "",T.splitOn "\0" msg)) of
-        (Ok msg,_) -> do
-                        atomically $ writeTQueue chan $ ReceivedMessage clientId msg
-        (Err er,l) -> Tio.putStrLn $ T.concat ["Error decoding message from client ", T.pack $ show clientId, ". Failed with error: ", er, " and the following still in the deocde buffer:", T.pack $ show l, "."]
+parseIncomingMsg :: ClientID -> NetModel -> TQueue CentralMessage -> Text -> IO ()
+parseIncomingMsg clientId netToDecode chan msg = do
+    case (decodeIncomingMessage msg netToDecode) of
+        Ok msg -> atomically $ writeTQueue chan $ ReceivedMessage clientId msg
+        Err er -> Tio.putStrLn $ T.concat ["Error decoding message from client ", T.pack $ show clientId, ". Failed with error: ", er]--, " and the following still in the deocde buffer:", T.pack $ show l, "."]
 
 
 
-processClienTQueue :: WS.Connection -> TQueue ClientThreadMessage -> IO ()
+processClienTQueue :: WS.Connection -> TQueue OutgoingClientThreadMessage -> IO ()
 processClienTQueue conn chan = forever $ do
     -- This reads a ClientThreadMessage channel forever and passes any messages
     -- it reads to the WebSocket Connection.
