@@ -16,6 +16,11 @@ import Generate.Codec
 import Generate.Wrappers
 import Generate.Plugins
 
+trans2constr :: NetTransition -> Constructor
+trans2constr trans = 
+    case trans of
+        NetTransition constr _ _ -> constr
+
 generateServerNet :: M.Map String ElmCustom -> FilePath -> Net -> IO ()
 generateServerNet extraTypes fp net =
     case net of 
@@ -112,12 +117,21 @@ generateServerNet extraTypes fp net =
                             in
                                 T.unlines $ map (\(_,msg@(msgN,edts)) -> generateType True True [DOrd,DEq,DShow] $ ElmCustom msgN [msg]) clientMsgs
                                 ++ [generateType True True [DOrd,DEq,DShow] clientMsg]
+                        transConstrs :: [Constructor]
+                        transConstrs = map (trans2constr . snd) transitions
                     in
                         T.unlines 
                             [
-                                placeTypes
+                                "-- place states and place player states"
+                            ,   placeTypes
+                            ,   "-- outgoing client message types"
                             ,   clientMsgType
+                            ,   "-- individual transition types"
                             ,   T.unlines $ map transitionTxt transitions
+                            ,   "-- main transition types"
+                            ,   generateType True True [DOrd,DEq,DShow] $ ec "Transition" $ map (\(n,t) -> ("T"++n,t)) transConstrs
+                            ,   T.unlines $ map (\(n,et) -> generateType True True [DOrd,DEq,DShow] $ ec n [(n,et)]) transConstrs
+                            ,   "-- player state union type"
                             ,   generateType True False [DOrd,DEq,DShow] playerUnionType
                             ]
                 update :: T.Text

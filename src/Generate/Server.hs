@@ -19,6 +19,7 @@ import                  System.FilePath.Posix   ((</>),(<.>))
 import                  Data.Maybe              (mapMaybe,fromMaybe,fromJust)
 import                  Data.Time               (getCurrentTime)
 import Data.Foldable (find)
+import TypeHelpers
 
 generateServer :: Bool -> Bool -> FilePath -> ClientServerApp -> IO ()
 generateServer gsvg onlyStatic fp 
@@ -52,8 +53,25 @@ generateServer gsvg onlyStatic fp
             ,   ""
             ,   T.concat["init = ",startNet,".Static.Init.init"]
             ]
+        types :: T.Text
+        types = 
+            let
+                netUnion    = ec "NetModel" $ map (\nname -> constructor (T.unpack nname) []) netNames
+                netMsgUnion = ec "NetTransitions" $ map (\nname -> constructor (T.unpack nname) [edt (ElmType $ T.unpack nname ++ ".Static.Types.Transition") "" ""]) netNames
+            in
+            T.unlines 
+            [
+                "module Static.Types where"
+            ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Types"]) netNames
+            ,   ""
+            ,   "-- a type identifying all of the nets in the server"
+            ,   generateType True False [DShow,DOrd,DEq] netUnion
+            ,   "-- a union type of all the nets and their transitions"
+            ,   generateType True False [DShow,DOrd,DEq] netMsgUnion
+            ]
 
     in do
         createDirectoryIfMissing True (fp </> "server" </> "src" </> "Static")
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Init" <.> "hs") init 
+        writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Types" <.> "hs") types 
         mapM_ (generateServerNet sExtraT fp) netLst
