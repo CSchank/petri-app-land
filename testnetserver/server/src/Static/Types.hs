@@ -8,5 +8,5 @@ data NetModel  =
     deriving(Show,Ord,Eq)
 -- a union type of all the nets and their transitions
 data NetTransitions  =
-      TestNet TestNet.Static.Types.Transition
+      TestNetTrans TestNet.Static.Types.Transition
     deriving(Show,Ord,Eq)

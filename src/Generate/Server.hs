@@ -57,7 +57,7 @@ generateServer gsvg onlyStatic fp
         types = 
             let
                 netUnion    = ec "NetModel" $ map (\nname -> constructor (T.unpack nname) []) netNames
-                netMsgUnion = ec "NetTransitions" $ map (\nname -> constructor (T.unpack nname) [edt (ElmType $ T.unpack nname ++ ".Static.Types.Transition") "" ""]) netNames
+                netMsgUnion = ec "NetTransitions" $ map (\nname -> constructor (T.unpack nname ++ "Trans") [edt (ElmType $ T.unpack nname ++ ".Static.Types.Transition") "" ""]) netNames
             in
             T.unlines 
             [
@@ -69,9 +69,29 @@ generateServer gsvg onlyStatic fp
             ,   "-- a union type of all the nets and their transitions"
             ,   generateType True False [DShow,DOrd,DEq] netMsgUnion
             ]
+        decode :: T.Text
+        decode = 
+            let
+
+            in
+            T.unlines
+            [
+                "module Static.Decode where"
+            ,   "import Static.Types"
+            ,   "import qualified Data.Text as T"
+            ,   "import Utils.Utils"
+            ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Encode"]) netNames
+            ,   ""
+            ,   "decodeIncomingMessage :: T.Text -> NetModel -> Result T.Text NetTransitions"
+            ,   "decodeIncomingMessage txt clientNet ="
+            ,   "    case clientNet of"
+            ,   T.concat $ map (\netName -> T.concat["        ",netName," -> rMap ",netName,"Trans $ fst $ ",netName,".Static.Decode.decodeIncomingMessage (Err \"\",T.splitOn \"\\0\" txt)"]) netNames
+            ]
 
     in do
         createDirectoryIfMissing True (fp </> "server" </> "src" </> "Static")
+        copyDirectory "ServerTemplate/" (fp </> "server/")
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Init" <.> "hs") init 
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Types" <.> "hs") types 
+        writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Decode" <.> "hs") decode 
         mapM_ (generateServerNet sExtraT fp) netLst
