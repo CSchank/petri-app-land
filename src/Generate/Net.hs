@@ -63,6 +63,32 @@ generateServerNet extraTypes fp net =
                                                                                           lstTrans) transitions
                 outgoingCM = map (\(_,(msgN,edts)) -> (msgN,edts)) clientMsgs
                 clientMsg = ElmCustom "ClientMessage" $ map (\(n,t) -> ("M"++n,t)) outgoingCM
+                transitionType :: (HybridTransition,NetTransition) -> [ElmCustom]
+                transitionType (transType, NetTransition (msgN,msg) connections mCmd) =
+                    let
+                        grouped :: [(T.Text, [(T.Text, Maybe Constructor)])]
+                        grouped = M.toList $ M.fromListWith (\ a b -> a ++ b) $ map (\(a,b) -> (a,[b])) connections        
+                        
+                        output = T.concat [T.pack msgN,"Transition"]
+                        placeInputs :: [T.Text]
+                        placeInputs = 
+                            fnub $ map (\(from,_) -> from) connections
+                        placeOutputs :: [T.Text]
+                        placeOutputs = 
+                            fnub $ map (\(_,(to,_)) -> to) connections
+                        constructors :: (T.Text, [(T.Text, Maybe Constructor)]) -> [Constructor]
+                        constructors (from,toLst) =
+                            map (\(to,mConstr) -> 
+                                case mConstr of 
+                                    Just (msgName,_) -> constructor (T.unpack $ T.concat[T.pack msgN,"_",from,"to",to]) [edt (ElmType $ T.unpack $ T.concat [to,"Player"]) "" "", edt (ElmType msgName) "" ""]
+                                    Nothing          -> constructor (T.unpack $ T.concat[T.pack msgN,"_",from,"to",to]) [edt (ElmType $ T.unpack $ T.concat [to,"Player"]) "" ""]
+                                        ) toLst
+                    in
+                        map (\(from,toLst) -> ElmCustom (T.unpack output) $ constructors (from,toLst)) grouped
+                transitionTxt :: (HybridTransition, NetTransition) -> T.Text
+                transitionTxt trans =
+                    T.unlines $ map (generateType True False [DOrd,DEq,DShow]) $ transitionType trans
+
                 generateNetTypes :: T.Text -> [HybridPlace] -> T.Text
                 generateNetTypes netName places = 
                     let
@@ -86,35 +112,12 @@ generateServerNet extraTypes fp net =
                             in
                                 T.unlines $ map (\(_,msg@(msgN,edts)) -> generateType True True [DOrd,DEq,DShow] $ ElmCustom msgN [msg]) clientMsgs
                                 ++ [generateType True True [DOrd,DEq,DShow] clientMsg]
-                        transitionType :: (HybridTransition,NetTransition) -> T.Text
-                        transitionType (transType, NetTransition (msgN,msg) connections mCmd) =
-                            let
-                                grouped :: [(T.Text, [(T.Text, Maybe Constructor)])]
-                                grouped = M.toList $ M.fromListWith (\ a b -> a ++ b) $ map (\(a,b) -> (a,[b])) connections        
-                                
-                                output = T.concat [T.pack msgN,"Transition"]
-                                placeInputs :: [T.Text]
-                                placeInputs = 
-                                    fnub $ map (\(from,_) -> from) connections
-                                placeOutputs :: [T.Text]
-                                placeOutputs = 
-                                    fnub $ map (\(_,(to,_)) -> to) connections
-                                constructors :: (T.Text, [(T.Text, Maybe Constructor)]) -> [Constructor]
-                                constructors (from,toLst) =
-                                    map (\(to,mConstr) -> 
-                                        case mConstr of 
-                                            Just (msgName,_) -> constructor (T.unpack $ T.concat[T.pack msgN,"_",from,"to",to]) [edt (ElmType $ T.unpack $ T.concat [to,"Player"]) "" "", edt (ElmType msgName) "" ""]
-                                            Nothing          -> constructor (T.unpack $ T.concat[T.pack msgN,"_",from,"to",to]) [edt (ElmType $ T.unpack $ T.concat [to,"Player"]) "" ""]
-                                                ) toLst
-                            in
-                                T.unlines $
-                                        map (\(from,toLst) -> generateType True False [DOrd,DEq,DShow] $ ElmCustom (T.unpack output) $ constructors (from,toLst)) grouped
                     in
                         T.unlines 
                             [
                                 placeTypes
                             ,   clientMsgType
-                            ,   T.unlines $ map transitionType transitions
+                            ,   T.unlines $ map transitionTxt transitions
                             ,   generateType True False [DOrd,DEq,DShow] playerUnionType
                             ]
                 update :: T.Text
@@ -260,6 +263,7 @@ generateServerNet extraTypes fp net =
                         ,   T.unlines $ map (createWrap (length places > 1) True "ClientMessage" "M") outgoingCM
                         ,   T.unlines $ map (createUnwrap True "Player" "P") placePlayerStates
                         ,   T.unlines $ map (createWrap (length places > 1) True "Player" "P") placePlayerStates
+                        ,   T.unlines $ map (createTransitionUnwrap (length places > 1) True) transitions
                         ]        
             in do
                 createDirectoryIfMissing True $ fp </> "server" </> "src" </> T.unpack name </> "userApp"

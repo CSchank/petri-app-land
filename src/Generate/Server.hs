@@ -49,8 +49,7 @@ generateServer gsvg onlyStatic fp
             [
                 "module Static.Init where"
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Init"]) netNames
-            ,   "import Data.TMap as TM",""
-            ,   "init :: TMap"
+            ,   ""
             ,   T.concat["init = ",startNet,".Static.Init.init"]
             ]
 
