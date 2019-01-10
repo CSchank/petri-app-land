@@ -26,21 +26,21 @@ import Data.TMap (TMap)
 import Data.Typeable (Typeable)
 
 data CentralMessage
-    = NewUser (TQueue ClientThreadMessage) Connection    --register a new user on the server
+    = NewUser (TQueue OutgoingClientThreadMessage) Connection    --register a new user on the server
     | UserConnectionLost ClientID
     | ReceivedMessage ClientID ServerMessage
 
-data ClientThreadMessage 
+data OutgoingClientThreadMessage
     = SendMessage T.Text    -- send message to client
     | ResetState
 
 data Client = 
-    Client NetID
+    Client (TQueue OutgoingClientThreadMessage) NetID
 
 type NetID = Int
 
 data ServerState = ServerState
-    { clients :: IM'.IntMap NetID
+    { clients :: IM'.IntMap Client
     , nextClientId :: ClientID
     , serverState :: TMap                   -- all the nets
     , startTime :: Int                      -- Unix time the server was started

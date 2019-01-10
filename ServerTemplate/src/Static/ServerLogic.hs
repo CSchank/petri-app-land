@@ -18,6 +18,8 @@ import qualified Network.WebSockets     as WS
 import           Control.Concurrent             (forkIO)
 import           Control.Concurrent.Async       (race_)
 import           Control.Exception      (finally)
+import qualified Data.Time.Clock.POSIX         as Time
+
 
 import           Data.Text.IO                   as Tio
 import qualified Data.Set               as S
@@ -52,15 +54,16 @@ processCentralChan chan =
         loop state =
             atomically (readTQueue chan) >>= processCentralMessage chan state >>= loop
 
-        initial :: ServerState
-        initial = ServerState
+        initial :: Int -> ServerState
+        initial t = ServerState
             { clients = IM'.empty
-            , internalServerState = Static.Init.init
+            , internalServerState = TM.insert Static.Init.init TM.empty
             , nextClientId = 0
-            , startTime = 0
+            , startTime = t
             }
     in do
-        loop initial
+        t <- Time.getPOSIXTime
+        loop $ initial (round $ t * 1000)
 
 
 processCentralMessage :: (TQueue CentralMessage) -> ServerState -> CentralMessage -> IO ServerState
@@ -76,7 +79,7 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
     Prelude.putStrLn $ "Current clients: " ++ show (IM'.keys $ clients state)
 
     -- Add the new Client to the server state.
-    let nextClients = IM'.insert newClientId (Client clientMessageChan) (clients state)
+    let nextClients = IM'.insert newClientId (Client clientMessageChan 0) (clients state)
 
     -- Construct the next state with the new list of Clients and new
     -- Dict of scores.
@@ -153,7 +156,7 @@ processCentralMessage centralMessageChan state (UserConnectionLost clientId) =
     let nextState = state { clients = IM'.delete clientId connectedClients }
 
     return nextState
-
+{-
 --get current state of central thread
 processCentralMessage centralMessageChan state (GetCurrentState queue) = do
     atomically $ writeTQueue queue state
@@ -168,7 +171,7 @@ processCentralMessage centralMessageChan state ResetClients = do
     let connectedClients = clients state
     atomically $ mapM_ (\(Client chan) -> writeTQueue chan ResetState) $ IM'.elems connectedClients
     return state
-
+-}
 --a new message has been received from a client. Process it and inform the central message about it.
 parseIncomingMsg :: ClientID -> TQueue CentralMessage -> Text -> IO ()
 parseIncomingMsg clientId chan msg = do
@@ -190,5 +193,5 @@ processClienTQueue conn chan = forever $ do
 
             WS.sendTextData conn txtMsg
             Tio.putStrLn $ T.concat $ ["Sent: ",  txtMsg]
-        ResetState ->
-            WS.sendTextData conn ("resetfadsfjewi" :: T.Text)
+        {-ResetState ->
+            WS.sendTextData conn ("resetfadsfjewi" :: T.Text)-}
