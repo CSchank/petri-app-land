@@ -24,20 +24,20 @@ processABCPlayer fromA fromB player = case player of
 -- player splitting functions
 splitABPlayers :: [Player] -> ([APlayer])
 splitABPlayers players = foldl (\t@(fromAlst) pl -> case pl of
-    PAPlayer {} -> (unwrapFromA player:fromAlst)
+    PAPlayer {} -> (unwrapFromA pl:fromAlst)
 
     _ -> t) ([]) players
 
 splitCAPlayers :: [Player] -> ([CPlayer])
 splitCAPlayers players = foldl (\t@(fromClst) pl -> case pl of
-    PCPlayer {} -> (unwrapFromC player:fromClst)
+    PCPlayer {} -> (unwrapFromC pl:fromClst)
 
     _ -> t) ([]) players
 
 splitABCPlayers :: [Player] -> ([APlayer],[BPlayer])
 splitABCPlayers players = foldl (\t@(fromAlst,fromBlst) pl -> case pl of
-    PAPlayer {} -> (unwrapFromA player:fromAlst,fromBlst)
-    PBPlayer {} -> (fromAlst,unwrapFromB player:fromBlst)
+    PAPlayer {} -> (unwrapFromA pl:fromAlst,fromBlst)
+    PBPlayer {} -> (fromAlst,unwrapFromB pl:fromBlst)
 
     _ -> t) ([],[]) players
 

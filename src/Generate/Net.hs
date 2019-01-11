@@ -149,11 +149,29 @@ generateServerNet extraTypes fp net =
                 update :: T.Text
                 update =
                     let
-                        
+                        disconnectFn place = 
+                            let
+                                disconnectName = T.concat["clientDisconnectFrom",place]
+                            in
+                            T.unlines
+                            [
+                                    T.concat[disconnectName," :: ClientID -> ",place," -> ",place,"Player -> ",place]
+                                ,   T.concat[disconnectName," clientID ",uncapitalize place," ",uncapitalize place,"Player ="]
+                                ,   T.concat["    error \"Please fill out the ",disconnectName," function for the ",name," net.\""]
+                            ]
                     in T.unlines
                     [
                         T.concat ["module ",name,".Update where"]
                     ,   T.concat ["import ",name,".Static.Types"]
+                    ,   ""
+                    ,   "-- function called when new client connects (do not delete)"
+                    ,   T.concat["clientConnect :: ClientID -> ",startingPlace," -> (", startingPlace,", ",startingPlace,"Player)"]
+                    ,   T.concat["clientConnect clientID ",uncapitalize startingPlace," ="]
+                    ,   T.concat["    error \"Please fill out clientConnect function for the ",name," net.\""]
+                    ,   ""
+                    ,   "-- functions called when a client disconnects (do not delete)"
+                    ,   T.unlines $ map disconnectFn $ M.keys placeMap
+                    ,   "-- functions for each transition"
                     ,   T.unlines $ map generateTrans transitions
                     ]
                 {-fromsTos :: (HybridTransition, NetTransition) -> [(T.Text,T.Text)]
@@ -205,7 +223,7 @@ generateServerNet extraTypes fp net =
                                         let
                                             placeState = getPlaceState $ getPlace $ fromPlace
                                         in
-                                            T.concat ["    P",fromPlace,"Player {} -> (" ,T.intercalate "," $ map (\(f,m) -> if n == m then T.concat["unwrapFrom", fromPlace," player:",f,"lst"] else T.concat[f,"lst"]) $ zip froms [0..],")"]
+                                            T.concat ["    P",fromPlace,"Player {} -> (" ,T.intercalate "," $ map (\(f,m) -> if n == m then T.concat["unwrapFrom", fromPlace," pl:",f,"lst"] else T.concat[f,"lst"]) $ zip froms [0..],")"]
                                             ) $ zip (fst $ fromsTos tr) [0..]
                             ,   T.concat ["    _ -> t) (",T.intercalate "," $ replicate (length froms) "[]",") players"]
                             ]
