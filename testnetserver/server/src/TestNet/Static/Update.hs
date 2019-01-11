@@ -1,25 +1,87 @@
 module TestNet.Static.Update where
 import TestNet.Static.Types
+import TestNet.Static.Wrappers
+import Data.TMap as TM
 
-processABPlayer :: Player -> (Player, Maybe ClientMessage)
-processABPlayer = case player of
-    (A n nLst)  -> unwrapABfromA
-
-
-processCAPlayer :: Player -> (Player, Maybe ClientMessage)
-processCAPlayer = case player of
-    (C n nLst)  -> unwrapCAfromC
+-- player processing functions
+processABPlayer :: (APlayer -> ABfromA) -> Player -> (Player, Maybe ClientMessage)
+processABPlayer fromA player = case player of
+    (A n nLst)  -> unwrapABfromA $ fromA $ wrapAPlayer player
 
 
-processABCPlayer :: Player -> (Player, Maybe ClientMessage)
-processABCPlayer = case player of
-    (A n nLst)  -> unwrapABCfromA
-    (B n nLst)  -> unwrapABCfromB
+processCAPlayer :: (CPlayer -> CAfromC) -> Player -> (Player, Maybe ClientMessage)
+processCAPlayer fromC player = case player of
+    (C n nLst)  -> unwrapCAfromC $ fromC $ wrapCPlayer player
+
+
+processABCPlayer :: (APlayer -> ABCfromA) -> (BPlayer -> ABCfromB) -> Player -> (Player, Maybe ClientMessage)
+processABCPlayer fromA fromB player = case player of
+    (A n nLst)  -> unwrapABCfromA $ fromA $ wrapAPlayer player
+    (B n nLst)  -> unwrapABCfromB $ fromB $ wrapBPlayer player
 
 
 
-update :: Transition -> NetState Player -> [(ClientID,Player)] -> (NetState Player,[ClientMessage],Maybe (Cmd Transition),[(ClientID,Player)])
-update trans state players =
+-- player splitting functions
+splitABPlayers :: [Player] -> ([APlayer])
+splitABPlayers players = foldl (\t@(fromAlst) pl -> case pl of
+    PAPlayer {} -> (unwrapFromA player:fromAlst)
+
+    _ -> t) ([]) players
+
+splitCAPlayers :: [Player] -> ([CPlayer])
+splitCAPlayers players = foldl (\t@(fromClst) pl -> case pl of
+    PCPlayer {} -> (unwrapFromC player:fromClst)
+
+    _ -> t) ([]) players
+
+splitABCPlayers :: [Player] -> ([APlayer],[BPlayer])
+splitABCPlayers players = foldl (\t@(fromAlst,fromBlst) pl -> case pl of
+    PAPlayer {} -> (unwrapFromA player:fromAlst,fromBlst)
+    PBPlayer {} -> (fromAlst,unwrapFromB player:fromBlst)
+
+    _ -> t) ([],[]) players
+
+
+update :: Transition -> NetState Player -> (NetState Player,[ClientMessage],Maybe (Cmd Transition))
+update trans state =
     let
-        processPlayer :: Player -> Player
-        processPlayer player = case player of
+        places = placeStates state
+        players = playerStates state
+        (newPlaces, newPlayers, clientMessages, cmd) = 
+            case trans of
+                (TAB n) ->
+                    let
+                        (aPlayerLst) = splitABPlayers players
+                        (a,b,fromA) = updateAB (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) aPlayerLst
+                        newPlaces = TM.insert a places
+                        (newPlayers, clientMessages) = unzip $ map (processABPlayer fromA) players
+                    in
+                        (newPlaces, newPlayers, clientMessages, Nothing)
+
+                (TCA n) ->
+                    let
+                        (cPlayerLst) = splitCAPlayers players
+                        (c,a,fromC) = updateCA (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) cPlayerLst
+                        newPlaces = TM.insert c places
+                        (newPlayers, clientMessages) = unzip $ map (processCAPlayer fromC) players
+                    in
+                        (newPlaces, newPlayers, clientMessages, Nothing)
+
+                (TABC n) ->
+                    let
+                        (aPlayerLst,bPlayerLst) = splitABCPlayers players
+                        (a,b,c,fromA,fromB) = updateABC (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) aPlayerLst bPlayerLst
+                        newPlaces = TM.insert a $ TM.insert b places
+                        (newPlayers, clientMessages) = unzip $ map (processABCPlayer fromA fromB) players
+                    in
+                        (newPlaces, newPlayers, clientMessages, Nothing)
+
+
+    in
+        (state
+           {
+                placeStates = newPlaces
+           ,    playerStates = newPlayers
+           }
+        , clientMessages
+        , cmd)

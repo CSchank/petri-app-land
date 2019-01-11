@@ -138,6 +138,14 @@ generateServerNet extraTypes fp net =
                             ,   "-- player state union type"
                             ,   generateType True False [DOrd,DEq,DShow] playerUnionType
                             ]
+
+                --singularTransFns :: [T.Text]
+                singularTransFns msgN connections = map (\(from,lst) -> 
+                                        let 
+                                            output = transName from msgN
+                                        in
+                                            T.concat [from,"Player -> ",output]) (grouped connections)
+
                 update :: T.Text
                 update =
                     let
@@ -167,28 +175,90 @@ generateServerNet extraTypes fp net =
                                             ]
                                         
                                         ) (grouped connections)-}
-                        processTransPlayer (tr@(_, NetTransition (transName,_) connections mCmd)) = T.unlines
+                        processTransPlayer (tr@(_, NetTransition (transName,_) connections mCmd)) = 
+                            let
+                                tfns = map (\t -> T.concat["(",t,")"]) $ singularTransFns transName (grouped connections)
+                                froms = map (\t -> T.concat["from",t]) $ fst $ fromsTos tr
+                            in
+                            T.unlines
                             [
-                                T.concat["process",T.pack transName,"Player :: Player -> (Player, Maybe ClientMessage)"]
-                            ,   T.concat["process",T.pack transName,"Player = case player of"]
+                                T.concat["process",T.pack transName,"Player :: ",T.intercalate " -> " $ tfns," -> Player -> (Player, Maybe ClientMessage)"]
+                            ,   T.concat["process",T.pack transName,"Player ",T.intercalate " " froms," player = case player of"]
                             ,   T.unlines $ map (\fromPlace -> 
                                         let
                                             placeState = getPlaceState $ getPlace $ fromPlace
                                         in
-                                            T.concat ["    ",generatePattern placeState," -> unwrap",T.pack transName,"from",fromPlace]
+                                            T.concat ["    ",generatePattern placeState," -> unwrap",T.pack transName,"from",fromPlace," $ from",fromPlace," $ wrap",fromPlace,"Player player"]
                                             ) $ fst $ fromsTos tr
+                            ]
+                        splitPlayers (tr@(_, NetTransition (transName,_) connections mCmd)) = 
+                            let
+                                tfns = map (\t -> T.concat["(",t,")"]) $ singularTransFns transName (grouped connections)
+                                froms = map (\t -> T.concat["from",t]) $ fst $ fromsTos tr
+                                foldTuple = T.concat["(",T.intercalate "," $ map (\t -> T.concat [t,"lst"]) froms,")"]
+                            in
+                            T.unlines
+                            [
+                                T.concat["split",T.pack transName,"Players :: [Player] -> (",T.intercalate "," $ map (\p -> T.concat["[",p,"Player]"]) $ fst $ fromsTos tr,")"]
+                            ,   T.concat["split",T.pack transName,"Players players = foldl (\\t@",foldTuple," pl -> case pl of"]
+                            ,   T.unlines $ map (\(fromPlace,n) -> 
+                                        let
+                                            placeState = getPlaceState $ getPlace $ fromPlace
+                                        in
+                                            T.concat ["    P",fromPlace,"Player {} -> (" ,T.intercalate "," $ map (\(f,m) -> if n == m then T.concat["unwrapFrom", fromPlace," player:",f,"lst"] else T.concat[f,"lst"]) $ zip froms [0..],")"]
+                                            ) $ zip (fst $ fromsTos tr) [0..]
+                            ,   T.concat ["    _ -> t) (",T.intercalate "," $ replicate (length froms) "[]",") players"]
+                            ]
+                        transCase tr@(_, NetTransition constr@(transName,transArgs) _ mCmd) = 
+                            let
+                                froms = fst $ fromsTos tr
+                                tos = snd $ fromsTos tr
+                                allStates = fnub $ froms ++ tos
+                                fromVars = map (\t -> T.concat["from",t]) froms
+                                transTxt = T.pack transName
+                            in
+                            T.unlines $ map (\t -> T.concat["                ",t]) $
+                            [
+                                T.concat [generatePattern ("T"++transName,transArgs),  "->"]
+                            ,   "    let"
+                            ,   T.concat["        (",T.intercalate "," $ map (\t -> T.concat[uncapitalize t,"PlayerLst"]) froms,") = split",transTxt,"Players players"]
+                            ,   case mCmd of
+                                    Just cmd -> 
+                                        T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,",cmd) = update",transTxt," ",T.replicate (length allStates) "(fromJust $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat [uncapitalize t, "PlayerLst"]) froms]
+                                    Nothing ->
+                                        T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,") = update",transTxt," ",T.replicate (length allStates) "(fromJust $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat [uncapitalize t, "PlayerLst"]) froms]
+                            ,   T.concat["        newPlaces = ",T.intercalate " $ " $ map (\state -> T.concat["TM.insert ",uncapitalize state]) froms, " places"]
+                            ,   T.concat["        (newPlayers, clientMessages) = unzip $ map (process",transTxt,"Player ",T.intercalate " " fromVars,") players"]
+                            ,   "    in"
+                            ,   T.concat["        (newPlaces, newPlayers, clientMessages, ", if isJust mCmd then "Just cmd" else "Nothing",")" ]
                             ]
                     in T.unlines
                     [
                         T.concat ["module ",name,".Static.Update where"]
                     ,   T.concat ["import ",name,".Static.Types"]
+                    ,   T.concat ["import ",name,".Static.Wrappers"]
+                    ,   "import Data.TMap as TM"
                     ,   ""
+                    ,   "-- player processing functions"
                     ,   T.unlines $ map processTransPlayer transitions
-                    ,   T.concat ["update :: Transition -> NetState Player -> [(ClientID,Player)] -> (NetState Player,[ClientMessage],Maybe (Cmd Transition),[(ClientID,Player)])"]
-                    ,   T.concat ["update trans state players ="]
-                    ,   T.concat ["    let"]
-                    ,   T.concat ["        processPlayer :: Player -> Player"]
-                    ,   T.concat ["        processPlayer player = case player of"]
+                    ,   "-- player splitting functions"
+                    ,   T.unlines $ map splitPlayers transitions
+                    ,   T.concat ["update :: Transition -> NetState Player -> (NetState Player,[ClientMessage],Maybe (Cmd Transition))"]
+                    ,   T.concat ["update trans state ="]
+                    ,   "    let"
+                    ,   "        places = placeStates state"
+                    ,   "        players = playerStates state"
+                    ,   "        (newPlaces, newPlayers, clientMessages, cmd) = "
+                    ,   "            case trans of"
+                    ,   T.unlines $ map transCase transitions
+                    ,   "    in"
+                    ,   "        (state"
+                    ,   "           {"
+                    ,   "                placeStates = newPlaces"
+                    ,   "           ,    playerStates = newPlayers"
+                    ,   "           }"
+                    ,   "        , clientMessages"
+                    ,   "        , cmd)"
                     ]
             
                 placeMap :: M.Map T.Text HybridPlace
@@ -219,14 +289,7 @@ generateServerNet extraTypes fp net =
                             ServerOnlyTransition -> ""
 
                         fnName = T.concat["update",T.pack msgN]
-                        outputs = fnub $ placeInputs ++ placeOutputs ++ singularTransFns ++ cmds
-
-                        singularTransFns :: [T.Text]
-                        singularTransFns = map (\(from,lst) -> 
-                                                let 
-                                                    output = transName from msgN
-                                                in
-                                                    T.concat [from,"Player -> ",output]) (grouped connections)
+                        outputs = fnub $ placeInputs ++ placeOutputs ++ (singularTransFns msgN connections) ++ cmds
 
                         oneOfs = T.concat $ "OneOf" : map (\txt -> T.concat[txt,"Player"]) placeOutputs
                         typ = T.concat  [ fnName," :: "

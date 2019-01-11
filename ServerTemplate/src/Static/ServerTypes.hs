@@ -35,7 +35,7 @@ data OutgoingClientThreadMessage
    -- | ResetState
 
 data Client = 
-    Client (TVar NetModel) (TQueue OutgoingClientThreadMessage) NetID NetModel {-current net for this user, for decoding-}
+    Client (TVar NetModel) (TQueue OutgoingClientThreadMessage) NetID {-current net for this user, for decoding-}
 
 type NetID = Int
 
