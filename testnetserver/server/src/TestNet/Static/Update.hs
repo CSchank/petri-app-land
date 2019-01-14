@@ -42,8 +42,24 @@ splitABCPlayers players = foldl (\t@(fromAlst,fromBlst) pl -> case pl of
     _ -> t) ([],[]) players
 
 
-update :: Transition -> NetState Player -> (NetState Player,[(ClientID,ClientMessage)],Maybe (Cmd Transition))
-update trans state =
+-- process player disconnects
+disconnect :: ClientID -> NetState Player -> NetState Player
+disconnect clientID state =
+    let
+        player = fromJust $ IM'.lookup clientID $ players
+        places = placeStates state
+        players = playerStates state
+        newPlaces = (flip TM.insert) places $ case player of
+            A {} -> disconnectFromA clientID (fromJust $ TM.lookup places) (wrapAPlayer player)
+            B {} -> disconnectFromB clientID (fromJust $ TM.lookup places) (wrapBPlayer player)
+            C {} -> disconnectFromC clientID (fromJust $ TM.lookup places) (wrapCPlayer player)
+
+        newPlayers = IM.remove clientID players
+    in
+        state { playerStates = newPlayers, placeStates = newPlaces }
+
+update :: Maybe ClientID -> Transition -> NetState Player -> (NetState Player,[(ClientID,ClientMessage)],Maybe (Cmd Transition))
+update mClientID trans state =
     let
         places = placeStates state
         players = playerStates state
@@ -61,7 +77,7 @@ update trans state =
                 (TCA n) ->
                     let
                         (cPlayerLst) = splitCAPlayers players
-                        (c,a,fromC) = updateCA (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) cPlayerLst
+                        (c,a,fromC) = updateCA (fromJust mClientID) (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) cPlayerLst
                         newPlaces = TM.insert c places
                         (newPlayers, clientMessages) = unzip $ map (processCAPlayer fromC) players
                     in
@@ -70,7 +86,7 @@ update trans state =
                 (TABC n) ->
                     let
                         (aPlayerLst,bPlayerLst) = splitABCPlayers players
-                        (a,b,c,fromA,fromB) = updateABC (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) aPlayerLst bPlayerLst
+                        (a,b,c,fromA,fromB) = updateABC mClientID (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) aPlayerLst bPlayerLst
                         newPlaces = TM.insert a $ TM.insert b places
                         (newPlayers, clientMessages) = unzip $ map (processABCPlayer fromA fromB) players
                     in

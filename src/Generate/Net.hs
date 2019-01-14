@@ -43,6 +43,7 @@ generateServerNet extraTypes fp net =
                     , T.unlines $ map (generateNetInit extraTypes) places -- the initial places
                     ]
                 placePlayerStates = map (\(HybridPlace name _ playerPlaceState _ _ _ _) -> (T.unpack $ T.concat[name,"Player"],playerPlaceState)) places
+                placeNames = map (\(HybridPlace name _ _ _ _ _ _) -> name) places
                 -- the functions that the user changes
                 generateNetInit :: M.Map String ElmCustom -> HybridPlace -> T.Text
                 generateNetInit extraTypes (HybridPlace name serverPlaceState playerPlaceState _ mSubnet (mCmd,_) _) = 
@@ -227,13 +228,18 @@ generateServerNet extraTypes fp net =
                                             ) $ zip (fst $ fromsTos tr) [0..]
                             ,   T.concat ["    _ -> t) (",T.intercalate "," $ replicate (length froms) "[]",") players"]
                             ]
-                        transCase tr@(_, NetTransition constr@(transName,transArgs) _ mCmd) = 
+                        transCase tr@(transType, NetTransition constr@(transName,transArgs) _ mCmd) = 
                             let
                                 froms = fst $ fromsTos tr
                                 tos = snd $ fromsTos tr
                                 allStates = fnub $ froms ++ tos
                                 fromVars = map (\t -> T.concat["from",t]) froms
                                 transTxt = T.pack transName
+                                clientIdTxt = 
+                                    case transType of
+                                        HybridTransition     -> "mClientID "
+                                        ClientOnlyTransition -> "(fromJust mClientID) "
+                                        ServerOnlyTransition -> ""
                             in
                             T.unlines $ map (\t -> T.concat["                ",t]) $
                             [
@@ -242,14 +248,16 @@ generateServerNet extraTypes fp net =
                             ,   T.concat["        (",T.intercalate "," $ map (\t -> T.concat[uncapitalize t,"PlayerLst"]) froms,") = split",transTxt,"Players players"]
                             ,   case mCmd of
                                     Just cmd -> 
-                                        T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,",cmd) = update",transTxt," ",T.replicate (length allStates) "(fromJust $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat [uncapitalize t, "PlayerLst"]) froms]
+                                        T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,",cmd) = update",transTxt," ",clientIdTxt,T.replicate (length allStates) "(fromJust $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat [uncapitalize t, "PlayerLst"]) froms]
                                     Nothing ->
-                                        T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,") = update",transTxt," ",T.replicate (length allStates) "(fromJust $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat [uncapitalize t, "PlayerLst"]) froms]
+                                        T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,") = update",transTxt," ",clientIdTxt,T.replicate (length allStates) "(fromJust $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat [uncapitalize t, "PlayerLst"]) froms]
                             ,   T.concat["        newPlaces = ",T.intercalate " $ " $ map (\state -> T.concat["TM.insert ",uncapitalize state]) froms, " places"]
                             ,   T.concat["        (newPlayers, clientMessages) = unzip $ map (process",transTxt,"Player ",T.intercalate " " fromVars,") players"]
                             ,   "    in"
                             ,   T.concat["        (newPlaces, newPlayers, clientMessages, ", if isJust mCmd then "Just cmd" else "Nothing",")" ]
                             ]
+                        disconnectCase placeName = 
+                            T.concat ["            ",placeName," {} -> disconnectFrom",placeName," clientID (fromJust $ TM.lookup places) (wrap",placeName,"Player player)"]
                     in T.unlines
                     [
                         T.concat ["module ",name,".Static.Update where"]
@@ -261,8 +269,21 @@ generateServerNet extraTypes fp net =
                     ,   T.unlines $ map processTransPlayer transitions
                     ,   "-- player splitting functions"
                     ,   T.unlines $ map splitPlayers transitions
-                    ,   T.concat ["update :: Transition -> NetState Player -> (NetState Player,[(ClientID,ClientMessage)],Maybe (Cmd Transition))"]
-                    ,   T.concat ["update trans state ="]
+                    ,   "-- process player disconnects"
+                    ,   "disconnect :: ClientID -> NetState Player -> NetState Player"
+                    ,   "disconnect clientID state ="
+                    ,   "    let"
+                    ,   "        player = fromJust $ IM'.lookup clientID $ players"
+                    ,   "        places = placeStates state"
+                    ,   "        players = playerStates state"
+                    ,   "        newPlaces = (flip TM.insert) places $ case player of"
+                    ,   T.unlines $ map disconnectCase placeNames
+                    ,   "        newPlayers = IM.remove clientID players"
+                    ,   "    in"
+                    ,   "        state { playerStates = newPlayers, placeStates = newPlaces }"
+                    ,   ""
+                    ,   T.concat ["update :: Maybe ClientID -> Transition -> NetState Player -> (NetState Player,[(ClientID,ClientMessage)],Maybe (Cmd Transition))"]
+                    ,   T.concat ["update mClientID trans state ="]
                     ,   "    let"
                     ,   "        places = placeStates state"
                     ,   "        players = playerStates state"

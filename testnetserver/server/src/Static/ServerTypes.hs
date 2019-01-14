@@ -28,7 +28,9 @@ import Data.Typeable (Typeable)
 data CentralMessage
     = NewUser (TQueue OutgoingClientThreadMessage) Connection    --register a new user on the server
     | UserConnectionLost ClientID
-    | ReceivedMessage ClientID ServerMessage
+    | ReceivedMessage 
+        (Maybe ClientID)    -- Just: message from a client, Nothing: message from a command
+        NetTransition       -- message that was sent
 
 data OutgoingClientThreadMessage
     = SendMessage T.Text    -- send message to client

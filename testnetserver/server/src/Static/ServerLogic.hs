@@ -109,57 +109,42 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
     -- Provide the new state back to the loop.
     return nextState
 
-processCentralMessage centralMessageChan state (ReceivedMessage clientId incomingMsg) = 
+processCentralMessage centralMessageChan state (ReceivedMessage mClientID incomingMsg) = 
     let
         connectedClients = clients state
 
         ps = pluginState state
-        
-        sendToID :: ClientMessage -> ClientID -> IO ()
-        sendToID cm clientId =
-            case IM'.lookup clientId connectedClients of
-                Just (Client chan) -> atomically $ writeTQueue chan $ SendMessage cm
-                Nothing -> Prelude.putStrLn $ "Unable to send message to client " ++ show clientId ++ " because that client doesn't exist or is logged out."    
-    in do
-    (nextServerState,mCmd,mMessage) <- update clientId incomingMsg $ internalServerState state
-    case mCmd of
-        Just (Cmd msg) -> void $ forkIO $ do
-            result <- msg
-            atomically $ writeTQueue centralMessageChan $ ReceivedMessage (-1) result
-        Just (StateCmd msg) -> void $ forkIO $ do
-            result <- msg (fromJust $ TM.lookup ps)
-            atomically $ writeTQueue centralMessageChan $ ReceivedMessage (-1) result
-        Nothing -> return ()
 
-    let nextState = state { internalServerState = nextServerState }
-        processICM icm =
-            case icm of
-                ICMNoClientMessage            -> return ()
-                ICMToSender msg               -> sendToID msg clientId 
-                ICMToAllExceptSender msg      -> mapM_ (sendToID msg) $ IM'.keys $ IM'.delete clientId connectedClients
-                ICMToAllExceptSenderF c2msg   -> mapM_ (\cId -> sendToID (c2msg cId) cId) $ IM'.keys $ IM'.delete clientId connectedClients
-                ICMToSenderAnd clients msg    -> mapM_ (sendToID msg) $ S.insert clientId clients
-                ICMToSenderAndF clients c2msg -> mapM_ (\cId -> sendToID (c2msg cId) cId) $ S.insert clientId clients
-                ICMToSet clients msg          -> mapM_ (sendToID msg) clients
-                ICMToSetF clients c2msg       -> mapM_ (\cId -> sendToID (c2msg cId) cId) clients
-                ICMToAll msg                  -> mapM_ (sendToID msg) $ IM'.keys connectedClients
-                ICMToAllF c2msg               -> mapM_ (\cId -> sendToID (c2msg cId) cId) $ IM'.keys connectedClients
-                ICMAllOf icms                 -> mapM_ processICM icms
-    _ <- case mMessage of
-            Just icm -> processICM icm
-            Nothing -> return ()
+        sendMessages :: [(ClientID, NetOutgoingMessage)] -> IO ()
+        sendMessages msgs =
+            mapM_ sendToID msgs
+        
+        sendToID :: (ClientID,NetOutgoingMessage) -> IO ()
+        sendToID (clientID, cm) =
+            case IM'.lookup clientId connectedClients of
+                Just (Client decodeChannel chan netID) -> atomically $ writeTQueue chan $ SendMessage (encodeOutgoingMessage cm)
+                Nothing -> Prelude.putStrLn $ "Unable to send message to client " ++ show clientId ++ " because that client doesn't exist or is logged out."    
+        
+        (nextState, outgoingMsgs, cmd) = update mClientID incomingMsg (serverState state)
+
+    in do
+    sendMessages outgoingMsgs
+
+    --FIXME: do something with the commands
+
     return nextState
 
-processCentralMessage centralMessageChan state (UserConnectionLost clientId) = 
+processCentralMessage centralMessageChan state (UserConnectionLost clientID) = 
     let
         connectedClients = clients state
+        (Client nmTvar clientQueue netID) = fromJust $ IM'.lookup clientId
+
     in do
     Prelude.putStrLn $ "Client " ++ show clientId ++ " lost connection."
-    -- inform the user's app that the client has disconnected
-    atomically $ writeTQueue centralMessageChan $ ReceivedMessage clientId MClientDisconnect
-    let nextState = state { clients = IM'.delete clientId connectedClients }
+    netModel <- atomically $ readTVar nmTvar
 
-    return nextState
+    -- inform the user's app that the client has disconnected
+    return $ disconnect clientID netModel state
 {-
 --get current state of central thread
 processCentralMessage centralMessageChan state (GetCurrentState queue) = do
@@ -185,8 +170,8 @@ parseIncomingMsg clientId netToDecode chan msg = do
 
 
 
-processClienTQueue :: WS.Connection -> TQueue OutgoingClientThreadMessage -> IO ()
-processClienTQueue conn chan = forever $ do
+processOutgoingMsg :: WS.Connection -> TQueue OutgoingClientThreadMessage -> IO ()
+processOutgoingMsg conn chan = forever $ do
     -- This reads a ClientThreadMessage channel forever and passes any messages
     -- it reads to the WebSocket Connection.
     clientMsg{-(SendMessage outgoingMessage)-} <- atomically $ readTQueue chan

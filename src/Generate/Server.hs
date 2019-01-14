@@ -104,9 +104,10 @@ generateServer gsvg onlyStatic fp
                     ,   T.concat["            (newNetState, clientMessages, mCmd) = ",netName,".update msg (fromJust $ TM.lookup $ serverState state)"]
                     ,   T.concat["            cmd = fmap (\\m -> cmdMap ",netName,"Trans m) mCmd"]
                     ,   T.concat["            cMsgs = mapMaybe (\\(cId,m) -> (cId,fmap ",netName,"Trans m)) mCmds"]
-                    ,   T.concat["            newServerState = state { serverState = TM.insert newNewState (serverState state) }"]
+                    ,   T.concat["            newServerState = state { serverState = TM.insert newNetState (serverState state) }"]
                     ,   "        in (newServerState, cMsgs, cmd)"
                     ]
+                disconnectCase netName = T.concat ["        ",netName," {} -> ",netName,".disconnect clientID (fromJust $ TM.lookup $ serverState state)"]
             in
             T.unlines
             [
@@ -115,10 +116,15 @@ generateServer gsvg onlyStatic fp
             ,   "import Static.Types"
             ,   "import Data.TMap as TM"
             ,   ""
-            ,   "update :: NetTransition -> ServerState -> (ServerState, [(ClientID,NetOutgoingMessage)], Cmd NetTransition)"
-            ,   "update netTrans state ="
+            ,   "update :: Maybe ClientID -> NetTransition -> ServerState -> (ServerState, [(ClientID,NetOutgoingMessage)], Cmd NetTransition)"
+            ,   "update mClientID netTrans state ="
             ,   "    case netTrans of"
             ,   T.unlines $ map updateCase netNames
+            ,   ""
+            ,   "disconnect :: ClientID -> NetModel -> ServerState -> ServerState"
+            ,   "disconnect clientID netModel state ="
+            ,   "    case netModel of"
+            ,   T.unlines $ map disconnectCase netNames
             ]
         encode :: T.Text
         encode = 
