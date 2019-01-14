@@ -120,6 +120,23 @@ generateServer gsvg onlyStatic fp
             ,   "    case netTrans of"
             ,   T.unlines $ map updateCase netNames
             ]
+        encode :: T.Text
+        encode = 
+            let
+                encodeCase netName = T.concat["        ",netName,"OMsg msg -> ",netName,".Static.Encode.encode msg"]
+            in
+            T.unlines
+            [
+                "module Static.Encode where"
+            ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Encode as ",n]) netNames
+            ,   "import Static.ServerTypes"
+            ,   "import Data.Text as T"
+            ,   ""
+            ,   "encodeOutgoingMessage :: NetOutgoingMessage -> T.Text"
+            ,   "encodeOutgoingMessage netTrans state ="
+            ,   "    case netTrans of"
+            ,   T.unlines $ map encodeCase netNames
+            ]
 
     in do
         createDirectoryIfMissing True (fp </> "server" </> "src" </> "Static")
@@ -127,5 +144,6 @@ generateServer gsvg onlyStatic fp
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Init" <.> "hs") init 
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Types" <.> "hs") types 
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Decode" <.> "hs") decode 
+        writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Encode" <.> "hs") encode 
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Update" <.> "hs") update 
         mapM_ (generateServerNet sExtraT fp) netLst

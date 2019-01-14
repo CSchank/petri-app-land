@@ -42,7 +42,7 @@ type NetID = Int
 data ServerState = ServerState
     { clients :: IM'.IntMap Client
     , nextClientId :: ClientID
-    , serverState :: TMap                       -- TMap of all the nets
+    , serverState :: TMap                       -- TMap of all the NetStates
     , startTime :: Int                          -- Unix time the server was started
     }
 
