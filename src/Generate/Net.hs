@@ -217,13 +217,13 @@ generateServerNet extraTypes fp net =
                             in
                             T.unlines
                             [
-                                T.concat["split",T.pack transName,"Players :: [Player] -> (",T.intercalate "," $ map (\p -> T.concat["[",p,"Player]"]) $ fst $ fromsTos tr,")"]
+                                T.concat["split",T.pack transName,"Players :: [(ClientID,Player)] -> (",T.intercalate "," $ map (\p -> T.concat["[(ClientID,",p,"Player)]"]) $ fst $ fromsTos tr,")"]
                             ,   T.concat["split",T.pack transName,"Players players = foldl (\\t@",foldTuple," pl -> case pl of"]
                             ,   T.unlines $ map (\(fromPlace,n) -> 
                                         let
                                             placeState = getPlaceState $ getPlace $ fromPlace
                                         in
-                                            T.concat ["    P",fromPlace,"Player {} -> (" ,T.intercalate "," $ map (\(f,m) -> if n == m then T.concat["unwrapFrom", fromPlace," pl:",f,"lst"] else T.concat[f,"lst"]) $ zip froms [0..],")"]
+                                            T.concat ["    (cId,P",fromPlace,"Player {}) -> (" ,T.intercalate "," $ map (\(f,m) -> if n == m then T.concat["(cId,unwrapFrom", fromPlace," pl):",f,"lst"] else T.concat[f,"lst"]) $ zip froms [0..],")"]
                                             ) $ zip (fst $ fromsTos tr) [0..]
                             ,   T.concat ["    _ -> t) (",T.intercalate "," $ replicate (length froms) "[]",") players"]
                             ]
@@ -261,7 +261,7 @@ generateServerNet extraTypes fp net =
                     ,   T.unlines $ map processTransPlayer transitions
                     ,   "-- player splitting functions"
                     ,   T.unlines $ map splitPlayers transitions
-                    ,   T.concat ["update :: Transition -> NetState Player -> (NetState Player,[ClientMessage],Maybe (Cmd Transition))"]
+                    ,   T.concat ["update :: Transition -> NetState Player -> (NetState Player,[(ClientID,ClientMessage)],Maybe (Cmd Transition))"]
                     ,   T.concat ["update trans state ="]
                     ,   "    let"
                     ,   "        places = placeStates state"

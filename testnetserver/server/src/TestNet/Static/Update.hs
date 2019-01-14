@@ -22,27 +22,27 @@ processABCPlayer fromA fromB player = case player of
 
 
 -- player splitting functions
-splitABPlayers :: [Player] -> ([APlayer])
+splitABPlayers :: [(ClientID,Player)] -> ([(ClientID,APlayer)])
 splitABPlayers players = foldl (\t@(fromAlst) pl -> case pl of
-    PAPlayer {} -> (unwrapFromA pl:fromAlst)
+    (cId,PAPlayer {}) -> ((cId,unwrapFromA pl):fromAlst)
 
     _ -> t) ([]) players
 
-splitCAPlayers :: [Player] -> ([CPlayer])
+splitCAPlayers :: [(ClientID,Player)] -> ([(ClientID,CPlayer)])
 splitCAPlayers players = foldl (\t@(fromClst) pl -> case pl of
-    PCPlayer {} -> (unwrapFromC pl:fromClst)
+    (cId,PCPlayer {}) -> ((cId,unwrapFromC pl):fromClst)
 
     _ -> t) ([]) players
 
-splitABCPlayers :: [Player] -> ([APlayer],[BPlayer])
+splitABCPlayers :: [(ClientID,Player)] -> ([(ClientID,APlayer)],[(ClientID,BPlayer)])
 splitABCPlayers players = foldl (\t@(fromAlst,fromBlst) pl -> case pl of
-    PAPlayer {} -> (unwrapFromA pl:fromAlst,fromBlst)
-    PBPlayer {} -> (fromAlst,unwrapFromB pl:fromBlst)
+    (cId,PAPlayer {}) -> ((cId,unwrapFromA pl):fromAlst,fromBlst)
+    (cId,PBPlayer {}) -> (fromAlst,(cId,unwrapFromB pl):fromBlst)
 
     _ -> t) ([],[]) players
 
 
-update :: Transition -> NetState Player -> (NetState Player,[ClientMessage],Maybe (Cmd Transition))
+update :: Transition -> NetState Player -> (NetState Player,[(ClientID,ClientMessage)],Maybe (Cmd Transition))
 update trans state =
     let
         places = placeStates state

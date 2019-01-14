@@ -7,6 +7,10 @@ data NetModel  =
       TestNet
     deriving(Show,Ord,Eq)
 -- a union type of all the nets and their transitions
-data NetTransitions  =
+data NetTransition  =
       TestNetTrans TestNet.Static.Types.Transition
+    deriving(Show,Ord,Eq)
+-- a union type of all the nets and their transitions
+data NetOutgoingMessage  =
+      TestNetOMsg TestNet.Static.Types.ClientMessage
     deriving(Show,Ord,Eq)

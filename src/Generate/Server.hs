@@ -61,7 +61,8 @@ generateServer gsvg onlyStatic fp
         types = 
             let
                 netUnion    = ec "NetModel" $ map (\nname -> constructor (T.unpack nname) []) netNames
-                netMsgUnion = ec "NetTransitions" $ map (\nname -> constructor (T.unpack nname ++ "Trans") [edt (ElmType $ T.unpack nname ++ ".Static.Types.Transition") "" ""]) netNames
+                netMsgUnion = ec "NetTransition" $ map (\nname -> constructor (T.unpack nname ++ "Trans") [edt (ElmType $ T.unpack nname ++ ".Static.Types.Transition") "" ""]) netNames
+                netOutgoingMsgUnion = ec "NetOutgoingMessage" $ map (\nname -> constructor (T.unpack nname ++ "OMsg") [edt (ElmType $ T.unpack nname ++ ".Static.Types.ClientMessage") "" ""]) netNames
             in
             T.unlines 
             [
@@ -72,6 +73,8 @@ generateServer gsvg onlyStatic fp
             ,   generateType True False [DShow,DOrd,DEq] netUnion
             ,   "-- a union type of all the nets and their transitions"
             ,   generateType True False [DShow,DOrd,DEq] netMsgUnion
+            ,   "-- a union type of all the nets and their transitions"
+            ,   generateType True False [DShow,DOrd,DEq] netOutgoingMsgUnion
             ]
         decode :: T.Text
         decode = 
@@ -91,6 +94,32 @@ generateServer gsvg onlyStatic fp
             ,   "    case clientNet of"
             ,   T.concat $ map (\netName -> T.concat["        ",netName," -> rMap ",netName,"Trans $ fst $ ",netName,".Static.Decode.decodeIncomingMessage (Err \"\",T.splitOn \"\\0\" txt)"]) netNames
             ]
+        update :: T.Text
+        update = 
+            let
+                updateCase netName = 
+                    T.unlines 
+                    [
+                        T.concat["        ",netName," msg -> let"]
+                    ,   T.concat["            (newNetState, clientMessages, mCmd) = ",netName,".update msg (fromJust $ TM.lookup $ serverState state)"]
+                    ,   T.concat["            cmd = fmap (\\m -> cmdMap ",netName,"Trans m) mCmd"]
+                    ,   T.concat["            cMsgs = mapMaybe (\\(cId,m) -> (cId,fmap ",netName,"Trans m)) mCmds"]
+                    ,   T.concat["            newServerState = state { serverState = TM.insert newNewState (serverState state) }"]
+                    ,   "        in (newServerState, cMsgs, cmd)"
+                    ]
+            in
+            T.unlines
+            [
+                "module Static.Update where"
+            ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Update as ",n]) netNames
+            ,   "import Static.Types"
+            ,   "import Data.TMap as TM"
+            ,   ""
+            ,   "update :: NetTransition -> ServerState -> (ServerState, [(ClientID,NetOutgoingMessage)], Cmd NetTransition)"
+            ,   "update netTrans state ="
+            ,   "    case netTrans of"
+            ,   T.unlines $ map updateCase netNames
+            ]
 
     in do
         createDirectoryIfMissing True (fp </> "server" </> "src" </> "Static")
@@ -98,4 +127,5 @@ generateServer gsvg onlyStatic fp
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Init" <.> "hs") init 
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Types" <.> "hs") types 
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Decode" <.> "hs") decode 
+        writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Update" <.> "hs") update 
         mapM_ (generateServerNet sExtraT fp) netLst
