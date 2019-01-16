@@ -14,6 +14,7 @@ import qualified        Data.Char               as Char
 import                  Types
 import                  Utils
 import                  Generate.Net
+import                  Generate.Plugins
 import                  System.Directory
 import                  System.FilePath.Posix   ((</>),(<.>))
 import                  Data.Maybe              (mapMaybe,fromMaybe,fromJust)
@@ -83,16 +84,17 @@ generateServer gsvg onlyStatic fp
             in
             T.unlines
             [
-                "module Static.Decode where"
+                "{-# LANGUAGE OverloadedStrings #-}"
+            ,   "module Static.Decode where"
             ,   "import Static.Types"
             ,   "import qualified Data.Text as T"
             ,   "import Utils.Utils"
-            ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Encode"]) netNames
+            ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Decode"]) netNames
             ,   ""
-            ,   "decodeIncomingMessage :: T.Text -> NetModel -> Result T.Text NetTransitions"
+            ,   "decodeIncomingMessage :: T.Text -> NetModel -> Result T.Text NetTransition"
             ,   "decodeIncomingMessage txt clientNet ="
             ,   "    case clientNet of"
-            ,   T.concat $ map (\netName -> T.concat["        ",netName," -> rMap ",netName,"Trans $ fst $ ",netName,".Static.Decode.decodeIncomingMessage (Err \"\",T.splitOn \"\\0\" txt)"]) netNames
+            ,   T.concat $ map (\netName -> T.concat["        ",netName," -> rMap ",netName,"Trans $ fst $ ",netName,".Static.Decode.decodeTransition (Err \"\",T.splitOn \"\\0\" txt)"]) netNames
             ]
         update :: T.Text
         update = 
@@ -100,36 +102,51 @@ generateServer gsvg onlyStatic fp
                 updateCase netName = 
                     T.unlines 
                     [
-                        T.concat["        ",netName," msg -> let"]
-                    ,   T.concat["            (newNetState, clientMessages, mCmd) = ",netName,".update msg (fromJust $ TM.lookup $ serverState state)"]
-                    ,   T.concat["            cmd = fmap (\\m -> cmdMap ",netName,"Trans m) mCmd"]
-                    ,   T.concat["            cMsgs = mapMaybe (\\(cId,m) -> (cId,fmap ",netName,"Trans m)) mCmds"]
-                    ,   T.concat["            newServerState = state { serverState = TM.insert newNetState (serverState state) }"]
-                    ,   "        in (newServerState, cMsgs, cmd)"
+                        T.concat["        ",netName,"Trans msg ->"]
+                    ,   "            let"
+                    ,   T.concat["                (newNetState, clientMessages, mCmd) = ",netName,".update mClientID msg (fromJust $ TM.lookup $ serverState state)"]
+                    ,   T.concat["                cmd = fmap (\\m -> cmdMap ",netName,"Trans m) mCmd"]
+                    ,   T.concat["                cMsgs = map (\\(cId,m) -> (cId,",netName,"OMsg m)) clientMessages"]
+                    ,   T.concat["                newServerState = state { serverState = TM.insert newNetState (serverState state) }"]
+                    ,   "            in (newServerState, cMsgs, cmd)"
                     ]
-                disconnectCase netName = T.concat ["        ",netName," {} -> ",netName,".disconnect clientID (fromJust $ TM.lookup $ serverState state)"]
+                disconnectCase netName = T.concat ["                ",netName," {} -> ",netName,".disconnect clientID (fromJust $ TM.lookup $ serverState state)"]
             in
             T.unlines
             [
                 "module Static.Update where"
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Update as ",n]) netNames
             ,   "import Static.Types"
-            ,   "import Data.TMap as TM"
+            ,   "import qualified Data.TMap as TM"
+            ,   "import Static.ServerTypes"
+            ,   "import Utils.Utils"
+            ,   "import Data.Maybe (fromJust,mapMaybe,isJust)"
             ,   ""
-            ,   "update :: Maybe ClientID -> NetTransition -> ServerState -> (ServerState, [(ClientID,NetOutgoingMessage)], Cmd NetTransition)"
+            ,   "update :: Maybe ClientID -> NetTransition -> ServerState -> (ServerState, [(ClientID,NetOutgoingMessage)], Maybe (Cmd NetTransition))"
             ,   "update mClientID netTrans state ="
             ,   "    case netTrans of"
             ,   T.unlines $ map updateCase netNames
+            ,   "clientConnect :: ClientID -> ServerState -> ServerState"
+            ,   "clientConnect clientID state ="
+            ,   "    let"
+            ,   T.concat["        newNetState = ",startNet,".clientConnect clientID (fromJust $ TM.lookup $ serverState state)"]
+            ,   "    in"
+            ,   "        state { serverState = TM.insert newNetState $ serverState state }"
+
             ,   ""
             ,   "disconnect :: ClientID -> NetModel -> ServerState -> ServerState"
             ,   "disconnect clientID netModel state ="
-            ,   "    case netModel of"
+            ,   "    let"
+            ,   "        newNetState ="
+            ,   "            case netModel of"
             ,   T.unlines $ map disconnectCase netNames
+            ,   "    in"
+            ,   "        state { serverState = TM.insert newNetState $ serverState state }"
             ]
         encode :: T.Text
         encode = 
             let
-                encodeCase netName = T.concat["        ",netName,"OMsg msg -> ",netName,".Static.Encode.encode msg"]
+                encodeCase netName = T.concat["        ",netName,"OMsg msg -> ",netName,".encodeClientMessage msg"]
             in
             T.unlines
             [
@@ -137,9 +154,10 @@ generateServer gsvg onlyStatic fp
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Encode as ",n]) netNames
             ,   "import Static.ServerTypes"
             ,   "import Data.Text as T"
+            ,   "import Static.Types"
             ,   ""
             ,   "encodeOutgoingMessage :: NetOutgoingMessage -> T.Text"
-            ,   "encodeOutgoingMessage netTrans state ="
+            ,   "encodeOutgoingMessage netTrans ="
             ,   "    case netTrans of"
             ,   T.unlines $ map encodeCase netNames
             ]
@@ -153,3 +171,4 @@ generateServer gsvg onlyStatic fp
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Encode" <.> "hs") encode 
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Update" <.> "hs") update 
         mapM_ (generateServerNet sExtraT fp) netLst
+        generatePlugins (fp </> "server" </> "src") []--plugins

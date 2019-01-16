@@ -50,10 +50,12 @@ writeIfNew n fp txt = do
          else do
             currentLines <- return . T.lines =<< TIO.readFile fp
             let diffLines = filter (\(a,b) -> a /= b) $ zipWithDefault "" "" currentLines (T.lines txt)
-            Prelude.putStrLn $ "Differences in " ++ fp ++ " : " ++ show (length diffLines)
-            if length diffLines > n then
+            Prelude.putStr $ "Differences in " ++ fp ++ " : " ++ show (length diffLines)
+            if length diffLines > n then do
+                putStr " [rewriting]\n"
                 TIO.writeFile fp txt
-            else
+            else do
+                putStr " [skipping]\n"
                 return ()
 
 disclaimer date = T.unlines ["{-"

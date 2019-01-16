@@ -29,6 +29,12 @@ getPlaceState p =
         (HybridPlace n s _ _ _ _ _) -> (T.unpack n,s)
 
 
+getPlayerState :: HybridPlace -> Constructor
+getPlayerState p =
+    case p of
+        (HybridPlace n _ s _ _ _ _) -> (T.unpack n,s)
+
+
 generateServerNet :: M.Map String ElmCustom -> FilePath -> Net -> IO ()
 generateServerNet extraTypes fp net =
     case net of 
@@ -65,6 +71,7 @@ generateServerNet extraTypes fp net =
                     [
                     T.concat ["module ", name, ".Static.Types where"]
                     , "import Data.Typeable (Typeable)"
+                    , "import Static.List"
                     , ""
                     , "-- the initial state of all places in this net"
                     , generateNetTypes name places -- the initial places
@@ -99,6 +106,12 @@ generateServerNet extraTypes fp net =
                 transitionTxt trans =
                     T.unlines $ map (generateType True False [DOrd,DEq,DShow]) $ transitionType trans
 
+                transConstrs :: [Constructor]
+                transConstrs = map (trans2constr . snd) transitions
+
+                transType :: ElmCustom
+                transType = ec "Transition" transConstrs
+
                 generateNetTypes :: T.Text -> [HybridPlace] -> T.Text
                 generateNetTypes netName places = 
                     let
@@ -122,8 +135,6 @@ generateServerNet extraTypes fp net =
                             in
                                 T.unlines $ map (\(_,msg@(msgN,edts)) -> generateType True True [DOrd,DEq,DShow] $ ElmCustom msgN [msg]) clientMsgs
                                 ++ [generateType True True [DOrd,DEq,DShow] clientMsg]
-                        transConstrs :: [Constructor]
-                        transConstrs = map (trans2constr . snd) transitions
                     in
                         T.unlines 
                             [
@@ -164,6 +175,9 @@ generateServerNet extraTypes fp net =
                     [
                         T.concat ["module ",name,".Update where"]
                     ,   T.concat ["import ",name,".Static.Types"]
+                    ,   "import Static.List"
+                    ,   "import Utils.Utils"
+                    ,   "import Static.ServerTypes"
                     ,   ""
                     ,   "-- function called when new client connects (do not delete)"
                     ,   T.concat["clientConnect :: ClientID -> ",startingPlace," -> (", startingPlace,", ",startingPlace,"Player)"]
@@ -201,13 +215,13 @@ generateServerNet extraTypes fp net =
                             in
                             T.unlines
                             [
-                                T.concat["process",T.pack transName,"Player :: ",T.intercalate " -> " $ tfns," -> Player -> (Player, Maybe ClientMessage)"]
-                            ,   T.concat["process",T.pack transName,"Player ",T.intercalate " " froms," player = case player of"]
+                                T.concat["process",T.pack transName,"Player :: ",T.intercalate " -> " $ tfns," -> (ClientID, Player) -> ((ClientID, Player), (ClientID, Maybe ClientMessage))"]
+                            ,   T.concat["process",T.pack transName,"Player ",T.intercalate " " froms," (cId,player) = case player of"]
                             ,   T.unlines $ map (\fromPlace -> 
                                         let
-                                            placeState = getPlaceState $ getPlace $ fromPlace
+                                            (placeName,placeType) = getPlayerState $ getPlace $ fromPlace
                                         in
-                                            T.concat ["    ",generatePattern placeState," -> unwrap",T.pack transName,"from",fromPlace," $ from",fromPlace," $ wrap",fromPlace,"Player player"]
+                                            T.concat ["    ",generatePattern ("P"++placeName++"Player", placeType)," -> let (np, mCm) = (unwrap",T.pack transName,"from",fromPlace," $ from",fromPlace," $ wrap",fromPlace,"Player player) in ((cId, np), (cId, mCm))"]
                                             ) $ fst $ fromsTos tr
                             ]
                         splitPlayers (tr@(_, NetTransition (transName,_) connections mCmd)) = 
@@ -222,9 +236,9 @@ generateServerNet extraTypes fp net =
                             ,   T.concat["split",T.pack transName,"Players players = foldl (\\t@",foldTuple," pl -> case pl of"]
                             ,   T.unlines $ map (\(fromPlace,n) -> 
                                         let
-                                            placeState = getPlaceState $ getPlace $ fromPlace
+                                            placeState = getPlayerState $ getPlace $ fromPlace
                                         in
-                                            T.concat ["    (cId,P",fromPlace,"Player {}) -> (" ,T.intercalate "," $ map (\(f,m) -> if n == m then T.concat["(cId,unwrapFrom", fromPlace," pl):",f,"lst"] else T.concat[f,"lst"]) $ zip froms [0..],")"]
+                                            T.concat ["    (cId,p@(P",fromPlace,"Player {})) -> (" ,T.intercalate "," $ map (\(f,m) -> if n == m then T.concat["(cId,wrap", fromPlace,"Player p):",f,"lst"] else T.concat[f,"lst"]) $ zip froms [0..],")"]
                                             ) $ zip (fst $ fromsTos tr) [0..]
                             ,   T.concat ["    _ -> t) (",T.intercalate "," $ replicate (length froms) "[]",") players"]
                             ]
@@ -245,30 +259,42 @@ generateServerNet extraTypes fp net =
                             [
                                 T.concat [generatePattern ("T"++transName,transArgs),  "->"]
                             ,   "    let"
-                            ,   T.concat["        (",T.intercalate "," $ map (\t -> T.concat[uncapitalize t,"PlayerLst"]) froms,") = split",transTxt,"Players players"]
+                            ,   T.concat["        (",T.intercalate "," $ map (\t -> T.concat[uncapitalize t,"PlayerLst"]) froms,") = split",transTxt,"Players (IM'.toList players)"]
                             ,   case mCmd of
                                     Just cmd -> 
-                                        T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,",cmd) = update",transTxt," ",clientIdTxt,T.replicate (length allStates) "(fromJust $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat [uncapitalize t, "PlayerLst"]) froms]
+                                        T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,",cmd) = update",transTxt," ",clientIdTxt,"(wrap",transTxt," trans)",T.replicate (length allStates) "(fromJust $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat ["(map snd ",uncapitalize t, "PlayerLst)"]) froms]
                                     Nothing ->
-                                        T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,") = update",transTxt," ",clientIdTxt,T.replicate (length allStates) "(fromJust $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat [uncapitalize t, "PlayerLst"]) froms]
-                            ,   T.concat["        newPlaces = ",T.intercalate " $ " $ map (\state -> T.concat["TM.insert ",uncapitalize state]) froms, " places"]
-                            ,   T.concat["        (newPlayers, clientMessages) = unzip $ map (process",transTxt,"Player ",T.intercalate " " fromVars,") players"]
+                                        T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,") = update",transTxt," ",clientIdTxt,"(wrap",transTxt," trans) ",T.replicate (length allStates) "(fromJust $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat ["(map snd ",uncapitalize t, "PlayerLst)"]) froms]
+                            ,   T.concat["        newPlaces = ",T.intercalate " $ " $ map (\state -> T.concat["TM.insert ",uncapitalize state]) allStates, " places"]
+                            ,   T.concat["        (newPlayers, clientMessages) = unzip $ map (process",transTxt,"Player ",T.intercalate " " fromVars,") (IM'.toList players)"]
                             ,   "    in"
                             ,   T.concat["        (newPlaces, newPlayers, clientMessages, ", if isJust mCmd then "Just cmd" else "Nothing",")" ]
                             ]
                         disconnectCase placeName = 
-                            T.concat ["            ",placeName," {} -> disconnectFrom",placeName," clientID (fromJust $ TM.lookup places) (wrap",placeName,"Player player)"]
+                            T.concat ["            P",placeName,"Player {} -> (flip TM.insert) places $ clientDisconnectFrom",placeName," clientID (fromJust $ TM.lookup places) (wrap",placeName,"Player player)"]
                     in T.unlines
                     [
                         T.concat ["module ",name,".Static.Update where"]
                     ,   T.concat ["import ",name,".Static.Types"]
                     ,   T.concat ["import ",name,".Static.Wrappers"]
-                    ,   "import Data.TMap as TM"
+                    ,   T.concat ["import ",name,".Update as Update"]
+                    ,   "import qualified Data.TMap as TM"
+                    ,   "import Static.ServerTypes"
+                    ,   "import qualified Data.IntMap.Strict as IM'"
+                    ,   "import Data.Maybe (fromJust, isJust, mapMaybe)"
                     ,   ""
                     ,   "-- player processing functions"
                     ,   T.unlines $ map processTransPlayer transitions
                     ,   "-- player splitting functions"
                     ,   T.unlines $ map splitPlayers transitions
+                    ,   "-- process player connect"
+                    ,   "clientConnect :: ClientID -> NetState Player -> NetState Player"
+                    ,   "clientConnect clientID state ="
+                    ,   "    let"
+                    ,   T.concat["        (",uncapitalize startingPlace,",",uncapitalize startingPlace,"Player) = Update.clientConnect clientID (fromJust $ TM.lookup $ placeStates state)"]
+                    ,   "    in"
+                    ,   T.concat["        state { placeStates = TM.insert ",uncapitalize startingPlace," $ placeStates state, playerStates = IM'.insert clientID (unwrap",startingPlace,"Player ",uncapitalize startingPlace,"Player) (playerStates state) }"]
+                    ,   ""
                     ,   "-- process player disconnects"
                     ,   "disconnect :: ClientID -> NetState Player -> NetState Player"
                     ,   "disconnect clientID state ="
@@ -276,9 +302,9 @@ generateServerNet extraTypes fp net =
                     ,   "        player = fromJust $ IM'.lookup clientID $ players"
                     ,   "        places = placeStates state"
                     ,   "        players = playerStates state"
-                    ,   "        newPlaces = (flip TM.insert) places $ case player of"
+                    ,   "        newPlaces = case player of"
                     ,   T.unlines $ map disconnectCase placeNames
-                    ,   "        newPlayers = IM.remove clientID players"
+                    ,   "        newPlayers = IM'.delete clientID players"
                     ,   "    in"
                     ,   "        state { playerStates = newPlayers, placeStates = newPlaces }"
                     ,   ""
@@ -294,9 +320,9 @@ generateServerNet extraTypes fp net =
                     ,   "        (state"
                     ,   "           {"
                     ,   "                placeStates = newPlaces"
-                    ,   "           ,    playerStates = newPlayers"
+                    ,   "           ,    playerStates = IM'.fromList newPlayers"
                     ,   "           }"
-                    ,   "        , clientMessages"
+                    ,   "        , mapMaybe (\\(a,b) -> if isJust b then Just (a,fromJust b) else Nothing) clientMessages"
                     ,   "        , cmd)"
                     ]
             
@@ -392,8 +418,13 @@ generateServerNet extraTypes fp net =
                         T.concat ["module ",name,".Static.Init where"]
                     ,   T.concat ["import ",name,".Static.Types (Player)"]
                     ,   T.concat ["import ",name,".Init as Init"]
-                    ,   "import Data.TMap as TM\n"
-                    ,   T.concat["init :: NetState Player"]
+                    ,   T.concat ["import ",name,".Update as Update"]
+                    ,   T.concat ["import ",name,".Static.Wrappers"]
+                    ,   "import Static.ServerTypes"
+                    ,   "import qualified Data.IntMap as IM'"
+                    ,   "import Data.Maybe (fromJust)"
+                    ,   "import qualified Data.TMap as TM\n"
+                    ,   "init :: NetState Player"
                     ,   "init = NetState"
                     ,   "    {"
                     ,   "      playerStates = IM'.empty"
@@ -403,16 +434,23 @@ generateServerNet extraTypes fp net =
                     ]
                 encoder = T.unlines 
                     [
-                        T.concat ["module ",name,".Encode where"]
+                        "{-# LANGUAGE OverloadedStrings #-}"
+                    ,   T.concat ["module ",name,".Static.Encode where"]
                     ,   T.concat ["import ",name,".Static.Types\n"]
+                    ,   "import Utils.Utils"
+                    ,   "import qualified Data.Text as T"
+                    ,   "import Static.Types"
                     ,   generateEncoder True clientMsg
                     ]
-                incomingClientTransitions = mapMaybe (\(tt,NetTransition constr _ _) -> if tt == HybridTransition || tt == ClientOnlyTransition then Just constr else Nothing) transitions
-                clientTransitions = ElmCustom "IncomingMessage" incomingClientTransitions
+                incomingClientTransitions = mapMaybe (\(tt,NetTransition (name,ets) _ _) -> if tt == HybridTransition || tt == ClientOnlyTransition then Just ("T"++name,ets) else Nothing) transitions
+                clientTransitions = ElmCustom "Transition" incomingClientTransitions
                 decoder = T.unlines 
                     [
-                        T.concat ["module ",name,".Decode where"]
+                        "{-# LANGUAGE OverloadedStrings #-}"
+                    ,   T.concat ["module ",name,".Static.Decode where"]
                     ,   T.concat ["import ",name,".Static.Types\n"]
+                    ,   "import Utils.Utils"
+                    ,   "import qualified Data.Text as T"
                     ,   generateDecoder True clientTransitions
                     ]
                 wrappers = 
@@ -425,19 +463,20 @@ generateServerNet extraTypes fp net =
                         ,   T.unlines $ map (createUnwrap True "Player" "P") placePlayerStates
                         ,   T.unlines $ map (createWrap (length places > 1) True "Player" "P") placePlayerStates
                         ,   T.unlines $ map (createTransitionUnwrap (length places > 1) True) transitions
+                        ,   T.unlines $ map (createUnwrap True "Transition" "T") transConstrs
+                        ,   T.unlines $ map (createWrap (length transitions > 1) True "Transition" "T") transConstrs
                         ]        
             in do
-                createDirectoryIfMissing True $ fp </> "server" </> "src" </> T.unpack name </> "userApp"
+                createDirectoryIfMissing True $ fp </> "server" </> "src" </> T.unpack name
                 createDirectoryIfMissing True $ fp </> "server" </> "src" </> T.unpack name </> "Static"
-                writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "userApp" </> "Init" <.> "hs") inits 
+                writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Init" <.> "hs") inits 
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Types" <.> "hs") types
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Init" <.> "hs") hiddenInit
-                writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "userApp" </> "Update" <.> "hs") update
+                writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Update" <.> "hs") update
                 createDirectoryIfMissing True $ fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers"
-                mapM_ (\(HybridPlace pName edts _ _ _ _ _)  -> writeIfNew 1 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper True (T.unpack pName,edts) False]) places
-                mapM_ (\(HybridPlace pName _ pEdts _ _ _ _) -> writeIfNew 1 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName ++ "Player" <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper True (T.unpack pName ++ "Player",pEdts) False]) places
+                mapM_ (\(HybridPlace pName edts _ _ _ _ _)  -> writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper True name (T.unpack pName,edts) False]) places
+                mapM_ (\(HybridPlace pName _ pEdts _ _ _ _) -> writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName ++ "Player" <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper True name (T.unpack pName ++ "Player",pEdts) False]) places
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Encode" <.> "hs") encoder
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Decode" <.> "hs") decoder
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Wrappers" <.> "hs") wrappers
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Update" <.> "hs") hiddenUpdate
-                generatePlugins (fp </> "server" </> "src" </> T.unpack name) plugins

@@ -42,7 +42,6 @@ dependencies:
 library:
   source-dirs: 
     - src
-    - src/userApp
 
 executables:
   server-exe:

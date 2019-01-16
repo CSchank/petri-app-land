@@ -1,13 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Static.ServerLogic
-    ( newCentralMessageChan
-    , newClientMessageChan
-    , processCentralChan
-    , processClienTQueue
-    ) where
+module Static.ServerLogic where
 
 import           Control.Concurrent.STM (STM, TQueue, TVar, atomically, newTQueue,
-                                         readTQueue, writeTQueue, newTVar)
+                                         readTQueue, writeTQueue, newTVar, readTVar)
 import           Control.Monad          (forever,void)
 import qualified Data.Map.Strict        as M'
 import qualified Data.IntMap.Strict     as IM'
@@ -30,10 +25,10 @@ import Static.Types
 import Static.ServerTypes
 import Static.Encode
 import Static.Decode
-import Static.Init (init)
+import Static.Init
 import Static.Plugins
 import Utils.Utils (Result(..))
-import Static.Update (update)
+import Static.Update (update, clientConnect, disconnect)
 
 
 newCentralMessageChan :: STM (TQueue CentralMessage)
@@ -41,7 +36,7 @@ newCentralMessageChan =
     newTQueue
 
 
-newClientMessageChan :: STM (TQueue ClientThreadMessage)
+newClientMessageChan :: STM (TQueue OutgoingClientThreadMessage)
 newClientMessageChan =
     newTQueue
 
@@ -57,7 +52,7 @@ processCentralChan chan =
         initial :: Int -> ServerState
         initial t = ServerState
             { clients = IM'.empty
-            , internalServerState = TM.insert Static.Init.init TM.empty
+            , serverState = TM.insert Static.Init.init TM.empty
             , nextClientId = 0
             , startTime = t
             }
@@ -75,8 +70,7 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
 
     let newClientId = (nextClientId state)
 
-    tvar <- atomically $ newTVar    --stores the user's current net (to know how to decode the message)
-    atomically $ writeTVar tvar Init.initNet
+    tvar <- atomically $ newTVar Static.Init.initNet   --stores the user's current net (to know how to decode the message)
 
     Prelude.putStrLn $ "Processing new client with ID " ++ show newClientId
     Prelude.putStrLn $ "Current clients: " ++ show (IM'.keys $ clients state)
@@ -84,15 +78,11 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
     -- Add the new Client to the server state.
     let nextClients = IM'.insert newClientId (Client tvar clientMessageChan 0) (clients state)
 
-    -- Construct the next state with the new list of Clients and new
-    -- Dict of scores.
-    let nextState = state { clients = nextClients, nextClientId = newClientId + 1 }
-
     -- Run two threads and terminate when either dies.
     -- (1) Process the new message channel responsible for this Client.
     -- (2) Read the WebSocket connection and pass it on to the central
     --     message channel.
-    forkIO $ finally (race_ (processClienTQueue conn clientMessageChan) $ forever (do
+    forkIO $ finally (race_ (processOutgoingMsg conn clientMessageChan) $ forever (do
         msg <- WS.receiveData conn
         netToDecode <- atomically $ readTVar tvar --read which decoder to use
         Prelude.putStrLn $ "Received " ++ T.unpack msg ++ " from clientID " ++ show newClientId
@@ -104,8 +94,7 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
     Prelude.putStrLn $ "Client with ID " ++ show newClientId ++ " connected successfully!"
 
     -- inform the user's app that the client has connected
-    atomically $ writeTQueue centralMessageChan $ ReceivedMessage newClientId MClientConnect
-
+    let nextState = clientConnect newClientId $ state { clients = nextClients, nextClientId = newClientId + 1 }
     -- Provide the new state back to the loop.
     return nextState
 
@@ -113,7 +102,7 @@ processCentralMessage centralMessageChan state (ReceivedMessage mClientID incomi
     let
         connectedClients = clients state
 
-        ps = pluginState state
+        --ps = pluginState state
 
         sendMessages :: [(ClientID, NetOutgoingMessage)] -> IO ()
         sendMessages msgs =
@@ -121,11 +110,11 @@ processCentralMessage centralMessageChan state (ReceivedMessage mClientID incomi
         
         sendToID :: (ClientID,NetOutgoingMessage) -> IO ()
         sendToID (clientID, cm) =
-            case IM'.lookup clientId connectedClients of
+            case IM'.lookup clientID connectedClients of
                 Just (Client decodeChannel chan netID) -> atomically $ writeTQueue chan $ SendMessage (encodeOutgoingMessage cm)
-                Nothing -> Prelude.putStrLn $ "Unable to send message to client " ++ show clientId ++ " because that client doesn't exist or is logged out."    
+                Nothing -> Prelude.putStrLn $ "Unable to send message to client " ++ show mClientID ++ " because that client doesn't exist or is logged out."    
         
-        (nextState, outgoingMsgs, cmd) = update mClientID incomingMsg (serverState state)
+        (nextState, outgoingMsgs, cmd) = update mClientID incomingMsg state
 
     in do
     sendMessages outgoingMsgs
@@ -137,10 +126,10 @@ processCentralMessage centralMessageChan state (ReceivedMessage mClientID incomi
 processCentralMessage centralMessageChan state (UserConnectionLost clientID) = 
     let
         connectedClients = clients state
-        (Client nmTvar clientQueue netID) = fromJust $ IM'.lookup clientId
+        (Client nmTvar clientQueue netID) = fromJust $ IM'.lookup clientID $ clients state
 
     in do
-    Prelude.putStrLn $ "Client " ++ show clientId ++ " lost connection."
+    Prelude.putStrLn $ "Client " ++ show clientID ++ " lost connection."
     netModel <- atomically $ readTVar nmTvar
 
     -- inform the user's app that the client has disconnected
@@ -165,7 +154,7 @@ processCentralMessage centralMessageChan state ResetClients = do
 parseIncomingMsg :: ClientID -> NetModel -> TQueue CentralMessage -> Text -> IO ()
 parseIncomingMsg clientId netToDecode chan msg = do
     case (decodeIncomingMessage msg netToDecode) of
-        Ok msg -> atomically $ writeTQueue chan $ ReceivedMessage clientId msg
+        Ok msg -> atomically $ writeTQueue chan $ ReceivedMessage (Just clientId) msg
         Err er -> Tio.putStrLn $ T.concat ["Error decoding message from client ", T.pack $ show clientId, ". Failed with error: ", er]--, " and the following still in the deocde buffer:", T.pack $ show l, "."]
 
 
@@ -177,9 +166,7 @@ processOutgoingMsg conn chan = forever $ do
     clientMsg{-(SendMessage outgoingMessage)-} <- atomically $ readTQueue chan
     case clientMsg of 
         SendMessage outgoingMessage -> do
-            let txtMsg = encodeClientMessage outgoingMessage
-
-            WS.sendTextData conn txtMsg
-            Tio.putStrLn $ T.concat $ ["Sent: ",  txtMsg]
+            WS.sendTextData conn outgoingMessage
+            Tio.putStrLn $ T.concat $ ["Sent: ",  outgoingMessage]
         {-ResetState ->
             WS.sendTextData conn ("resetfadsfjewi" :: T.Text)-}

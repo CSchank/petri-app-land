@@ -24,7 +24,7 @@ import System.Environment (getArgs)
 
 import qualified Static.ServerLogic as ServerLogic
 import Static.ServerTypes
-import Types
+import Static.Types
 import Static.Decode
 import Utils.Utils
 import Static.Init
@@ -33,7 +33,7 @@ import Static.Init
 wsApp :: TQueue CentralMessage -> WS.ServerApp
 wsApp centralMessageChan pendingConn = 
     let
-        loop :: WS.Connection -> TQueue ClientThreadMessage -> IO ()
+        loop :: WS.Connection -> TQueue OutgoingClientThreadMessage -> IO ()
         loop conn clientMessageChan = do
                   -- wait for login message
                   Prelude.putStrLn "Waiting for version string from client..."
@@ -63,7 +63,7 @@ wsApp centralMessageChan pendingConn =
 
 fallbackApp :: TQueue CentralMessage -> Application
 fallbackApp centralChan req respond = do
-    let url = pathInfo req
+    {-let url = pathInfo req
     case url of 
         ["reset"] ->
             atomically $ do 
@@ -72,8 +72,8 @@ fallbackApp centralChan req respond = do
         _ -> return ()
     tempQ <- atomically $ giveReceivingQueue centralChan GetCurrentState
     state <- atomically $ readTQueue tempQ
-    let userState = internalServerState state
-    respond $ responseLBS status200 [] $ C.pack $ show userState
+    let userState = internalServerState state-}
+    respond $ responseLBS status200 [] "" -- $ C.pack $ show userState
 
 
 app :: TQueue CentralMessage -> Application

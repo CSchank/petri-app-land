@@ -9,6 +9,7 @@ import Static.Types
 import           Control.Concurrent.STM         (TQueue, atomically, readTQueue,
                                                  writeTQueue, STM, newTQueue)
 import qualified Data.Map.Strict as Dict
+import Static.Dict
 
 
 (|>) :: a -> (a -> b) -> b
@@ -343,25 +344,6 @@ decodeString ls =
     case ls of
         fst:rest -> (Ok $ T.unpack fst, rest)
         _ -> (Err "Error decoding string value",[])
-
-unwrapToSender :: (cm -> ClientMessage) -> ToSender cm -> InternalCM ClientMessage
-unwrapToSender m (ToSender cm) = ICMToSender (m cm)
-
-unwrapToAllExceptSender :: (cm -> ClientMessage) -> ToAllExceptSender cm -> InternalCM ClientMessage
-unwrapToAllExceptSender m (ToAllExceptSender cm) = ICMToAllExceptSender (m cm)
-unwrapToAllExceptSender m (ToAllExceptSenderF f) = ICMToAllExceptSenderF (m . f)
-
-unwrapSenderAnd :: (cm -> ClientMessage) -> ToSenderAnd cm -> InternalCM ClientMessage
-unwrapSenderAnd m (ToSenderAnd others cm) = ICMToSenderAnd others (m cm)
-unwrapSenderAnd m (ToSenderAndF others f) = ICMToSenderAndF others (m . f)
-
-unwrapToSet :: (cm -> ClientMessage) -> ToSet cm -> InternalCM ClientMessage
-unwrapToSet m (ToSet others cm) = ICMToSet others (m cm)
-unwrapToSet m (ToSetF others f) = ICMToSetF others (m . f)
-
-unwrapToAll :: (cm -> ClientMessage) -> ToAll cm -> InternalCM ClientMessage
-unwrapToAll m (ToAll cm) = ICMToAll (m cm)
-unwrapToAll m (ToAllF f) = ICMToAllF (m . f)
 
 decodeMaybe :: [T.Text] -> ((Result T.Text a, [T.Text]) -> (Result T.Text a, [T.Text])) -> (Result T.Text (Maybe a), [T.Text])
 decodeMaybe ls decodeFn =

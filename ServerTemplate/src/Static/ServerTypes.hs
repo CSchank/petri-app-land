@@ -1,20 +1,5 @@
 {-# LANGUAGE OverloadedStrings, ExistentialQuantification #-}
-module Static.ServerTypes
-    ( CentralMessage(..)
-    , ClientThreadMessage(..)
-    , ServerState(..)
-    , Client(..)
-    , ClientID
-    , ToSender(..)
-    , ToAllExceptSender(..)
-    , ToSenderAnd(..)
-    , ToSet(..)
-    , ToAll(..)
-    , InternalCM(..)
-    , Cmd(..)
-    , Plugin(..)
-    , PluginState
-    ) where
+module Static.ServerTypes where
 
 import           Control.Concurrent.STM (STM, TQueue, TVar)
 import qualified Data.Map.Strict        as M'
@@ -24,6 +9,9 @@ import           Network.WebSockets.Connection (Connection)
 import Data.Set as Set
 import Data.TMap (TMap)
 import Data.Typeable (Typeable)
+import qualified Data.Text as T
+
+type ClientID = Int
 
 data CentralMessage
     = NewUser (TQueue OutgoingClientThreadMessage) Connection    --register a new user on the server
@@ -57,6 +45,8 @@ data NetState playerState = NetState
 -- data that the top-level update functions receive
 type TopLevelData = 
     (Int {-start time-}, Int {-time-})
+
+type PluginState = TMap
 
 {- message type for each net's STM loop
 data NetMsg netMsg = 

@@ -1,46 +1,58 @@
 module TestNet.Static.Update where
 import TestNet.Static.Types
 import TestNet.Static.Wrappers
-import Data.TMap as TM
+import TestNet.Update as Update
+import qualified Data.TMap as TM
+import Static.ServerTypes
+import qualified Data.IntMap.Strict as IM'
+import Data.Maybe (fromJust, isJust, mapMaybe)
 
 -- player processing functions
-processABPlayer :: (APlayer -> ABfromA) -> Player -> (Player, Maybe ClientMessage)
-processABPlayer fromA player = case player of
-    (A n nLst)  -> unwrapABfromA $ fromA $ wrapAPlayer player
+processABPlayer :: (APlayer -> ABfromA) -> (ClientID, Player) -> ((ClientID, Player), (ClientID, Maybe ClientMessage))
+processABPlayer fromA (cId,player) = case player of
+    (PAPlayer playerN)  -> let (np, mCm) = (unwrapABfromA $ fromA $ wrapAPlayer player) in ((cId, np), (cId, mCm))
 
 
-processCAPlayer :: (CPlayer -> CAfromC) -> Player -> (Player, Maybe ClientMessage)
-processCAPlayer fromC player = case player of
-    (C n nLst)  -> unwrapCAfromC $ fromC $ wrapCPlayer player
+processCAPlayer :: (CPlayer -> CAfromC) -> (ClientID, Player) -> ((ClientID, Player), (ClientID, Maybe ClientMessage))
+processCAPlayer fromC (cId,player) = case player of
+    (PCPlayer playerN)  -> let (np, mCm) = (unwrapCAfromC $ fromC $ wrapCPlayer player) in ((cId, np), (cId, mCm))
 
 
-processABCPlayer :: (APlayer -> ABCfromA) -> (BPlayer -> ABCfromB) -> Player -> (Player, Maybe ClientMessage)
-processABCPlayer fromA fromB player = case player of
-    (A n nLst)  -> unwrapABCfromA $ fromA $ wrapAPlayer player
-    (B n nLst)  -> unwrapABCfromB $ fromB $ wrapBPlayer player
+processABCPlayer :: (APlayer -> ABCfromA) -> (BPlayer -> ABCfromB) -> (ClientID, Player) -> ((ClientID, Player), (ClientID, Maybe ClientMessage))
+processABCPlayer fromA fromB (cId,player) = case player of
+    (PAPlayer playerN)  -> let (np, mCm) = (unwrapABCfromA $ fromA $ wrapAPlayer player) in ((cId, np), (cId, mCm))
+    (PBPlayer playerN)  -> let (np, mCm) = (unwrapABCfromB $ fromB $ wrapBPlayer player) in ((cId, np), (cId, mCm))
 
 
 
 -- player splitting functions
 splitABPlayers :: [(ClientID,Player)] -> ([(ClientID,APlayer)])
 splitABPlayers players = foldl (\t@(fromAlst) pl -> case pl of
-    (cId,PAPlayer {}) -> ((cId,unwrapFromA pl):fromAlst)
+    (cId,p@(PAPlayer {})) -> ((cId,wrapAPlayer p):fromAlst)
 
     _ -> t) ([]) players
 
 splitCAPlayers :: [(ClientID,Player)] -> ([(ClientID,CPlayer)])
 splitCAPlayers players = foldl (\t@(fromClst) pl -> case pl of
-    (cId,PCPlayer {}) -> ((cId,unwrapFromC pl):fromClst)
+    (cId,p@(PCPlayer {})) -> ((cId,wrapCPlayer p):fromClst)
 
     _ -> t) ([]) players
 
 splitABCPlayers :: [(ClientID,Player)] -> ([(ClientID,APlayer)],[(ClientID,BPlayer)])
 splitABCPlayers players = foldl (\t@(fromAlst,fromBlst) pl -> case pl of
-    (cId,PAPlayer {}) -> ((cId,unwrapFromA pl):fromAlst,fromBlst)
-    (cId,PBPlayer {}) -> (fromAlst,(cId,unwrapFromB pl):fromBlst)
+    (cId,p@(PAPlayer {})) -> ((cId,wrapAPlayer p):fromAlst,fromBlst)
+    (cId,p@(PBPlayer {})) -> (fromAlst,(cId,wrapBPlayer p):fromBlst)
 
     _ -> t) ([],[]) players
 
+
+-- process player connect
+clientConnect :: ClientID -> NetState Player -> NetState Player
+clientConnect clientID state =
+    let
+        (a,aPlayer) = Update.clientConnect clientID (fromJust $ TM.lookup $ placeStates state)
+    in
+        state { placeStates = TM.insert a $ placeStates state, playerStates = IM'.insert clientID (unwrapAPlayer aPlayer) (playerStates state) }
 
 -- process player disconnects
 disconnect :: ClientID -> NetState Player -> NetState Player
@@ -49,12 +61,12 @@ disconnect clientID state =
         player = fromJust $ IM'.lookup clientID $ players
         places = placeStates state
         players = playerStates state
-        newPlaces = (flip TM.insert) places $ case player of
-            A {} -> disconnectFromA clientID (fromJust $ TM.lookup places) (wrapAPlayer player)
-            B {} -> disconnectFromB clientID (fromJust $ TM.lookup places) (wrapBPlayer player)
-            C {} -> disconnectFromC clientID (fromJust $ TM.lookup places) (wrapCPlayer player)
+        newPlaces = case player of
+            PAPlayer {} -> (flip TM.insert) places $ clientDisconnectFromA clientID (fromJust $ TM.lookup places) (wrapAPlayer player)
+            PBPlayer {} -> (flip TM.insert) places $ clientDisconnectFromB clientID (fromJust $ TM.lookup places) (wrapBPlayer player)
+            PCPlayer {} -> (flip TM.insert) places $ clientDisconnectFromC clientID (fromJust $ TM.lookup places) (wrapCPlayer player)
 
-        newPlayers = IM.remove clientID players
+        newPlayers = IM'.delete clientID players
     in
         state { playerStates = newPlayers, placeStates = newPlaces }
 
@@ -67,28 +79,28 @@ update mClientID trans state =
             case trans of
                 (TAB n) ->
                     let
-                        (aPlayerLst) = splitABPlayers players
-                        (a,b,fromA) = updateAB (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) aPlayerLst
-                        newPlaces = TM.insert a places
-                        (newPlayers, clientMessages) = unzip $ map (processABPlayer fromA) players
+                        (aPlayerLst) = splitABPlayers (IM'.toList players)
+                        (a,b,fromA) = updateAB (wrapAB trans) (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) (map snd aPlayerLst)
+                        newPlaces = TM.insert a $ TM.insert b places
+                        (newPlayers, clientMessages) = unzip $ map (processABPlayer fromA) (IM'.toList players)
                     in
                         (newPlaces, newPlayers, clientMessages, Nothing)
 
                 (TCA n) ->
                     let
-                        (cPlayerLst) = splitCAPlayers players
-                        (c,a,fromC) = updateCA (fromJust mClientID) (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) cPlayerLst
-                        newPlaces = TM.insert c places
-                        (newPlayers, clientMessages) = unzip $ map (processCAPlayer fromC) players
+                        (cPlayerLst) = splitCAPlayers (IM'.toList players)
+                        (c,a,fromC) = updateCA (fromJust mClientID) (wrapCA trans) (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) (map snd cPlayerLst)
+                        newPlaces = TM.insert c $ TM.insert a places
+                        (newPlayers, clientMessages) = unzip $ map (processCAPlayer fromC) (IM'.toList players)
                     in
                         (newPlaces, newPlayers, clientMessages, Nothing)
 
                 (TABC n) ->
                     let
-                        (aPlayerLst,bPlayerLst) = splitABCPlayers players
-                        (a,b,c,fromA,fromB) = updateABC mClientID (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) aPlayerLst bPlayerLst
-                        newPlaces = TM.insert a $ TM.insert b places
-                        (newPlayers, clientMessages) = unzip $ map (processABCPlayer fromA fromB) players
+                        (aPlayerLst,bPlayerLst) = splitABCPlayers (IM'.toList players)
+                        (a,b,c,fromA,fromB) = updateABC mClientID (wrapABC trans) (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) (map snd aPlayerLst) (map snd bPlayerLst)
+                        newPlaces = TM.insert a $ TM.insert b $ TM.insert c places
+                        (newPlayers, clientMessages) = unzip $ map (processABCPlayer fromA fromB) (IM'.toList players)
                     in
                         (newPlaces, newPlayers, clientMessages, Nothing)
 
@@ -97,7 +109,7 @@ update mClientID trans state =
         (state
            {
                 placeStates = newPlaces
-           ,    playerStates = newPlayers
+           ,    playerStates = IM'.fromList newPlayers
            }
-        , clientMessages
+        , mapMaybe (\(a,b) -> if isJust b then Just (a,fromJust b) else Nothing) clientMessages
         , cmd)
