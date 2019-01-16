@@ -75,6 +75,14 @@ generateServerNet extraTypes fp net =
                     , ""
                     , "-- the initial state of all places in this net"
                     , generateNetTypes name places -- the initial places
+                    , "-- the FromSuperPlace type"
+                    ]
+                fromSuperPlace = 
+                    T.unlines
+                    [
+                        T.concat["module ",name,".Static.FromSuperPlace where"]
+                    ,   "import Static.ServerTypes"
+                    ,   "type FromSuperPlace = TopLevelData" --FIXME: change this depending on where the net resides
                     ]
                 clientMsgs :: [(String,Constructor)]
                 clientMsgs = concat $ map (\(_,NetTransition (n,_) lstTrans _) -> 
@@ -167,21 +175,22 @@ generateServerNet extraTypes fp net =
                             in
                             T.unlines
                             [
-                                    T.concat[disconnectName," :: ClientID -> ",place," -> ",place,"Player -> ",place]
-                                ,   T.concat[disconnectName," clientID ",uncapitalize place," ",uncapitalize place,"Player ="]
+                                    T.concat[disconnectName," :: FromSuperPlace -> ClientID -> ",place," -> ",place,"Player -> ",place]
+                                ,   T.concat[disconnectName," fsp clientID ",uncapitalize place," ",uncapitalize place,"Player ="]
                                 ,   T.concat["    error \"Please fill out the ",disconnectName," function for the ",name," net.\""]
                             ]
                     in T.unlines
                     [
                         T.concat ["module ",name,".Update where"]
                     ,   T.concat ["import ",name,".Static.Types"]
+                    ,   T.concat ["import ",name,".Static.FromSuperPlace"]
                     ,   "import Static.List"
                     ,   "import Utils.Utils"
                     ,   "import Static.ServerTypes"
                     ,   ""
                     ,   "-- function called when new client connects (do not delete)"
-                    ,   T.concat["clientConnect :: ClientID -> ",startingPlace," -> (", startingPlace,", ",startingPlace,"Player)"]
-                    ,   T.concat["clientConnect clientID ",uncapitalize startingPlace," ="]
+                    ,   T.concat["clientConnect :: FromSuperPlace -> ClientID -> ",startingPlace," -> (", startingPlace,", ",startingPlace,"Player)"]
+                    ,   T.concat["clientConnect fsp clientID ",uncapitalize startingPlace," ="]
                     ,   T.concat["    error \"Please fill out clientConnect function for the ",name," net.\""]
                     ,   ""
                     ,   "-- functions called when a client disconnects (do not delete)"
@@ -262,21 +271,22 @@ generateServerNet extraTypes fp net =
                             ,   T.concat["        (",T.intercalate "," $ map (\t -> T.concat[uncapitalize t,"PlayerLst"]) froms,") = split",transTxt,"Players (IM'.toList players)"]
                             ,   case mCmd of
                                     Just cmd -> 
-                                        T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,",cmd) = update",transTxt," ",clientIdTxt,"(wrap",transTxt," trans)",T.replicate (length allStates) "(fromJust $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat ["(map snd ",uncapitalize t, "PlayerLst)"]) froms]
+                                        T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,",cmd) = update",transTxt," tld ",clientIdTxt,"(wrap",transTxt," trans)",T.replicate (length allStates) "(fromJust $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat ["(map snd ",uncapitalize t, "PlayerLst)"]) froms]
                                     Nothing ->
-                                        T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,") = update",transTxt," ",clientIdTxt,"(wrap",transTxt," trans) ",T.replicate (length allStates) "(fromJust $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat ["(map snd ",uncapitalize t, "PlayerLst)"]) froms]
+                                        T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,") = update",transTxt," tld ",clientIdTxt,"(wrap",transTxt," trans) ",T.replicate (length allStates) "(fromJust $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat ["(map snd ",uncapitalize t, "PlayerLst)"]) froms]
                             ,   T.concat["        newPlaces = ",T.intercalate " $ " $ map (\state -> T.concat["TM.insert ",uncapitalize state]) allStates, " places"]
                             ,   T.concat["        (newPlayers, clientMessages) = unzip $ map (process",transTxt,"Player ",T.intercalate " " fromVars,") (IM'.toList players)"]
                             ,   "    in"
                             ,   T.concat["        (newPlaces, newPlayers, clientMessages, ", if isJust mCmd then "Just cmd" else "Nothing",")" ]
                             ]
                         disconnectCase placeName = 
-                            T.concat ["            P",placeName,"Player {} -> (flip TM.insert) places $ clientDisconnectFrom",placeName," clientID (fromJust $ TM.lookup places) (wrap",placeName,"Player player)"]
+                            T.concat ["            P",placeName,"Player {} -> (flip TM.insert) places $ clientDisconnectFrom",placeName," fsp clientID (fromJust $ TM.lookup places) (wrap",placeName,"Player player)"]
                     in T.unlines
                     [
                         T.concat ["module ",name,".Static.Update where"]
                     ,   T.concat ["import ",name,".Static.Types"]
                     ,   T.concat ["import ",name,".Static.Wrappers"]
+                    ,   T.concat ["import ",name,".Static.FromSuperPlace (FromSuperPlace(..))"]
                     ,   T.concat ["import ",name,".Update as Update"]
                     ,   "import qualified Data.TMap as TM"
                     ,   "import Static.ServerTypes"
@@ -288,16 +298,16 @@ generateServerNet extraTypes fp net =
                     ,   "-- player splitting functions"
                     ,   T.unlines $ map splitPlayers transitions
                     ,   "-- process player connect"
-                    ,   "clientConnect :: ClientID -> NetState Player -> NetState Player"
-                    ,   "clientConnect clientID state ="
+                    ,   "clientConnect :: FromSuperPlace -> ClientID -> NetState Player -> NetState Player"
+                    ,   "clientConnect fsp clientID state ="
                     ,   "    let"
-                    ,   T.concat["        (",uncapitalize startingPlace,",",uncapitalize startingPlace,"Player) = Update.clientConnect clientID (fromJust $ TM.lookup $ placeStates state)"]
+                    ,   T.concat["        (",uncapitalize startingPlace,",",uncapitalize startingPlace,"Player) = Update.clientConnect fsp clientID (fromJust $ TM.lookup $ placeStates state)"]
                     ,   "    in"
                     ,   T.concat["        state { placeStates = TM.insert ",uncapitalize startingPlace," $ placeStates state, playerStates = IM'.insert clientID (unwrap",startingPlace,"Player ",uncapitalize startingPlace,"Player) (playerStates state) }"]
                     ,   ""
                     ,   "-- process player disconnects"
-                    ,   "disconnect :: ClientID -> NetState Player -> NetState Player"
-                    ,   "disconnect clientID state ="
+                    ,   "disconnect :: FromSuperPlace -> ClientID -> NetState Player -> NetState Player"
+                    ,   "disconnect fsp clientID state ="
                     ,   "    let"
                     ,   "        player = fromJust $ IM'.lookup clientID $ players"
                     ,   "        places = placeStates state"
@@ -308,8 +318,8 @@ generateServerNet extraTypes fp net =
                     ,   "    in"
                     ,   "        state { playerStates = newPlayers, placeStates = newPlaces }"
                     ,   ""
-                    ,   T.concat ["update :: Maybe ClientID -> Transition -> NetState Player -> (NetState Player,[(ClientID,ClientMessage)],Maybe (Cmd Transition))"]
-                    ,   T.concat ["update mClientID trans state ="]
+                    ,   T.concat ["update :: TopLevelData -> Maybe ClientID -> Transition -> NetState Player -> (NetState Player,[(ClientID,ClientMessage)],Maybe (Cmd Transition))"]
+                    ,   T.concat ["update tld mClientID trans state ="]
                     ,   "    let"
                     ,   "        places = placeStates state"
                     ,   "        players = playerStates state"
@@ -357,14 +367,14 @@ generateServerNet extraTypes fp net =
                         outputs = fnub $ placeInputs ++ placeOutputs ++ (singularTransFns msgN connections) ++ cmds
 
                         oneOfs = T.concat $ "OneOf" : map (\txt -> T.concat[txt,"Player"]) placeOutputs
-                        typ = T.concat  [ fnName," :: "
+                        typ = T.concat  [ fnName," :: FromSuperPlace -> "
                                         , clientIdType," "
                                         , T.pack msgN," -> "
                                         , T.intercalate " -> " (fnub $ placeInputs ++ placeOutputs ++ map (\txt -> T.concat["List ",txt,"Player"]) placeInputs), " -> "
                                         , T.concat ["(",T.intercalate ", " outputs,")"]
                                         ] 
                         
-                        decl = T.concat [ fnName," "
+                        decl = T.concat [ fnName," fsp "
                                         , clientId," "
                                         , pattern
                                         , T.intercalate " " $ fnub $ map uncapitalize $ (placeInputs ++ placeOutputs ++ map (\txt -> T.concat["lst",txt]) placeInputs), " ="
@@ -480,3 +490,4 @@ generateServerNet extraTypes fp net =
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Decode" <.> "hs") decoder
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Wrappers" <.> "hs") wrappers
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Update" <.> "hs") hiddenUpdate
+                writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "FromSuperPlace" <.> "hs") fromSuperPlace

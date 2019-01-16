@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b3523079c3db5bf59e8948ec8bcb302239b7c436b9f00ca64aa744533068e7bf
+-- hash: 1e048857205df6a35a78277207e01f8d302198cf029d7dd2d9c84b7addeea52e
 
 name:           server
 version:        0.1.0.0
@@ -45,6 +45,7 @@ library
       TestNet.Init
       TestNet.Static.Decode
       TestNet.Static.Encode
+      TestNet.Static.FromSuperPlace
       TestNet.Static.Helpers.A
       TestNet.Static.Helpers.APlayer
       TestNet.Static.Helpers.B

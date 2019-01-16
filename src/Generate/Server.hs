@@ -104,13 +104,13 @@ generateServer gsvg onlyStatic fp
                     [
                         T.concat["        ",netName,"Trans msg ->"]
                     ,   "            let"
-                    ,   T.concat["                (newNetState, clientMessages, mCmd) = ",netName,".update mClientID msg (fromJust $ TM.lookup $ serverState state)"]
+                    ,   T.concat["                (newNetState, clientMessages, mCmd) = ",netName,".update tld mClientID msg (fromJust $ TM.lookup $ serverState state)"]
                     ,   T.concat["                cmd = fmap (\\m -> cmdMap ",netName,"Trans m) mCmd"]
                     ,   T.concat["                cMsgs = map (\\(cId,m) -> (cId,",netName,"OMsg m)) clientMessages"]
                     ,   T.concat["                newServerState = state { serverState = TM.insert newNetState (serverState state) }"]
                     ,   "            in (newServerState, cMsgs, cmd)"
                     ]
-                disconnectCase netName = T.concat ["                ",netName," {} -> ",netName,".disconnect clientID (fromJust $ TM.lookup $ serverState state)"]
+                disconnectCase netName = T.concat ["                ",netName," {} -> ",netName,".disconnect tld clientID (fromJust $ TM.lookup $ serverState state)"]
             in
             T.unlines
             [
@@ -122,20 +122,19 @@ generateServer gsvg onlyStatic fp
             ,   "import Utils.Utils"
             ,   "import Data.Maybe (fromJust,mapMaybe,isJust)"
             ,   ""
-            ,   "update :: Maybe ClientID -> NetTransition -> ServerState -> (ServerState, [(ClientID,NetOutgoingMessage)], Maybe (Cmd NetTransition))"
-            ,   "update mClientID netTrans state ="
+            ,   "update :: TopLevelData -> Maybe ClientID -> NetTransition -> ServerState -> (ServerState, [(ClientID,NetOutgoingMessage)], Maybe (Cmd NetTransition))"
+            ,   "update tld mClientID netTrans state ="
             ,   "    case netTrans of"
             ,   T.unlines $ map updateCase netNames
-            ,   "clientConnect :: ClientID -> ServerState -> ServerState"
-            ,   "clientConnect clientID state ="
+            ,   "clientConnect :: TopLevelData -> ClientID -> ServerState -> ServerState"
+            ,   "clientConnect tld clientID state ="
             ,   "    let"
-            ,   T.concat["        newNetState = ",startNet,".clientConnect clientID (fromJust $ TM.lookup $ serverState state)"]
+            ,   T.concat["        newNetState = ",startNet,".clientConnect tld clientID (fromJust $ TM.lookup $ serverState state)"]
             ,   "    in"
             ,   "        state { serverState = TM.insert newNetState $ serverState state }"
-
             ,   ""
-            ,   "disconnect :: ClientID -> NetModel -> ServerState -> ServerState"
-            ,   "disconnect clientID netModel state ="
+            ,   "disconnect :: TopLevelData -> ClientID -> NetModel -> ServerState -> ServerState"
+            ,   "disconnect tld clientID netModel state ="
             ,   "    let"
             ,   "        newNetState ="
             ,   "            case netModel of"

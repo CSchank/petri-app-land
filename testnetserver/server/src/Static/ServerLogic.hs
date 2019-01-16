@@ -94,7 +94,8 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
     Prelude.putStrLn $ "Client with ID " ++ show newClientId ++ " connected successfully!"
 
     -- inform the user's app that the client has connected
-    let nextState = clientConnect newClientId $ state { clients = nextClients, nextClientId = newClientId + 1 }
+    t <- Time.getPOSIXTime
+    let nextState = clientConnect (round $ t * 1000,startTime state) newClientId $ state { clients = nextClients, nextClientId = newClientId + 1 }
     -- Provide the new state back to the loop.
     return nextState
 
@@ -114,9 +115,14 @@ processCentralMessage centralMessageChan state (ReceivedMessage mClientID incomi
                 Just (Client decodeChannel chan netID) -> atomically $ writeTQueue chan $ SendMessage (encodeOutgoingMessage cm)
                 Nothing -> Prelude.putStrLn $ "Unable to send message to client " ++ show mClientID ++ " because that client doesn't exist or is logged out."    
         
-        (nextState, outgoingMsgs, cmd) = update mClientID incomingMsg state
+
 
     in do
+    t <- Time.getPOSIXTime
+
+    let (nextState, outgoingMsgs, cmd) = update (round $ t * 1000,startTime state) mClientID incomingMsg state
+
+
     sendMessages outgoingMsgs
 
     --FIXME: do something with the commands
@@ -132,8 +138,10 @@ processCentralMessage centralMessageChan state (UserConnectionLost clientID) =
     Prelude.putStrLn $ "Client " ++ show clientID ++ " lost connection."
     netModel <- atomically $ readTVar nmTvar
 
+    t <- Time.getPOSIXTime
+
     -- inform the user's app that the client has disconnected
-    return $ disconnect clientID netModel state
+    return $ disconnect (round $ t * 1000,startTime state) clientID netModel state
 {-
 --get current state of central thread
 processCentralMessage centralMessageChan state (GetCurrentState queue) = do
