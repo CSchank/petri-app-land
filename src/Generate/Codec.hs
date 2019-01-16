@@ -2,7 +2,7 @@
 
 module Generate.Codec where
 
-import Types (ElmDocType(..), ElmType(..), ElmCustom(..), ClientStateDiagram, ServerStateDiagram, ClientServerApp, ClientTransition, ServerTransition)
+import Types (Language(..), ElmDocType(..), ElmType(..), ElmCustom(..), ClientStateDiagram, ServerStateDiagram, ClientServerApp, ClientTransition, ServerTransition)
 import qualified Data.Map as M
 import qualified Data.Text as T
 
@@ -10,19 +10,19 @@ import qualified Data.Text as T
 
 
 
-generateEncoder :: Bool -> ElmCustom -> T.Text
-generateEncoder h (ElmCustom name edts) =
+generateEncoder :: Language -> ElmCustom -> T.Text
+generateEncoder l (ElmCustom name edts) =
     let
-        elmDelim = if h then T.pack "\\0" else T.pack "\\u{0000}"
+        elmDelim = if l == Haskell then T.pack "\\0" else T.pack "\\u{0000}"
 
         indtTxts indt txts = map (indtTxt indt) txts
         indtTxt indt txt = T.concat [T.replicate (4*indt) " ", txt]
 
         (.:.) :: T.Text -> T.Text -> T.Text
-        (.:.)  a b = T.concat [a, if h then ":" else "::", b]
+        (.:.)  a b = T.concat [a, if l == Haskell then ":" else "::", b]
 
         (.::.) :: T.Text -> T.Text -> T.Text
-        (.::.) a b = T.concat [a, if h then " :: " else " : ", b]
+        (.::.) a b = T.concat [a, if l == Haskell then " :: " else " : ", b]
 
         encodeEt :: Int -> ElmDocType -> [T.Text]
         encodeEt indt (ElmIntRange low high,n,_) = 
@@ -37,7 +37,7 @@ generateEncoder h (ElmCustom name edts) =
                 indtTxts indt $ [T.concat[T.pack $ n ++ "Txt"," = encodeInt ",pLow," ",pHigh," (round <| (",T.pack n,"-",pLow,")*",pPrec ,")"]
                             ]
         encodeEt indt (ElmString, n, _) =
-            indtTxts indt $ [T.concat [T.pack n, if h then "Txt = T.pack " else "Txt = ",T.pack n]]
+            indtTxts indt $ [T.concat [T.pack n, if l == Haskell then "Txt = T.pack " else "Txt = ",T.pack n]]
         encodeEt indt (ElmSizedString size, n, _) =
             error "Not implemented yet"--indtTxts indt $ [T.concat[T.pack n, "Txt =",T.pack n]
         encodeEt indt (ElmPair (et0,n0,d0) (et1,n1,d1), n, _) =
@@ -100,7 +100,7 @@ generateEncoder h (ElmCustom name edts) =
                                                     ,"                tConcat [\"",T.pack constrName,elmDelim,if length edt > 0 then "\", " else "\"",T.intercalate (T.concat[",\"",elmDelim,"\","]) $ map (\(et,name,desc) -> T.pack $ name ++ "Txt") edt, "]"
                                                     ]) edts
         fullTxt = T.unlines 
-                    [T.concat["encode",T.pack name .::. T.pack name,if h then " -> T.Text" else " -> String"]
+                    [T.concat["encode",T.pack name .::. T.pack name,if l == Haskell then " -> T.Text" else " -> String"]
                     ,T.concat["encode",T.pack name," ",T.toLower $ T.pack name," = "]
                     ,T.concat["    case ",T.toLower $ T.pack name, " of"]
                     ,T.unlines cases
@@ -108,10 +108,10 @@ generateEncoder h (ElmCustom name edts) =
     in
         fullTxt
 
-generateDecoder :: Bool -> ElmCustom -> T.Text
-generateDecoder h (ElmCustom name edts) =
+generateDecoder :: Language -> ElmCustom -> T.Text
+generateDecoder l (ElmCustom name edts) =
     let
-        typeSig = if h then T.concat["decode",T.pack name, " " .::. " (Result T.Text ",T.pack name,", [T.Text]) -> (Result T.Text ",T.pack name,", [T.Text])"]
+        typeSig = if l == Haskell then T.concat["decode",T.pack name, " " .::. " (Result T.Text ",T.pack name,", [T.Text]) -> (Result T.Text ",T.pack name,", [T.Text])"]
                   else      T.concat["decode",T.pack name, " " .::. " (Result String ",T.pack name,", List String) -> (Result String ",T.pack name,", List String)"]
 
 
@@ -119,10 +119,10 @@ generateDecoder h (ElmCustom name edts) =
         indtTxt indt txt = T.concat [T.replicate (4*indt) " ", txt]
 
         (.:.) :: T.Text -> T.Text -> T.Text
-        (.:.)  a b = T.concat [a, if h then ":" else "::", b]
+        (.:.)  a b = T.concat [a, if l == Haskell then ":" else "::", b]
 
         (.::.) :: T.Text -> T.Text -> T.Text
-        (.::.) a b = T.concat [a, if h then " :: " else " : ", b]
+        (.::.) a b = T.concat [a, if l == Haskell then " :: " else " : ", b]
 
         decodeEt :: Int -> ElmDocType -> [T.Text]
         decodeEt indt (ElmIntRange low high,n,_) = 

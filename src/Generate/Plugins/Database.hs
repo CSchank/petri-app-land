@@ -30,7 +30,7 @@ generateDatabase ts =
                 ,   "import Data.SafeCopy        (SafeCopy, base, deriveSafeCopy)"
                 ,   "import Static.Types"
                 ,   "import Plugins.Database.Query",""
-                ,   generateType True True [DOrd,DEq,DShow,DData,DTypeable] rowT,""
+                ,   generateType Haskell True [DOrd,DEq,DShow,DData,DTypeable] rowT,""
                 ,   generateNewtype True [DOrd,DEq,DShow,DData,DTypeable] (name++"Record") (ElmPair (ElmType "Index", "index", "") (ElmType name, name, ""))
                 ,   safecopy (name++"Record"),""
                 ,   T.unlines $ map (\(et,n,_) -> generateNewtype True [DOrd,DEq,DShow,DData,DTypeable] (capStr n) et) keys

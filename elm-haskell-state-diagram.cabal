@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 447843d36dc5abe70e1a1feb02d9863a65ed846e693e66c1763fe2f6218c6244
+-- hash: 16a4fec87d05c56d6421e77dfe49972d083bf06058a11904698964dcaeb28bc7
 
 name:           elm-haskell-state-diagram
 version:        0.1.0.0
@@ -28,10 +28,12 @@ library
   exposed-modules:
       ClientServerSpec
       Generate.AllOf
+      Generate.Client
       Generate.Codec
       Generate.Dot
       Generate.Helpers
-      Generate.Net
+      Generate.Net.Client
+      Generate.Net.Server
       Generate.OneOf
       Generate.Plugins
       Generate.Plugins.Database

@@ -8,10 +8,10 @@ import Generate.Types
 import qualified Data.Map as M
 import TypeHelpers
 
-createUnwrap :: Bool -> String -> String -> Constructor -> T.Text
-createUnwrap h outputType inputPrefix (n,args) =
+createUnwrap :: Language -> String -> String -> Constructor -> T.Text
+createUnwrap l outputType inputPrefix (n,args) =
     let
-        (.::.) = if h then " :: " else " : "
+        (.::.) = if l == Haskell then " :: " else " : "
         name = T.concat ["unwrap", T.pack n]
         typE = T.concat [name, (.::.), T.pack n, " -> ", T.pack outputType]
         decl = T.concat [name," ",generatePattern (n,args)," = ",generatePattern (inputPrefix++n,args)]
@@ -23,10 +23,10 @@ createUnwrap h outputType inputPrefix (n,args) =
             ,   ""
             ]
 
-createWrap :: Bool -> Bool -> String -> String -> Constructor -> T.Text
-createWrap def h inputType outputPrefix (n,args) =
+createWrap :: Bool -> Language -> String -> String -> Constructor -> T.Text
+createWrap def l inputType outputPrefix (n,args) =
     let
-        (.::.) = if h then " :: " else " : "
+        (.::.) = if l == Haskell then " :: " else " : "
         name = T.concat ["wrap", T.pack n]
         typE = T.concat [name, (.::.),T.pack inputType," -> ",T.pack n]
         decl = T.concat [name," x__ ="]
@@ -44,10 +44,10 @@ createWrap def h inputType outputPrefix (n,args) =
 grouped = M.toList . M.fromListWith (\ a b -> a ++ b) . map (\(a,b) -> (a,[b]))
 
 
-createTransitionUnwrap :: Bool -> Bool -> (HybridTransition,NetTransition) -> T.Text
-createTransitionUnwrap def h (transType,NetTransition (transName,_) connections mCmd) =
+createTransitionUnwrap :: Bool -> Language -> (HybridTransition,NetTransition) -> T.Text
+createTransitionUnwrap def l (transType,NetTransition (transName,_) connections mCmd) =
     let
-        (.::.) = if h then " :: " else " : "
+        (.::.) = if l == Haskell then " :: " else " : "
         transTxt = T.pack transName
         -- FIXME: don't repeat this code
         --genConstructors ::  [T.Text]

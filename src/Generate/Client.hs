@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Generate.Server where
+module Generate.Client where
 
 import                  Control.Monad (unless)
 import                  Generate.Codec
@@ -13,7 +13,6 @@ import qualified        Data.Text.IO            as TIO
 import qualified        Data.Char               as Char
 import                  Types
 import                  Utils
-import                  Generate.Net.Server
 import                  Generate.Net.Client
 import                  Generate.Plugins
 import                  System.Directory
@@ -23,8 +22,8 @@ import                  Data.Time               (getCurrentTime)
 import Data.Foldable (find)
 import TypeHelpers
 
-generateServer :: Bool -> Bool -> FilePath -> ClientServerApp -> IO ()
-generateServer gsvg onlyStatic fp 
+generateClient :: Bool -> Bool -> FilePath -> ClientServerApp -> IO ()
+generateClient gsvg onlyStatic fp 
                   (startNet
                   ,netLst
                   ,cExtraTlst
@@ -50,9 +49,9 @@ generateServer gsvg onlyStatic fp
             in
             T.unlines
             [
-                "module Static.Init where"
+                "module Static.Init exposing (..)"
             ,   "import Static.Types"
-            ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Init"]) netNames
+            ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Init exposing(..)"]) netNames
             ,   ""
             ,   T.concat["init = ",startNet,".Static.Init.init"]
             ,   "-- reference to the initial Net"
@@ -72,11 +71,11 @@ generateServer gsvg onlyStatic fp
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Types"]) netNames
             ,   ""
             ,   "-- a type identifying all of the nets in the server"
-            ,   generateType Haskell False [DShow,DOrd,DEq] netUnion
+            ,   generateType Elm False [DShow,DOrd,DEq] netUnion
             ,   "-- a union type of all the nets and their transitions"
-            ,   generateType Haskell False [DShow,DOrd,DEq] netMsgUnion
+            ,   generateType Elm False [DShow,DOrd,DEq] netMsgUnion
             ,   "-- a union type of all the nets and their transitions"
-            ,   generateType Haskell False [DShow,DOrd,DEq] netOutgoingMsgUnion
+            ,   generateType Elm False [DShow,DOrd,DEq] netOutgoingMsgUnion
             ]
         decode :: T.Text
         decode = 
@@ -85,14 +84,12 @@ generateServer gsvg onlyStatic fp
             in
             T.unlines
             [
-                "{-# LANGUAGE OverloadedStrings #-}"
-            ,   "module Static.Decode where"
+                "module Static.Decode exposing(..)"
             ,   "import Static.Types"
-            ,   "import qualified Data.Text as T"
             ,   "import Utils.Utils"
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Decode"]) netNames
             ,   ""
-            ,   "decodeIncomingMessage :: T.Text -> NetModel -> Result T.Text NetTransition"
+            ,   "decodeIncomingMessage :: String -> NetModel -> Result T.Text NetTransition"
             ,   "decodeIncomingMessage txt clientNet ="
             ,   "    case clientNet of"
             ,   T.concat $ map (\netName -> T.concat["        ",netName," -> rMap ",netName,"Trans $ fst $ ",netName,".Static.Decode.decodeTransition (Err \"\",T.splitOn \"\\0\" txt)"]) netNames
@@ -115,33 +112,15 @@ generateServer gsvg onlyStatic fp
             in
             T.unlines
             [
-                "module Static.Update where"
+                "module Static.Update exposing(..)"
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Update as ",n]) netNames
             ,   "import Static.Types"
-            ,   "import qualified Data.TMap as TM"
-            ,   "import Static.ServerTypes"
             ,   "import Utils.Utils"
-            ,   "import Data.Maybe (fromJust,mapMaybe,isJust)"
             ,   ""
-            ,   "update :: TopLevelData -> Maybe ClientID -> NetTransition -> ServerState -> (ServerState, [(ClientID,NetOutgoingMessage)], Maybe (Cmd NetTransition))"
+            ,   "update :: TopLevelData -> NetTransition -> ClientState -> (ClientState, Maybe (Cmd NetTransition))"
             ,   "update tld mClientID netTrans state ="
             ,   "    case netTrans of"
             ,   T.unlines $ map updateCase netNames
-            ,   "clientConnect :: TopLevelData -> ClientID -> ServerState -> ServerState"
-            ,   "clientConnect tld clientID state ="
-            ,   "    let"
-            ,   T.concat["        newNetState = ",startNet,".clientConnect tld clientID (fromJust $ TM.lookup $ serverState state)"]
-            ,   "    in"
-            ,   "        state { serverState = TM.insert newNetState $ serverState state }"
-            ,   ""
-            ,   "disconnect :: TopLevelData -> ClientID -> NetModel -> ServerState -> ServerState"
-            ,   "disconnect tld clientID netModel state ="
-            ,   "    let"
-            ,   "        newNetState ="
-            ,   "            case netModel of"
-            ,   T.unlines $ map disconnectCase netNames
-            ,   "    in"
-            ,   "        state { serverState = TM.insert newNetState $ serverState state }"
             ]
         encode :: T.Text
         encode = 
@@ -150,25 +129,23 @@ generateServer gsvg onlyStatic fp
             in
             T.unlines
             [
-                "module Static.Encode where"
+                "module Static.Encode exposing(..)"
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Encode as ",n]) netNames
             ,   "import Static.ServerTypes"
-            ,   "import Data.Text as T"
             ,   "import Static.Types"
             ,   ""
-            ,   "encodeOutgoingMessage :: NetOutgoingMessage -> T.Text"
+            ,   "encodeOutgoingMessage :: NetOutgoingMessage -> String"
             ,   "encodeOutgoingMessage netTrans ="
             ,   "    case netTrans of"
             ,   T.unlines $ map encodeCase netNames
             ]
 
     in do
-        createDirectoryIfMissing True (fp </> "server" </> "src" </> "Static")
-        copyDirectory "ServerTemplate/" (fp </> "server/")
-        writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Init" <.> "hs") init 
-        writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Types" <.> "hs") types 
-        writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Decode" <.> "hs") decode 
-        writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Encode" <.> "hs") encode 
-        writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Update" <.> "hs") update 
-        mapM_ (Generate.Net.Server.generate sExtraT fp) netLst
-        generatePlugins (fp </> "server" </> "src") []--plugins
+        createDirectoryIfMissing True (fp </> "client" </> "src" </> "Static")
+        copyDirectory "ClientTemplate/" (fp </> "client/")
+        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Init" <.> "hs") init 
+        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Types" <.> "hs") types 
+        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Decode" <.> "hs") decode 
+        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Encode" <.> "hs") encode 
+        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Update" <.> "hs") update 
+        mapM_ (Generate.Net.Client.generate sExtraT fp) netLst

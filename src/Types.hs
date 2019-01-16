@@ -129,3 +129,7 @@ data Plugin =
       Plugin String {-name-}
     | PluginGen String {-name-} (IO [(FilePath,T.Text)]) {-function to generate the plugin-}
     deriving(Typeable)
+
+data Language =
+    Elm | Haskell
+    deriving (Eq)

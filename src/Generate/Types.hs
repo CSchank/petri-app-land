@@ -2,7 +2,7 @@
 
 module Generate.Types where
 
-import Types                 (ElmDocType, ElmType(..), ElmCustom(..), ClientStateDiagram, ServerStateDiagram, ClientServerApp, Constructor, OutgoingClientMessage(..))
+import Types                 (Language(..),ElmDocType, ElmType(..), ElmCustom(..), ClientStateDiagram, ServerStateDiagram, ClientServerApp, Constructor, OutgoingClientMessage(..))
 import qualified Data.Map       as M
 import qualified Data.Text      as T
 import qualified Data.Set       as S
@@ -20,12 +20,12 @@ deriv2Txt DTypeable = "Typeable"
 deriv2Txt (DCustom d) = d
 derivTxt deriv = T.concat ["(",T.intercalate "," $ map deriv2Txt deriv,")"]
 
-generateType :: Bool -> Bool -> [Deriving] -> ElmCustom -> T.Text
-generateType haskell commentsEnabled deriv (ElmCustom typeName constrs) =
+generateType :: Language -> Bool -> [Deriving] -> ElmCustom -> T.Text
+generateType l commentsEnabled deriv (ElmCustom typeName constrs) =
     let
-        typ   = if haskell then "data" else "type"
+        typ   = if l == Haskell then "data" else "type"
 
-        constrs2Txt = map (generateConstructor haskell commentsEnabled) constrs
+        constrs2Txt = map (generateConstructor l commentsEnabled) constrs
         typeParams = concatMap (\(_,constr) -> 
                         mapMaybe (\ (et,_,_) ->
                             case et of 
@@ -37,17 +37,17 @@ generateType haskell commentsEnabled deriv (ElmCustom typeName constrs) =
         if length constrs > 0 then
         T.concat [ typ, " ", T.pack typeName, " ", T.intercalate " " typeParams ," =\n      "
                  , T.intercalate "\n    | " constrs2Txt
-                 , if length deriv > 0 && haskell then T.concat ["\n    deriving",derivTxt deriv] else ""
+                 , if length deriv > 0 && l == Haskell then T.concat ["\n    deriving",derivTxt deriv] else ""
                  ]
         else ""
 
-generateTypeAlias :: Bool -> Bool -> [Deriving] -> String -> ElmType -> T.Text
-generateTypeAlias haskell commentsEnabled deriv typeName et =
+generateTypeAlias :: Language -> Bool -> [Deriving] -> String -> ElmType -> T.Text
+generateTypeAlias l commentsEnabled deriv typeName et =
     let
-        typ = if haskell then "type" else "type alias"
+        typ = if l == Haskell then "type" else "type alias"
     in
-        T.concat [ typ, " ", T.pack typeName, " = ",T.pack typeName, " ", et2Txt haskell commentsEnabled et
-                 , if length deriv > 0 && haskell then T.concat ["   deriving",derivTxt deriv] else ""
+        T.concat [ typ, " ", T.pack typeName, " = ",T.pack typeName, " ", et2Txt l commentsEnabled et
+                 , if length deriv > 0 && l == Haskell then T.concat ["   deriving",derivTxt deriv] else ""
                  ]
 
 generateNewtype :: Bool -> [Deriving] -> String -> ElmType -> T.Text
@@ -55,34 +55,34 @@ generateNewtype commentsEnabled deriv typeName et =
     let
         typ = "newtype"
     in
-        T.concat [ typ, " ", T.pack typeName, " = ", et2Txt True commentsEnabled et
+        T.concat [ typ, " ", T.pack typeName, " = ", et2Txt Haskell commentsEnabled et
                  , if length deriv > 0 then T.concat ["   deriving",derivTxt deriv] else ""
                  ]
 
-generateConstructor :: Bool -> Bool -> Constructor -> T.Text
-generateConstructor haskell commentsEnabled (constrName,elmDocTypes) =
-    T.intercalate " " $ T.pack constrName : map (edt2Txt haskell commentsEnabled) elmDocTypes
+generateConstructor :: Language -> Bool -> Constructor -> T.Text
+generateConstructor l commentsEnabled (constrName,elmDocTypes) =
+    T.intercalate " " $ T.pack constrName : map (edt2Txt l commentsEnabled) elmDocTypes
 
-edt2Txt :: Bool -> Bool -> (ElmType, String, String) -> T.Text
-edt2Txt h commentsEnabled (et, n, d) = T.concat [et2Txt h commentsEnabled et, if commentsEnabled then T.concat [" {-", T.pack n, "-}"] else ""]
+edt2Txt :: Language -> Bool -> (ElmType, String, String) -> T.Text
+edt2Txt l commentsEnabled (et, n, d) = T.concat [et2Txt l commentsEnabled et, if commentsEnabled then T.concat [" {-", T.pack n, "-}"] else ""]
 
 edt2Pat :: (ElmType, String, String) -> T.Text
 edt2Pat (et, n, d) = T.pack n
 
-et2Txt :: Bool -> Bool -> ElmType -> T.Text
-et2Txt h c (ElmIntRange _ _)            = "Int"
-et2Txt h c (ElmFloatRange _ _ _)        = if h then "Double" else "Float"
-et2Txt h c ElmString                    = "String"
-et2Txt h c (ElmSizedString _)           = "String"
-et2Txt h c (ElmPair edt0 edt1)          = T.concat ["(",edt2Txt h c edt0,", ",edt2Txt h c edt1,")"]
-et2Txt h c (ElmTriple edt0 edt1 edt2)   = T.concat ["(",edt2Txt h c edt0,", ",edt2Txt h c edt1,", ",edt2Txt h c edt2,")"]
-et2Txt h c (ElmList edt)                = T.concat ["(List ",edt2Txt h c edt,")"]
-et2Txt h c (ElmDict edt0 edt1)          = T.concat ["(Dict ",edt2Txt h c edt0," ",edt2Txt h c edt1,")"]
-et2Txt h c (ElmType name)               = T.pack name
-et2Txt h c (ElmWildcardType s)          = T.pack s
-et2Txt h c (ElmMaybe edt)               = T.concat ["(Maybe ",edt2Txt h c edt,")"]
-et2Txt h c ElmBool                      = T.concat ["Bool"]
-et2Txt h c (ElmResult edt0 edt1)        = T.concat ["Result ",edt2Txt h c edt0," ",edt2Txt h c edt1]
+et2Txt :: Language -> Bool -> ElmType -> T.Text
+et2Txt l c (ElmIntRange _ _)            = "Int"
+et2Txt l c (ElmFloatRange _ _ _)        = if l == Haskell then "Double" else "Float"
+et2Txt l c ElmString                    = "String"
+et2Txt l c (ElmSizedString _)           = "String"
+et2Txt l c (ElmPair edt0 edt1)          = T.concat ["(",edt2Txt l c edt0,", ",edt2Txt l c edt1,")"]
+et2Txt l c (ElmTriple edt0 edt1 edt2)   = T.concat ["(",edt2Txt l c edt0,", ",edt2Txt l c edt1,", ",edt2Txt l c edt2,")"]
+et2Txt l c (ElmList edt)                = T.concat ["(List ",edt2Txt l c edt,")"]
+et2Txt l c (ElmDict edt0 edt1)          = T.concat ["(Dict ",edt2Txt l c edt0," ",edt2Txt l c edt1,")"]
+et2Txt l c (ElmType name)               = T.pack name
+et2Txt l c (ElmWildcardType s)          = T.pack s
+et2Txt l c (ElmMaybe edt)               = T.concat ["(Maybe ",edt2Txt l c edt,")"]
+et2Txt l c ElmBool                      = T.concat ["Bool"]
+et2Txt l c (ElmResult edt0 edt1)        = T.concat ["Result ",edt2Txt l c edt0," ",edt2Txt l c edt1]
 
      
 ec2Def :: M.Map String ElmCustom -> ElmCustom -> T.Text
@@ -123,14 +123,14 @@ et2Def (ElmResult _ (et,_,_))           = T.concat["Err ",et2Def et]
 {-
 et2Def :: ElmType -> T.Text
 et2Def (ElmIntRange _ _)            = "Int"
-et2Def  (ElmFloatRange _ _ _)        = if h then "Double" else "Float"
-et2Def h c ElmString                    = "String"
-et2Def h c (ElmSizedString _)           = "String"
-et2Def h c (ElmPair edt0 edt1)          = T.concat ["(",edt2Txt h c edt0,", ",edt2Txt h c edt1,")"]
-et2Def h c (ElmTriple edt0 edt1 edt2)   = T.concat ["(",edt2Txt h c edt0,", ",edt2Txt h c edt1,", ",edt2Txt h c edt2,")"]
-et2Def h c (ElmList edt)                = T.concat ["(List ",edt2Txt h c edt,")"]
-et2Def h c (ElmDict edt0 edt1)          = T.concat ["(Dict ",edt2Txt h c edt0," ",edt2Txt h c edt1,")"]
-et2Def h c (ElmType name)               = T.pack name
+et2Def  (ElmFloatRange _ _ _)        = if l then "Double" else "Float"
+et2Def l c ElmString                    = "String"
+et2Def l c (ElmSizedString _)           = "String"
+et2Def l c (ElmPair edt0 edt1)          = T.concat ["(",edt2Txt l c edt0,", ",edt2Txt l c edt1,")"]
+et2Def l c (ElmTriple edt0 edt1 edt2)   = T.concat ["(",edt2Txt l c edt0,", ",edt2Txt l c edt1,", ",edt2Txt l c edt2,")"]
+et2Def l c (ElmList edt)                = T.concat ["(List ",edt2Txt l c edt,")"]
+et2Def l c (ElmDict edt0 edt1)          = T.concat ["(Dict ",edt2Txt l c edt0," ",edt2Txt l c edt1,")"]
+et2Def l c (ElmType name)               = T.pack name
 -}
 
 generatePattern :: Constructor -> T.Text

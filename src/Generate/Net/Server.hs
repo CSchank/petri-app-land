@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Generate.Net where
+module Generate.Net.Server where
 
 import Types
 import qualified Data.Map as M
@@ -35,8 +35,8 @@ getPlayerState p =
         (HybridPlace n _ s _ _ _ _) -> (T.unpack n,s)
 
 
-generateServerNet :: M.Map String ElmCustom -> FilePath -> Net -> IO ()
-generateServerNet extraTypes fp net =
+generate :: M.Map String ElmCustom -> FilePath -> Net -> IO ()
+generate extraTypes fp net =
     case net of 
         (HybridNet name startingPlace places transitions plugins) ->
             let
@@ -112,7 +112,7 @@ generateServerNet extraTypes fp net =
                         map (\(from,toLst) -> ElmCustom (T.unpack $ transName from msgN) $ constructors (from,toLst)) (grouped connections)
                 transitionTxt :: (HybridTransition, NetTransition) -> T.Text
                 transitionTxt trans =
-                    T.unlines $ map (generateType True False [DOrd,DEq,DShow]) $ transitionType trans
+                    T.unlines $ map (generateType Haskell False [DOrd,DEq,DShow]) $ transitionType trans
 
                 transConstrs :: [Constructor]
                 transConstrs = map (trans2constr . snd) transitions
@@ -124,15 +124,15 @@ generateServerNet extraTypes fp net =
                 generateNetTypes netName places = 
                     let
                         placeModel = 
-                            generateType True False [DOrd,DEq,DShow] $ 
+                            generateType Haskell False [DOrd,DEq,DShow] $ 
                                 ElmCustom (T.unpack netName) $ map (\(HybridPlace n m _ _ _ _ _) -> (T.unpack n++"Player",[edt (ElmType $ T.unpack n) "" ""])) places
                         placeTypes = T.unlines $ map generatePlaceType places
                         generatePlaceType :: HybridPlace -> T.Text
                         generatePlaceType (HybridPlace name serverPlaceState playerPlaceState _ _ _ _) =
                             T.unlines
                                 [
-                                    generateType True True [DOrd,DEq,DShow,DTypeable] $ ElmCustom (T.unpack name) [(T.unpack name, serverPlaceState)],""
-                                ,   generateType True True [DOrd,DEq,DShow,DTypeable] $ ElmCustom (T.unpack name++"Player") [(T.unpack name++"Player",playerPlaceState)],""
+                                    generateType Haskell True [DOrd,DEq,DShow,DTypeable] $ ElmCustom (T.unpack name) [(T.unpack name, serverPlaceState)],""
+                                ,   generateType Haskell True [DOrd,DEq,DShow,DTypeable] $ ElmCustom (T.unpack name++"Player") [(T.unpack name++"Player",playerPlaceState)],""
                                 ]
                         playerUnionType = 
                             ElmCustom "Player" $ map (\(n,t) -> ("P"++n,t)) placePlayerStates
@@ -141,8 +141,8 @@ generateServerNet extraTypes fp net =
                             let
                                 
                             in
-                                T.unlines $ map (\(_,msg@(msgN,edts)) -> generateType True True [DOrd,DEq,DShow] $ ElmCustom msgN [msg]) clientMsgs
-                                ++ [generateType True True [DOrd,DEq,DShow] clientMsg]
+                                T.unlines $ map (\(_,msg@(msgN,edts)) -> generateType Haskell True [DOrd,DEq,DShow] $ ElmCustom msgN [msg]) clientMsgs
+                                ++ [generateType Haskell True [DOrd,DEq,DShow] clientMsg]
                     in
                         T.unlines 
                             [
@@ -153,10 +153,12 @@ generateServerNet extraTypes fp net =
                             ,   "-- individual transition types"
                             ,   T.unlines $ map transitionTxt transitions
                             ,   "-- main transition types"
-                            ,   generateType True True [DOrd,DEq,DShow] $ ec "Transition" $ map (\(n,t) -> ("T"++n,t)) transConstrs
-                            ,   T.unlines $ map (\(n,et) -> generateType True True [DOrd,DEq,DShow] $ ec n [(n,et)]) transConstrs
+                            ,   generateType Haskell True [DOrd,DEq,DShow] $ ec "Transition" $ map (\(n,t) -> ("T"++n,t)) transConstrs
+                            ,   T.unlines $ map (\(n,et) -> generateType Haskell True [DOrd,DEq,DShow] $ ec n [(n,et)]) transConstrs
                             ,   "-- player state union type"
-                            ,   generateType True False [DOrd,DEq,DShow] playerUnionType
+                            ,   generateType Haskell False [DOrd,DEq,DShow] playerUnionType
+                            ,   "-- extra server types"
+                            ,   T.unlines $ map (generateType Haskell False [DOrd,DEq,DShow] . snd) $ M.toList extraTypes
                             ]
 
                 --singularTransFns :: [T.Text]
@@ -450,7 +452,7 @@ generateServerNet extraTypes fp net =
                     ,   "import Utils.Utils"
                     ,   "import qualified Data.Text as T"
                     ,   "import Static.Types"
-                    ,   generateEncoder True clientMsg
+                    ,   generateEncoder Haskell clientMsg
                     ]
                 incomingClientTransitions = mapMaybe (\(tt,NetTransition (name,ets) _ _) -> if tt == HybridTransition || tt == ClientOnlyTransition then Just ("T"++name,ets) else Nothing) transitions
                 clientTransitions = ElmCustom "Transition" incomingClientTransitions
@@ -461,20 +463,20 @@ generateServerNet extraTypes fp net =
                     ,   T.concat ["import ",name,".Static.Types\n"]
                     ,   "import Utils.Utils"
                     ,   "import qualified Data.Text as T"
-                    ,   generateDecoder True clientTransitions
+                    ,   generateDecoder Haskell clientTransitions
                     ]
                 wrappers = 
                     T.unlines
                         [
                             T.concat ["module ",name,".Static.Wrappers where"]
                         ,   T.concat ["import ",name,".Static.Types\n"]
-                        ,   T.unlines $ map (createUnwrap True "ClientMessage" "M") outgoingCM
-                        ,   T.unlines $ map (createWrap (length places > 1) True "ClientMessage" "M") outgoingCM
-                        ,   T.unlines $ map (createUnwrap True "Player" "P") placePlayerStates
-                        ,   T.unlines $ map (createWrap (length places > 1) True "Player" "P") placePlayerStates
-                        ,   T.unlines $ map (createTransitionUnwrap (length places > 1) True) transitions
-                        ,   T.unlines $ map (createUnwrap True "Transition" "T") transConstrs
-                        ,   T.unlines $ map (createWrap (length transitions > 1) True "Transition" "T") transConstrs
+                        ,   T.unlines $ map (createUnwrap Haskell "ClientMessage" "M") outgoingCM
+                        ,   T.unlines $ map (createWrap (length places > 1) Haskell "ClientMessage" "M") outgoingCM
+                        ,   T.unlines $ map (createUnwrap Haskell "Player" "P") placePlayerStates
+                        ,   T.unlines $ map (createWrap (length places > 1) Haskell "Player" "P") placePlayerStates
+                        ,   T.unlines $ map (createTransitionUnwrap (length places > 1) Haskell) transitions
+                        ,   T.unlines $ map (createUnwrap Haskell "Transition" "T") transConstrs
+                        ,   T.unlines $ map (createWrap (length transitions > 1) Haskell "Transition" "T") transConstrs
                         ]        
             in do
                 createDirectoryIfMissing True $ fp </> "server" </> "src" </> T.unpack name
@@ -484,8 +486,8 @@ generateServerNet extraTypes fp net =
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Init" <.> "hs") hiddenInit
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Update" <.> "hs") update
                 createDirectoryIfMissing True $ fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers"
-                mapM_ (\(HybridPlace pName edts _ _ _ _ _)  -> writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper True name (T.unpack pName,edts) False]) places
-                mapM_ (\(HybridPlace pName _ pEdts _ _ _ _) -> writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName ++ "Player" <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper True name (T.unpack pName ++ "Player",pEdts) False]) places
+                mapM_ (\(HybridPlace pName edts _ _ _ _ _)  -> writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Haskell name (T.unpack pName,edts) False]) places
+                mapM_ (\(HybridPlace pName _ pEdts _ _ _ _) -> writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName ++ "Player" <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Haskell name (T.unpack pName ++ "Player",pEdts) False]) places
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Encode" <.> "hs") encoder
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Decode" <.> "hs") decoder
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Wrappers" <.> "hs") wrappers
