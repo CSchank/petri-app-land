@@ -1,56 +1,56 @@
 module TestNet.Static.Wrappers exposing(..)
 import TestNet.Static.Types
 
-unwrapStartGameAB :: StartGameAB -> ClientMessage
+unwrapStartGameAB : StartGameAB -> ClientMessage
 unwrapStartGameAB (StartGameAB n)  = (MStartGameAB n) 
 
 
-unwrapStartGameCA :: StartGameCA -> ClientMessage
+unwrapStartGameCA : StartGameCA -> ClientMessage
 unwrapStartGameCA (StartGameCA n)  = (MStartGameCA n) 
 
 
-unwrapStartGameAB2 :: StartGameAB2 -> ClientMessage
+unwrapStartGameAB2 : StartGameAB2 -> ClientMessage
 unwrapStartGameAB2 (StartGameAB2 n)  = (MStartGameAB2 n) 
 
 
-unwrapStartGameAC :: StartGameAC -> ClientMessage
+unwrapStartGameAC : StartGameAC -> ClientMessage
 unwrapStartGameAC (StartGameAC n)  = (MStartGameAC n) 
 
 
-unwrapStartGameBC :: StartGameBC -> ClientMessage
+unwrapStartGameBC : StartGameBC -> ClientMessage
 unwrapStartGameBC (StartGameBC n)  = (MStartGameBC n) 
 
 
 
-wrapStartGameAB :: ClientMessage -> StartGameAB
+wrapStartGameAB : ClientMessage -> StartGameAB
 wrapStartGameAB x__ =
     case x__ of
         (MStartGameAB n)  -> (StartGameAB n) 
         _ -> error "Tried to wrap a value at the wrong time!"
 
 
-wrapStartGameCA :: ClientMessage -> StartGameCA
+wrapStartGameCA : ClientMessage -> StartGameCA
 wrapStartGameCA x__ =
     case x__ of
         (MStartGameCA n)  -> (StartGameCA n) 
         _ -> error "Tried to wrap a value at the wrong time!"
 
 
-wrapStartGameAB2 :: ClientMessage -> StartGameAB2
+wrapStartGameAB2 : ClientMessage -> StartGameAB2
 wrapStartGameAB2 x__ =
     case x__ of
         (MStartGameAB2 n)  -> (StartGameAB2 n) 
         _ -> error "Tried to wrap a value at the wrong time!"
 
 
-wrapStartGameAC :: ClientMessage -> StartGameAC
+wrapStartGameAC : ClientMessage -> StartGameAC
 wrapStartGameAC x__ =
     case x__ of
         (MStartGameAC n)  -> (StartGameAC n) 
         _ -> error "Tried to wrap a value at the wrong time!"
 
 
-wrapStartGameBC :: ClientMessage -> StartGameBC
+wrapStartGameBC : ClientMessage -> StartGameBC
 wrapStartGameBC x__ =
     case x__ of
         (MStartGameBC n)  -> (StartGameBC n) 
@@ -58,7 +58,7 @@ wrapStartGameBC x__ =
 
 
 
-unwrapABfromA :: ABfromA -> (Player, Maybe ClientMessage)
+unwrapABfromA : ABfromA -> (Player, Maybe ClientMessage)
 unwrapABfromA trans =
     case trans of
         (AB_AtoB player msg)  -> (unwrapBPlayer player, Just $ unwrapStartGameAB msg)
@@ -66,7 +66,7 @@ unwrapABfromA trans =
 
 
 
-unwrapCAfromC :: CAfromC -> (Player, Maybe ClientMessage)
+unwrapCAfromC : CAfromC -> (Player, Maybe ClientMessage)
 unwrapCAfromC trans =
     case trans of
         (CA_CtoA player msg)  -> (unwrapAPlayer player, Just $ unwrapStartGameCA msg)
@@ -74,7 +74,7 @@ unwrapCAfromC trans =
 
 
 
-unwrapABCfromA :: ABCfromA -> (Player, Maybe ClientMessage)
+unwrapABCfromA : ABCfromA -> (Player, Maybe ClientMessage)
 unwrapABCfromA trans =
     case trans of
         (ABC_AtoC player msg)  -> (unwrapCPlayer player, Just $ unwrapStartGameAC msg)
@@ -82,7 +82,7 @@ unwrapABCfromA trans =
 
 
 
-unwrapABCfromB :: ABCfromB -> (Player, Maybe ClientMessage)
+unwrapABCfromB : ABCfromB -> (Player, Maybe ClientMessage)
 unwrapABCfromB trans =
     case trans of
         (ABC_BtoC player msg)  -> (unwrapCPlayer player, Just $ unwrapStartGameBC msg)
@@ -91,34 +91,34 @@ unwrapABCfromB trans =
 
 
 
-unwrapAB :: AB -> Transition
+unwrapAB : AB -> Transition
 unwrapAB (AB n)  = (TAB n) 
 
 
-unwrapCA :: CA -> Transition
+unwrapCA : CA -> Transition
 unwrapCA (CA n)  = (TCA n) 
 
 
-unwrapABC :: ABC -> Transition
+unwrapABC : ABC -> Transition
 unwrapABC (ABC n)  = (TABC n) 
 
 
 
-wrapAB :: Transition -> AB
+wrapAB : Transition -> AB
 wrapAB x__ =
     case x__ of
         (TAB n)  -> (AB n) 
         _ -> error "Tried to wrap a value at the wrong time!"
 
 
-wrapCA :: Transition -> CA
+wrapCA : Transition -> CA
 wrapCA x__ =
     case x__ of
         (TCA n)  -> (CA n) 
         _ -> error "Tried to wrap a value at the wrong time!"
 
 
-wrapABC :: Transition -> ABC
+wrapABC : Transition -> ABC
 wrapABC x__ =
     case x__ of
         (TABC n)  -> (ABC n) 

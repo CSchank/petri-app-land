@@ -1,7 +1,6 @@
 module Static.Encode exposing(..)
 import TestNet.Static.Encode as TestNet
 
-import Static.ServerTypes
 import Static.Types
 
 encodeOutgoingMessage :: NetOutgoingMessage -> String

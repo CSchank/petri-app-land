@@ -1,20 +1,20 @@
-module TestNet.Static.Helpers.BPlayer where
+module TestNet.Static.Helpers.BPlayer exposing (..)
+import Dict exposing (Dict)
 
-import Data.Map as Dict
-
-import Static.Types
+import Static.Types exposing(..)
+import Static.ExtraUserTypes exposing(..)
 import TestNet.Static.Types
 import Static.List
-getPlayerN :: BPlayer -> Int
+getPlayerN : BPlayer -> Int
 getPlayerN (BPlayer playerN)  = playerN
 
 
 
-updatePlayerN :: Int -> BPlayer -> BPlayer
+updatePlayerN : Int -> BPlayer -> BPlayer
 updatePlayerN newplayerN (BPlayer playerN)  = (BPlayer newplayerN) 
 
 
-alterPlayerN :: (Int -> Int) -> BPlayer -> BPlayer
+alterPlayerN : (Int -> Int) -> BPlayer -> BPlayer
 alterPlayerN f (BPlayer playerN)  = 
     let
         newplayerN = f playerN

@@ -78,8 +78,7 @@ generate extraTypes fp net =
                 fromSuperPlace = 
                     T.unlines
                     [
-                        T.concat["module ",name,".Static.FromSuperPlace where"]
-                    ,   "import Static.ServerTypes"
+                        T.concat["module ",name,".Static.FromSuperPlace exposing(..)"]
                     ,   "type FromSuperPlace = TopLevelData" --FIXME: change this depending on where the net resides
                     ]
                 incomingMsgs :: [(String,Constructor)]
@@ -90,27 +89,6 @@ generate extraTypes fp net =
                                                                                           lstTrans) transitions
                 incomingCM = map (\(_,(msgN,edts)) -> (msgN,edts)) incomingMsgs
                 incomingMsg = ElmCustom "IncomingMessage" $ map (\(n,t) -> ("M"++n,t)) incomingCM
-                transitionType :: (HybridTransition,NetTransition) -> [ElmCustom]
-                transitionType (transType, NetTransition (msgN,msg) connections mCmd) =
-                    let                        
-                        placeInputs :: [T.Text]
-                        placeInputs = 
-                            fnub $ map (\(from,_) -> from) connections
-                        placeOutputs :: [T.Text]
-                        placeOutputs = 
-                            fnub $ map (\(_,(to,_)) -> to) connections
-                        constructors :: (T.Text, [(T.Text, Maybe Constructor)]) -> [Constructor]
-                        constructors (from,toLst) =
-                            map (\(to,mConstr) -> 
-                                case mConstr of 
-                                    Just (msgName,_) -> constructor (T.unpack $ T.concat[T.pack msgN,"_",from,"to",to]) [edt (ElmType $ T.unpack $ T.concat [to,"Player"]) "" "", edt (ElmType msgName) "" ""]
-                                    Nothing          -> constructor (T.unpack $ T.concat[T.pack msgN,"_",from,"to",to]) [edt (ElmType $ T.unpack $ T.concat [to,"Player"]) "" ""]
-                                        ) toLst
-                    in
-                        map (\(from,toLst) -> ElmCustom (T.unpack $ transName from msgN) $ constructors (from,toLst)) (grouped connections)
-                transitionTxt :: (HybridTransition, NetTransition) -> T.Text
-                transitionTxt trans =
-                    T.unlines $ map (generateType Elm False [DOrd,DEq,DShow]) $ transitionType trans
 
                 transConstrs :: [Constructor]
                 transConstrs = map (trans2constr . snd) transitions
@@ -138,6 +116,17 @@ generate extraTypes fp net =
                             in
                                 T.unlines $ map (\(_,msg@(msgN,edts)) -> generateType Elm True [DOrd,DEq,DShow] $ ElmCustom msgN [msg]) incomingMsgs
                                 ++ [generateType Elm True [DOrd,DEq,DShow] incomingMsg]
+                        fromType :: (Constructor,T.Text,[(T.Text, Maybe Constructor)]) -> ElmCustom
+                        fromType (constr,from,toLst) =
+                            ec ("From"++T.unpack from) 
+                                $ mapMaybe (\(to,mConstr) ->
+                                        case mConstr of
+                                            Just _ -> Just constr
+                                            _ -> Nothing
+                                    ) toLst
+                        
+                        allConnections = concat $ map (\(_, NetTransition (transName,transEt) connections mCmd) -> ((transName,transEt),connections)) transitions
+
                     in
                         T.unlines 
                             [
@@ -145,10 +134,12 @@ generate extraTypes fp net =
                             ,   placeTypes
                             ,   "-- union place type"
                             ,   generateType Elm False [] $ ec "NetState" $ map (\placeName -> constructor ("S"++T.unpack placeName) [edt (ElmType $ T.unpack placeName) "" ""]) placeNames
+                            ,   "-- server transition types"
+                            ,   generateType Elm False [] $ ec "Transition" $ map (\(n,_) -> ("T"++n,[edt (ElmType n) "" ""])) transConstrs
+                            ,   T.unlines $ map (\(pl,etd) -> generateType Elm False [] $ ec pl [(pl,etd)]) $ transConstrs
+                            ,   T.unlines $ map (generateType Elm False [] . fromType) (grouped allConnections)
                             ,   "-- outgoing server message types"
                             ,   clientMsgType
-                            ,   "-- individual transition types"
-                            ,   T.unlines $ map transitionTxt transitions
                             ,   "-- extra server types"
                             ,   T.unlines $ map (generateType Elm False [DOrd,DEq,DShow] . snd) $ M.toList extraTypes
                             ]
@@ -217,17 +208,13 @@ generate extraTypes fp net =
                             T.concat ["            P",placeName,"Player {} -> (flip TM.insert) places $ clientDisconnectFrom",placeName," fsp clientID (fromJust $ TM.lookup places) (wrap",placeName,"Player player)"]
                     in T.unlines
                     [
-                        T.concat ["module ",name,".Static.Update where"]
+                        T.concat ["module ",name,".Static.Update exposing(..)"]
                     ,   T.concat ["import ",name,".Static.Types"]
                     ,   T.concat ["import ",name,".Static.Wrappers"]
-                    ,   T.concat ["import ",name,".Static.FromSuperPlace (FromSuperPlace(..))"]
+                    ,   T.concat ["import ",name,".Static.FromSuperPlace exposing (FromSuperPlace(..))"]
                     ,   T.concat ["import ",name,".Update as Update"]
-                    ,   "import qualified Data.TMap as TM"
-                    ,   "import Static.ServerTypes"
-                    ,   "import qualified Data.IntMap.Strict as IM'"
-                    ,   "import Data.Maybe (fromJust, isJust, mapMaybe)"
                     ,   ""
-                    ,   T.concat ["update :: TopLevelData -> Maybe ClientID -> Transition -> NetState Player -> (NetState Player,[(ClientID,ClientMessage)],Maybe (Cmd Transition))"]
+                    ,   T.concat ["update :: TopLevelData -> Transition -> NetState -> (NetState,Maybe (Cmd Transition))"]
                     ,   T.concat ["update tld mClientID trans state ="]
                     ,   "    let"
                     ,   "        places = placeStates state"
@@ -263,21 +250,21 @@ generate extraTypes fp net =
                         placeOutputs = 
                             fnub $ map (\(_,(to,_)) -> to) connections
                         singularStubs = 
-                                        map (\(from,lst) -> 
-                                                let 
-                                                    oneOfs = map (\(to,mConstr) -> case mConstr of 
-                                                        Just (msg,_) -> T.concat["(P",to,", ",T.pack msg,")"]
-                                                        Nothing  -> T.concat[to,"Player"]
-                                                        ) lst
-                                                    output = transName from msgN
-                                                    name = T.concat ["        from",from]
-                                                    typ = T.concat [name, " :: ",from,"Player -> ",output]
-                                                in
-                                                    T.unlines 
-                                                    [
-                                                        typ
-                                                    ,   T.concat [name," p",uncapitalize from," = error \"Please fill in function stub.\""]
-                                                    ]) (grouped connections)
+                                        concat $ map (\(from,lst) -> 
+                                            map (\(to,mConstr) ->
+                                                case mConstr of 
+                                                    Just constr@(transName,ets) ->
+                                                        let 
+                                                            name = T.concat ["update",from,T.pack transName,to]
+                                                            typ = T.concat [name, " : ",T.pack transName," -> ",from," -> ",to]
+                                                            decl = T.concat [name, " ",generatePattern constr," ",uncapitalize from," ="]
+                                                        in
+                                                            T.unlines 
+                                                            [
+                                                                typ
+                                                            ,   decl
+                                                            ])
+                                                    lst) (grouped connections)
                         cmds = 
                             case mCmd of 
                                 Just (msgN,msg) -> [T.pack msgN]
@@ -324,19 +311,27 @@ generate extraTypes fp net =
                         ,   T.unlines $ map (createTransitionUnwrap (length places > 1) Elm) transitions
                         ,   T.unlines $ map (createUnwrap Elm "Transition" "T") transConstrs
                         ,   T.unlines $ map (createWrap (length transitions > 1) Elm "Transition" "T") transConstrs
-                        ]        
+                        ]
+                hiddenView = 
+                    T.unlines
+                    [
+                        T.concat["module ",name,".Static.View exposing(..)"]
+                    ,   T.concat["import ",name,".View exposing(..)"]
+                    ,   ""
+                    ,   "view : NetState -> Html N"
+                    ]    
             in do
                 createDirectoryIfMissing True $ fp </> "client" </> "src" </> T.unpack name
                 createDirectoryIfMissing True $ fp </> "client" </> "src" </> T.unpack name </> "Static"
-                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Init" <.> "hs") inits 
-                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Types" <.> "hs") types
-                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Init" <.> "hs") hiddenInit
-                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Update" <.> "hs") update
+                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Init" <.> "elm") inits 
+                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Types" <.> "elm") types
+                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Init" <.> "elm") hiddenInit
+                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Update" <.> "elm") update
                 createDirectoryIfMissing True $ fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Helpers"
-                mapM_ (\(HybridPlace pName edts _ _ _ _ _)  -> writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Elm name (T.unpack pName,edts) False]) places
-                mapM_ (\(HybridPlace pName _ pEdts _ _ _ _) -> writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName ++ "Player" <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Elm name (T.unpack pName ++ "Player",pEdts) False]) places
-                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Encode" <.> "hs") encoder
-                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Decode" <.> "hs") decoder
-                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Wrappers" <.> "hs") wrappers
-                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Update" <.> "hs") hiddenUpdate
-                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "FromSuperPlace" <.> "hs") fromSuperPlace
+                mapM_ (\(HybridPlace pName edts _ _ _ _ _)  -> writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "elm") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Elm name (T.unpack pName,edts) False]) places
+                mapM_ (\(HybridPlace pName _ pEdts _ _ _ _) -> writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName ++ "Player" <.> "elm") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Elm name (T.unpack pName ++ "Player",pEdts) False]) places
+                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Encode" <.> "elm") encoder
+                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Decode" <.> "elm") decoder
+                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Wrappers" <.> "elm") wrappers
+                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Update" <.> "elm") hiddenUpdate
+                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "FromSuperPlace" <.> "elm") fromSuperPlace

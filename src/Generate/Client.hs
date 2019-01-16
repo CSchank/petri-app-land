@@ -61,21 +61,21 @@ generateClient gsvg onlyStatic fp
         types :: T.Text
         types = 
             let
-                netUnion    = ec "NetModel" $ map (\nname -> constructor (T.unpack nname) []) netNames
+                netUnion    = ec "NetModel" $ map (\nname -> constructor (T.unpack nname) [edt (ElmType (T.unpack nname++".Static.Types.NetState")) "" ""]) netNames
                 netMsgUnion = ec "NetTransition" $ map (\nname -> constructor (T.unpack nname ++ "Trans") [edt (ElmType $ T.unpack nname ++ ".Static.Types.Transition") "" ""]) netNames
                 netOutgoingMsgUnion = ec "NetOutgoingMessage" $ map (\nname -> constructor (T.unpack nname ++ "OMsg") [edt (ElmType $ T.unpack nname ++ ".Static.Types.ClientMessage") "" ""]) netNames
             in
             T.unlines 
             [
-                "module Static.Types where"
+                "module Static.Types exposing(..)"
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Types"]) netNames
             ,   ""
             ,   "-- a type identifying all of the nets in the server"
-            ,   generateType Elm False [DShow,DOrd,DEq] netUnion
+            ,   generateType Elm False [] netUnion
             ,   "-- a union type of all the nets and their transitions"
-            ,   generateType Elm False [DShow,DOrd,DEq] netMsgUnion
+            ,   generateType Elm False [] netMsgUnion
             ,   "-- a union type of all the nets and their transitions"
-            ,   generateType Elm False [DShow,DOrd,DEq] netOutgoingMsgUnion
+            ,   generateType Elm False [] netOutgoingMsgUnion
             ]
         decode :: T.Text
         decode = 
@@ -131,7 +131,6 @@ generateClient gsvg onlyStatic fp
             [
                 "module Static.Encode exposing(..)"
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Encode as ",n]) netNames
-            ,   "import Static.ServerTypes"
             ,   "import Static.Types"
             ,   ""
             ,   "encodeOutgoingMessage :: NetOutgoingMessage -> String"
@@ -139,13 +138,39 @@ generateClient gsvg onlyStatic fp
             ,   "    case netTrans of"
             ,   T.unlines $ map encodeCase netNames
             ]
+        subs :: T.Text
+        subs =
+            let
+
+            in
+            T.unlines
+            [
+                "module Static.Subs exposing(..)"
+            ,   "subs = []"
+            ]
+        view :: T.Text
+        view =
+            let
+                viewCase netName = T.concat["        ",netName," m -> ",netName,".view m"]
+            in
+            T.unlines
+            [
+                "module Static.View exposing(..)"
+            ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.View as ",n]) netNames
+            ,   "view : NetModel"
+            ,   "view model ="
+            ,   "    case model of"
+            ,   T.unlines $ map viewCase netNames
+            ]
 
     in do
         createDirectoryIfMissing True (fp </> "client" </> "src" </> "Static")
         copyDirectory "ClientTemplate/" (fp </> "client/")
-        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Init" <.> "hs") init 
-        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Types" <.> "hs") types 
-        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Decode" <.> "hs") decode 
-        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Encode" <.> "hs") encode 
-        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Update" <.> "hs") update 
+        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Init" <.> "elm") init 
+        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Types" <.> "elm") types 
+        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Decode" <.> "elm") decode 
+        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Encode" <.> "elm") encode 
+        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Update" <.> "elm") update 
+        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Subs" <.> "elm") subs 
+        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "View" <.> "elm") view 
         mapM_ (Generate.Net.Client.generate sExtraT fp) netLst

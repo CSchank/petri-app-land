@@ -1,14 +1,10 @@
-module TestNet.Static.Update where
+module TestNet.Static.Update exposing(..)
 import TestNet.Static.Types
 import TestNet.Static.Wrappers
-import TestNet.Static.FromSuperPlace (FromSuperPlace(..))
+import TestNet.Static.FromSuperPlace exposing (FromSuperPlace(..))
 import TestNet.Update as Update
-import qualified Data.TMap as TM
-import Static.ServerTypes
-import qualified Data.IntMap.Strict as IM'
-import Data.Maybe (fromJust, isJust, mapMaybe)
 
-update :: TopLevelData -> Maybe ClientID -> Transition -> NetState Player -> (NetState Player,[(ClientID,ClientMessage)],Maybe (Cmd Transition))
+update :: TopLevelData -> Transition -> NetState -> (NetState,Maybe (Cmd Transition))
 update tld mClientID trans state =
     let
         places = placeStates state
