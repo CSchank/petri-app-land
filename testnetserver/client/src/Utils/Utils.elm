@@ -5,15 +5,12 @@ import String   exposing    (toList)
 import Html     exposing    (text)
 import Tuple    exposing    (second)
 import Result
-import Debug
 import String
 import Dict exposing (Dict)
 
 tConcat = String.concat
 
 randThen = Result.andThen
-
-error = Debug.todo
 
 rMap = Result.map
 rMap1 = Result.map

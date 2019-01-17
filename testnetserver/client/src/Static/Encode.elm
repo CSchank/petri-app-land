@@ -1,10 +1,10 @@
 module Static.Encode exposing(..)
 import TestNet.Static.Encode as TestNet
 
-import Static.Types
+import Static.Types exposing(NetOutgoingTransition(..))
 
-encodeOutgoingMessage :: NetOutgoingMessage -> String
-encodeOutgoingMessage netTrans =
+encodeOutgoingTransition : NetOutgoingTransition -> String
+encodeOutgoingTransition netTrans =
     case netTrans of
-        TestNetOMsg msg -> TestNet.encodeClientMessage msg
+        TestNetOTrans msg -> TestNet.encodeOutgoingTransition msg
 

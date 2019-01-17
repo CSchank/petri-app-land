@@ -21,25 +21,13 @@ type NetState  =
     | SB B
     | SC C
 -- server transition types
-type Transition  =
-      TAB AB
-    | TCA CA
-    | TABC ABC
-type AB  =
-      AB Int
+type OutgoingTransition  =
+      TCA Int
+    | TABC Int
 type CA  =
       CA Int
 type ABC  =
       ABC Int
-
-type FromA  =
-      StartGameAC Int
-    | StartGameAB2 Int
-    | StartGameAB Int
-type FromB  =
-      StartGameBC Int
-type FromC  =
-      StartGameCA Int
 
 -- outgoing server message types
 type StartGameAB  =

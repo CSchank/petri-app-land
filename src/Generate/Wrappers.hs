@@ -23,8 +23,8 @@ createUnwrap l outputType inputPrefix (n,args) =
             ,   ""
             ]
 
-createWrap :: Bool -> Language -> String -> String -> Constructor -> T.Text
-createWrap def l inputType outputPrefix (n,args) =
+createWrap :: M.Map String ElmCustom -> Bool -> Language -> String -> String -> Constructor -> T.Text
+createWrap ecMap def l inputType outputPrefix (n,args) =
     let
         (.::.) = if l == Haskell then " :: " else " : "
         name = T.concat ["wrap", T.pack n]
@@ -37,7 +37,7 @@ createWrap def l inputType outputPrefix (n,args) =
             ,   decl
             ,   "    case x__ of"
             ,   T.concat["        ",generatePattern (outputPrefix++n,args)," -> ",generatePattern (n,args)]
-            ,   if def then T.concat["        _ -> error \"Tried to wrap a value at the wrong time!\""] else ""
+            ,   if def then T.concat["        _ -> ",constr2Def ecMap (n,args)] else ""
             ,   ""
             ]
 

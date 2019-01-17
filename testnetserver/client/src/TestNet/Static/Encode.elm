@@ -1,7 +1,7 @@
 module TestNet.Static.Encode exposing(..)
-import TestNet.Static.Types
+import TestNet.Static.Types exposing(..)
 
-import Utils.Utils
+import Utils.Utils exposing(..)
 import Static.Types
 encodeOutgoingTransition : OutgoingTransition -> String
 encodeOutgoingTransition outgoingtransition = 

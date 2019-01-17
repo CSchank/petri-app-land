@@ -471,12 +471,12 @@ generate extraTypes fp net =
                             T.concat ["module ",name,".Static.Wrappers where"]
                         ,   T.concat ["import ",name,".Static.Types\n"]
                         ,   T.unlines $ map (createUnwrap Haskell "ClientMessage" "M") outgoingCM
-                        ,   T.unlines $ map (createWrap (length places > 1) Haskell "ClientMessage" "M") outgoingCM
+                        ,   T.unlines $ map (createWrap extraTypes (length places > 1) Haskell "ClientMessage" "M") outgoingCM
                         ,   T.unlines $ map (createUnwrap Haskell "Player" "P") placePlayerStates
-                        ,   T.unlines $ map (createWrap (length places > 1) Haskell "Player" "P") placePlayerStates
+                        ,   T.unlines $ map (createWrap extraTypes (length places > 1) Haskell "Player" "P") placePlayerStates
                         ,   T.unlines $ map (createTransitionUnwrap (length places > 1) Haskell) transitions
                         ,   T.unlines $ map (createUnwrap Haskell "Transition" "T") transConstrs
-                        ,   T.unlines $ map (createWrap (length transitions > 1) Haskell "Transition" "T") transConstrs
+                        ,   T.unlines $ map (createWrap extraTypes (length transitions > 1) Haskell "Transition" "T") transConstrs
                         ]        
             in do
                 createDirectoryIfMissing True $ fp </> "server" </> "src" </> T.unpack name

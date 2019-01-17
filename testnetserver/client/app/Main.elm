@@ -17,8 +17,6 @@ import Task
 
 import GraphicSVG exposing(..)
 
-import Static.Msg exposing(ClientMessage)
-import Static.Model exposing(Model)
 import Static.Init as Init
 import Static.Update
 import Static.Encode exposing(encodeServerMessage)

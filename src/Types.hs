@@ -76,7 +76,7 @@ data HybridPlace =
         [ElmDocType]    --client place state
         (Maybe T.Text)  --Maybe the name of a subnet
         (Maybe T.Text, Maybe T.Text) --initial commands
-        (Maybe T.Text) --client-side subscription
+        (Maybe T.Text)  --client-side subscription
     deriving(Typeable)
 
 data NetTransition =
