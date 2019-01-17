@@ -1,2 +1,3 @@
 module TestNet.Static.FromSuperPlace exposing(..)
-type FromSuperPlace = TopLevelData
+import Static.Types exposing(TopLevelData)
+type alias FromSuperPlace = TopLevelData

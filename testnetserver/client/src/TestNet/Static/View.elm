@@ -18,3 +18,10 @@ view ns =
         SB m -> Html.map TestNet.Static.Wrappers.B.unwrap <| TestNet.View.B.view m
         SC m -> Html.map TestNet.Static.Wrappers.C.unwrap <| TestNet.View.C.view m
 
+title : NetState -> String
+title ns =
+    case ns of
+        SA m -> TestNet.View.A.title m
+        SB m -> TestNet.View.B.title m
+        SC m -> TestNet.View.C.title m
+

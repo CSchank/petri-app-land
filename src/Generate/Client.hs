@@ -54,9 +54,6 @@ generateClient gsvg onlyStatic fp
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Init exposing(..)"]) netNames
             ,   ""
             ,   T.concat["init = ",startNet,".Static.Init.init"]
-            ,   "-- reference to the initial Net"
-            ,   T.concat["initNet :: NetModel"]
-            ,   T.concat["initNet = ",startNet]
             ]
         types :: T.Text
         types = 
@@ -70,6 +67,7 @@ generateClient gsvg onlyStatic fp
                 "module Static.Types exposing(..)"
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Types"]) netNames
             ,   ""
+            ,   "type alias TopLevelData = ()"
             ,   "-- a type identifying all of the nets in the server"
             ,   generateType Elm False [] netUnion
             ,   "-- a union type of all the nets and their incoming transitions"
@@ -98,20 +96,30 @@ generateClient gsvg onlyStatic fp
         update = 
             let
                 updateCase netName = 
+                    let
+                        newName = T.concat["new",netName,"State"]
+                    in
                     T.unlines 
                     [
+                        T.concat["            (",netName,"InMsg msg, ",netName," m) ->"]
+                    ,            "                let"
+                    ,   T.concat["                    (",newName,", mcmd) = ",netName,".update tld msg m"]
+                    ,   T.concat["                    newClientState = ",netName," ",newName]
+                    ,   T.concat["                in (newClientState, Maybe.map (Cmd.map ",netName,"OTrans) mcmd)"]
                     ]
-                disconnectCase netName = T.concat ["                ",netName," {} -> ",netName,".disconnect tld clientID (fromJust $ TM.lookup $ serverState state)"]
             in
             T.unlines
             [
                 "module Static.Update exposing(..)"
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Update as ",n]) netNames
-            ,   "import Static.Types"
-            ,   "import Utils.Utils"
+            ,   "import Static.Types exposing(..)"
+            ,   "import Maybe"
             ,   ""
-            ,   "update : TopLevelData -> NetTransition -> ClientState -> (ClientState, Maybe (Cmd NetTransition))"
-            ,   "update tld mClientID netTrans state ="
+            ,   "update : TopLevelData -> NetIncomingMessage -> NetModel -> (NetModel, Maybe (Cmd NetOutgoingTransition))"
+            ,   "update tld netInMsg state ="
+            ,   "        case (netInMsg,state) of"
+            ,   T.unlines $ map updateCase netNames
+            ,   if length netLst > 1 then "            _ -> (state, Nothing)" else ""
             ]
         encode :: T.Text
         encode = 
@@ -137,12 +145,13 @@ generateClient gsvg onlyStatic fp
             T.unlines
             [
                 "module Static.Subs exposing(..)"
-            ,   "subs = []"
+            ,   "subscriptions = Sub.none"
             ]
         view :: T.Text
         view =
             let
                 viewCase netName = T.concat["        ",netName," m -> Html.map ",netName,"OTrans <| ",netName,".view m"]
+                titlCase netName = T.concat["        ",netName," m -> ",netName,".title m"]
             in
             T.unlines
             [
@@ -154,6 +163,10 @@ generateClient gsvg onlyStatic fp
             ,   "view model ="
             ,   "    case model of"
             ,   T.unlines $ map viewCase netNames
+            ,   "title : NetModel -> String"
+            ,   "title model ="
+            ,   "    case model of"
+            ,   T.unlines $ map titlCase netNames
             ]
 
     in do
@@ -166,4 +179,5 @@ generateClient gsvg onlyStatic fp
         writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Update" <.> "elm") update 
         writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Subs" <.> "elm") subs 
         writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "View" <.> "elm") view 
+        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Subscriptions" <.> "elm") subs 
         mapM_ (Generate.Net.Client.generate sExtraT fp) netLst

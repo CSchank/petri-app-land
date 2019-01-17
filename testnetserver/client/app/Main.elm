@@ -19,12 +19,13 @@ import GraphicSVG exposing(..)
 
 import Static.Init as Init
 import Static.Update
-import Static.Encode exposing(encodeServerMessage)
-import Static.Decode exposing(decodeWrappedClientMessage)
+import Static.Encode exposing(encodeOutgoingTransition)
+import Static.Decode exposing(decodeIncomingMessage)
 import Static.Version as V
 import Static.View
 import Static.Types
 import Static.Subs
+import Static.Types exposing(NetModel)
 
 
 port cmdPort : Value -> Cmd msg
@@ -67,7 +68,7 @@ type alias InternalModel =
     , state : FunnelState
     , key : String
     , error : Maybe String
-    , appModel: Model
+    , appModel: NetModel
     }
 
 
@@ -143,7 +144,7 @@ type Msg
     | WSProcess Value
     | NewUrlRequest B.UrlRequest
     | NewUrlChange Url.Url
-    | AppMsg Static.Types.WrappedClientMessage
+    | AppMsg Static.Types.NetIncomingMessage
 
 
 
@@ -196,14 +197,14 @@ update msg model =
                 case (mCmd, msMsg) of 
                     (Just cmd, Just sMsg) -> 
                         let
-                            respTxt = encodeServerMessage sMsg
+                            respTxt = encodeOutgoingTransition sMsg
                         in
                             { model | appModel = newAppModel } 
                                 |> wsSend respTxt 
                                 |> addCmd (Cmd.map AppMsg cmd)
                     (Nothing, Just sMsg) -> 
                         let
-                            respTxt = encodeServerMessage sMsg
+                            respTxt = encodeOutgoingTransition sMsg
                         in
                             { model | appModel = newAppModel
                             } |> wsSend respTxt
@@ -264,10 +265,10 @@ socketHandler response state mdl =
         WebSocket.MessageReceivedResponse { message } ->
             case message of 
                 "resetfadsfjewi" -> 
-                    { model | appModel = Tuple.first Init.init } |> withNoCmd
+                    { model | appModel = Init.init } |> withNoCmd
                 _ ->
                     let
-                        (rincomingMsg,_) = decodeWrappedClientMessage (Err "", String.split "\u{0000}" (Debug.log "Incoming message" message))
+                        (rincomingMsg,_) = decodeIncomingMessage (Err "", String.split "\u{0000}" (Debug.log "Incoming message" message))
                         newCmd = 
                             case (Debug.log "decoded message: " rincomingMsg) of 
                                 Ok incomingMsg -> Task.perform AppMsg (Task.succeed incomingMsg)

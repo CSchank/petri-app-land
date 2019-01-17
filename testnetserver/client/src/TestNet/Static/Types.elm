@@ -50,4 +50,3 @@ type IncomingMessage  =
 -- extra server types
 
 
--- the FromSuperPlace type

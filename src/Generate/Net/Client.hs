@@ -27,7 +27,7 @@ transName from msgN = T.concat [T.pack msgN,"from",from]
 getPlaceState :: HybridPlace -> Constructor
 getPlaceState p =
     case p of
-        (HybridPlace n s _ _ _ _ _) -> (T.unpack n,s)
+        (HybridPlace n _ s _ _ _ _) -> (T.unpack n,s)
 
 getPlaceName :: HybridPlace -> T.Text
 getPlaceName p =
@@ -52,7 +52,8 @@ generate extraTypes fp net =
                     ,T.concat["import ",name,".Static.Types exposing(..)"]
                     , ""
                     , "-- the initial states of each place in this net"
-                    , T.unlines $ map (generateNetInit extraTypes) places -- the initial places
+                    , T.concat ["init : ",startingPlace]
+                    , T.concat ["init = ",constr2Def extraTypes (getPlaceState $ getPlace startingPlace)]
                     ]
                 placeNames = map (\(HybridPlace name _ _ _ _ _ _) -> name) places
                 -- the functions that the user changes
@@ -78,7 +79,6 @@ generate extraTypes fp net =
                     , ""
                     , "-- the types of all places in the net"
                     , generateNetTypes name places -- the initial places
-                    , "-- the FromSuperPlace type"
                     ]
                 transFromPlace :: T.Text -> [(HybridTransition,NetTransition)]
                 transFromPlace place = 
@@ -130,12 +130,17 @@ generate extraTypes fp net =
                     ,   T.concat["view : ", placeName, " -> Html Msg"]
                     ,   T.concat["view ", uncapitalize placeName, " ="]
                     ,   T.concat["    todo \"Please fill out the view function for the ",name," net for the ",placeName," place.\""]
+                    ,   ""
+                    ,   T.concat["title : ", placeName, " -> String"]
+                    ,   T.concat["title ", uncapitalize placeName, " ="]
+                    ,   T.concat["    todo \"Please fill out the title function for the ",name," net for the ",placeName," place.\""]
                     ]
                 fromSuperPlace = 
                     T.unlines
                     [
                         T.concat["module ",name,".Static.FromSuperPlace exposing(..)"]
-                    ,   "type FromSuperPlace = TopLevelData" --FIXME: change this depending on where the net resides
+                    ,   "import Static.Types exposing(TopLevelData)"
+                    ,   "type alias FromSuperPlace = TopLevelData" --FIXME: change this depending on where the net resides
                     ]
                 incomingMsgs :: [(String,Constructor)]
                 incomingMsgs = concat $ map (\(_,NetTransition (n,_) lstTrans _) -> 
@@ -191,13 +196,32 @@ generate extraTypes fp net =
                 update :: T.Text
                 update =
                     let
+                        trUpFn :: (HybridTransition,NetTransition) -> T.Text
+                        trUpFn (_, NetTransition (transName,_) connections _) =
+                            let
+                                conUpFn (from,(to,mConstr)) = 
+                                    case mConstr of
+                                        Just (n,et) -> 
+                                            let
+                                                fnName = T.concat["update",from,T.pack n,to]
+                                            in Just $ 
+                                            T.unlines
+                                            [T.concat[fnName," : FromSuperPlace -> ",T.pack n," -> ",from," -> ",to]
+                                            ,T.concat[fnName," fsp ",generatePattern (n,et)," ",uncapitalize from," ="]
+                                            ,T.concat["    todo \"Please implement update function ",fnName," for the ",name," net.\""]
+                                            ]
+                                        _ -> Nothing
+                            in
+                            T.unlines $ mapMaybe conUpFn connections 
                     in T.unlines
                     [
                         T.concat ["module ",name,".Update exposing(..)"]
-                    ,   T.concat ["import ",name,".Static.Types"]
-                    ,   T.concat ["import ",name,".Static.FromSuperPlace"]
+                    ,   T.concat ["import ",name,".Static.Types exposing(..)"]
+                    ,   T.concat ["import ",name,".Static.FromSuperPlace exposing(..)"]
                     ,   "import Utils.Utils"
+                    ,   "import Debug exposing(todo)"
                     ,   ""
+                    ,   T.unlines $ map trUpFn transitions
                     ]
                 {-fromsTos :: (HybridTransition, NetTransition) -> [(T.Text,T.Text)]
                 fromsTos (_, NetTransition (transName,_) connections mCmd) =
@@ -208,26 +232,34 @@ generate extraTypes fp net =
                 hiddenUpdate :: T.Text
                 hiddenUpdate = 
                     let
-                        {-playerFolder =
-                                map (\(from,lst) -> 
-                                    let 
-                                    in
-                                        T.unlines 
-                                            [
-                                                ""
-                                            ]
-                                        
-                                        ) (grouped connections)-}
+                        updateCase :: (HybridTransition, NetTransition) -> T.Text
+                        updateCase (_, NetTransition (transName,_) connections _) =
+                            let
+                                connectionCase (from,(to,mConstr)) =
+                                    case mConstr of 
+                                        Just (n,t) -> Just $ T.concat ["        ("
+                                                                      ,generatePattern ("M"++n,map (\_ -> edt ElmBool "_" "") t)
+                                                                      ,", S",from," st)"
+                                                                      ," -> (S",to
+                                                                      ," <| update",from,T.pack n,to
+                                                                      ," fsp (wrap",T.pack n," trans) st, Nothing)"
+                                                                      ]
+                                        _ -> Nothing
+                            in
+                                T.unlines $ mapMaybe connectionCase connections
                     in T.unlines
                     [
                         T.concat ["module ",name,".Static.Update exposing(..)"]
-                    ,   T.concat ["import ",name,".Static.Types"]
-                    ,   T.concat ["import ",name,".Static.Wrappers"]
-                    ,   T.concat ["import ",name,".Static.FromSuperPlace exposing (FromSuperPlace(..))"]
-                    ,   T.concat ["import ",name,".Update as Update"]
+                    ,   T.concat ["import ",name,".Static.Types exposing(..)"]
+                    ,   T.concat ["import ",name,".Static.Wrappers exposing(..)"]
+                    ,   T.concat ["import ",name,".Static.FromSuperPlace exposing (FromSuperPlace)"]
+                    ,   T.concat ["import ",name,".Update exposing(..)"]
                     ,   ""
-                    ,   T.concat ["update : TopLevelData -> Transition -> NetState -> (NetState,Maybe (Cmd Transition))"]
-                    ,   T.concat ["update tld mClientID trans state ="]
+                    ,   T.concat ["update : FromSuperPlace -> IncomingMessage -> NetState -> (NetState,Maybe (Cmd OutgoingTransition))"]
+                    ,   T.concat ["update fsp trans state ="]
+                    ,   "    case (trans,state) of"
+                    ,   T.unlines $ map updateCase transitions
+                    ,   if length places > 1 then "        _ -> (state, Nothing)" else ""
                     ]
             
                 placeMap :: M.Map T.Text HybridPlace
@@ -240,6 +272,7 @@ generate extraTypes fp net =
                     [
                         T.concat ["module ",name,".Static.Init exposing(..)"]
                     ,   T.concat ["import ",name,".Init as Init"]
+                    ,   T.concat ["import ",name,".Static.Types exposing (NetState(..))"]
                     ,   T.concat ["import ",name,".Update as Update"]
                     ,   T.concat ["import ",name,".Static.Wrappers"]
                     ,   "init : NetState"
@@ -251,7 +284,6 @@ generate extraTypes fp net =
                     ,   T.concat ["import ",name,".Static.Types exposing(..)\n"]
                     ,   "import Utils.Utils exposing(..)"
                     ,   "import Static.Types"
-                    
                     ,   generateEncoder Elm outgoingTransitions
                     ]
                 outgoingClientTransitions = mapMaybe (\(tt,NetTransition constr _ _) -> if tt == HybridTransition || tt == ClientOnlyTransition then Just constr else Nothing) transitions
@@ -277,6 +309,7 @@ generate extraTypes fp net =
                 hiddenView = 
                     let
                         viewCase placeName = T.concat["        S",placeName," m -> Html.map ",name,".Static.Wrappers.",placeName,".unwrap <| ",name,".View.",placeName,".view m"]
+                        titlCase placeName = T.concat["        S",placeName," m -> ", name,".View.",placeName,".title m"]
                     in
                     T.unlines
                     [
@@ -291,6 +324,10 @@ generate extraTypes fp net =
                     ,   "view ns ="
                     ,   "    case ns of"
                     ,   T.unlines $ map viewCase placeNames
+                    ,   "title : NetState -> String"
+                    ,   "title ns ="
+                    ,   "    case ns of"
+                    ,   T.unlines $ map titlCase placeNames
                     ]
             in do
                 createDirectoryIfMissing True $ fp </> "client" </> "src" </> T.unpack name

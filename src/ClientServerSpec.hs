@@ -63,6 +63,7 @@ testNet =
             [(ServerOnlyTransition,trans1),(ClientOnlyTransition,trans2),(HybridTransition,trans3)]
             []
 
+
 clientServerApp :: ClientServerApp
 clientServerApp =
     ( "TestNet"           --starting net for a client

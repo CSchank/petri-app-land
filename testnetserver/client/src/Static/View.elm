@@ -8,3 +8,8 @@ view model =
     case model of
         TestNet m -> Html.map TestNetOTrans <| TestNet.view m
 
+title : NetModel -> String
+title model =
+    case model of
+        TestNet m -> TestNet.title m
+
