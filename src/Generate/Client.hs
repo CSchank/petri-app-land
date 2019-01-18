@@ -50,10 +50,11 @@ generateClient gsvg onlyStatic fp
             T.unlines
             [
                 "module Static.Init exposing (..)"
-            ,   "import Static.Types"
-            ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Init exposing(..)"]) netNames
+            ,   "import Static.Types exposing(..)"
+            ,   T.concat ["import ",startNet,".Static.Init"]
             ,   ""
-            ,   T.concat["init = ",startNet,".Static.Init.init"]
+            ,   "init : (NetModel, Cmd NetOutgoingTransition)"
+            ,   T.concat["init = (",startNet," ",startNet,".Static.Init.init, Cmd.none)"]
             ]
         types :: T.Text
         types = 
@@ -145,7 +146,9 @@ generateClient gsvg onlyStatic fp
             T.unlines
             [
                 "module Static.Subs exposing(..)"
-            ,   "subscriptions = Sub.none"
+            ,   "import Static.Types exposing(..)"
+            ,   "subscriptions : NetModel -> Sub NetOutgoingTransition"
+            ,   "subscriptions model = Sub.none"
             ]
         view :: T.Text
         view =

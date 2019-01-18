@@ -15,8 +15,7 @@ import String
 import Url
 import Task
 
-import GraphicSVG exposing(..)
-
+import Html exposing(Html)
 import Static.Init as Init
 import Static.Update
 import Static.Encode exposing(encodeOutgoingTransition)
@@ -36,7 +35,7 @@ port subPort : (Value -> msg) -> Sub msg
 
 subscriptions : InternalModel -> Sub Msg
 subscriptions model =
-    Sub.batch [subPort WSProcess, Sub.map AppMsg <| Static.Subs.subscriptions model.appModel]
+    Sub.batch [subPort WSProcess, Sub.map OutgoingTrans <| Static.Subs.subscriptions model.appModel]
 
 
 getCmdPort : InternalModel -> (Value -> Cmd Msg)
@@ -73,7 +72,7 @@ type alias InternalModel =
 
 
 main =
-    GraphicSVG.app
+    B.application
         { init = init
         , update = update
         , view = view
@@ -104,7 +103,7 @@ init _ url key =
                     (WebSocket.makeOpenWithKey model.key model.url
                         |> send model
                     )
-                    |> addCmd (Cmd.map AppMsg <| Tuple.second Init.init)
+                    |> addCmd (Cmd.map OutgoingTrans <| Tuple.second Init.init)
 
 
 socketAccessors : StateAccessors FunnelState WebSocket.State
@@ -144,7 +143,8 @@ type Msg
     | WSProcess Value
     | NewUrlRequest B.UrlRequest
     | NewUrlChange Url.Url
-    | AppMsg Static.Types.NetIncomingMessage
+    | OutgoingTrans Static.Types.NetOutgoingTransition
+    | IncomingMsg Static.Types.NetIncomingMessage
 
 
 
@@ -190,28 +190,31 @@ update msg model =
 
         NewUrlRequest urlReq -> model |> withNoCmd
         NewUrlChange url -> model |> withNoCmd
-        AppMsg appMsg -> 
+        IncomingMsg incomingMsg -> 
             let 
-                (newAppModel, mCmd, msMsg) = Static.Update.update appMsg model.appModel
+                (newAppModel, mCmd) = Static.Update.update () incomingMsg model.appModel 
             in
-                case (mCmd, msMsg) of 
-                    (Just cmd, Just sMsg) -> 
+                model |> withNoCmd
+        OutgoingTrans outgoingTrans ->
+            model |> withNoCmd
+                {-case mCmd of 
+                    Just cmd -> 
                         let
                             respTxt = encodeOutgoingTransition sMsg
                         in
                             { model | appModel = newAppModel } 
                                 |> wsSend respTxt 
                                 |> addCmd (Cmd.map AppMsg cmd)
-                    (Nothing, Just sMsg) -> 
+                    Nothing -> 
                         let
                             respTxt = encodeOutgoingTransition sMsg
                         in
                             { model | appModel = newAppModel
                             } |> wsSend respTxt
-                    (Just cmd, Nothing) -> 
+                    Just cmd -> 
                         { model | appModel = newAppModel } |> withCmd (Cmd.map AppMsg cmd)
                     _ ->
-                        { model | appModel = newAppModel } |> withNoCmd
+                        { model | appModel = newAppModel } |> withNoCmd-}
 
 wsSend : String -> InternalModel -> (InternalModel, Cmd Msg)
 wsSend m model = 
@@ -265,13 +268,13 @@ socketHandler response state mdl =
         WebSocket.MessageReceivedResponse { message } ->
             case message of 
                 "resetfadsfjewi" -> 
-                    { model | appModel = Init.init } |> withNoCmd
+                    { model | appModel = Tuple.first Init.init } |> withNoCmd
                 _ ->
                     let
-                        (rincomingMsg,_) = decodeIncomingMessage (Err "", String.split "\u{0000}" (Debug.log "Incoming message" message))
+                        rincomingMsg = decodeIncomingMessage message model.appModel
                         newCmd = 
                             case (Debug.log "decoded message: " rincomingMsg) of 
-                                Ok incomingMsg -> Task.perform AppMsg (Task.succeed incomingMsg)
+                                Ok incomingMsg -> Task.perform IncomingMsg (Task.succeed incomingMsg)
                                 Err _ -> Cmd.none
                     in            
                         ({ model | log = ("Received \"" ++ message ++ "\"") :: model.log }
@@ -323,12 +326,12 @@ closedString code wasClean expected =
                 "NOT expected"
            )
 
-view : InternalModel -> { body : Collage Msg, title: String }
+view : InternalModel -> B.Document Msg
 view model =
     { title = Static.View.title model.appModel
     , body = case model.appState of 
-                NotConnected ->         collage 500 500 [text "Connecting to server...." |> fixedwidth |> centered |> size 24 |> filled black]        
-                ConnectionClosed ->     collage 500 500 [text "Lost connection. Reconnecting...." |> fixedwidth |> centered |> size 24 |> filled black]        
-                Connected ->            GraphicSVG.mapCollage AppMsg <| Static.View.view model.appModel
+                --NotConnected ->         collage 500 500 [text "Connecting to server...." |> fixedwidth |> centered |> size 24 |> filled black]        
+                --ConnectionClosed ->     collage 500 500 [text "Lost connection. Reconnecting...." |> fixedwidth |> centered |> size 24 |> filled black]        
+                _ -> [Html.map OutgoingTrans <| Static.View.view model.appModel]
              --   , text <| "Log: " ++ Debug.toString model.log   
     }

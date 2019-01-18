@@ -1,6 +1,6 @@
 module Static.Init exposing (..)
-import Static.Types
-import TestNet.Static.Init exposing(..)
+import Static.Types exposing(..)
+import TestNet.Static.Init
 
-
-init = TestNet.Static.Init.init
+init : (NetModel, Cmd NetOutgoingTransition)
+init = (TestNet TestNet.Static.Init.init, Cmd.none)

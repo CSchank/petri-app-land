@@ -1,2 +1,4 @@
 module Static.Subs exposing(..)
-subscriptions = Sub.none
+import Static.Types exposing(..)
+subscriptions : NetModel -> Sub NetOutgoingTransition
+subscriptions model = Sub.none
