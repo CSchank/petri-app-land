@@ -1,3 +1,20 @@
+# How to create a new PetriAppWorld
+
+in GitHub/elm-haskell-state-diagram
+
+Mac-Pro:elm-haskell-state-diagram anand$ open src/ClientServerSpec.hs 
+
+change
+
+outputDirectory = "NewspaperExample"
+
+types are in
+
+elm-haskell-state-diagram anand$ open src/Types.hs
+
+
+
+# Anything after this point is out of date
 # elm-haskell-state-diagram early alpha notes
 Each app is written in two main phases, and then iterated on as it is changed:
 1. Define the client and server states (including data types) and transitions
