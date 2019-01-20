@@ -31,6 +31,11 @@ elm-haskell-state-diagram/NewspaperExample/client/src/NewspaperExample/View
 helper functions are in
 elm-haskell-state-diagram/NewspaperExample/client/src/NewspaperExample/Static/Helpers
 
+in elm-haskell-state-diagram/NewspaperExample/client
+$ make
+
+
+
 # Anything after this point is out of date
 # elm-haskell-state-diagram early alpha notes
 Each app is written in two main phases, and then iterated on as it is changed:

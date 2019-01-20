@@ -141,7 +141,7 @@ newspaperNet =
         postComment =
             NetTransition
                 (constructor "PostComment" [edt ElmString "comment" "edited comment"])
-                [("EditingRoom", ("EditingRoom", Just $ constructor "DidEnterComment" [edt ElmString "comment" "edited comment"]))
+                [("EditingRoom", ("EditingRoom", Just $ constructor "DidPostComment" [edt ElmString "comment" "edited comment"]))
                 ] -- if you are not editing, then go back to the same place
                 Nothing
     in
