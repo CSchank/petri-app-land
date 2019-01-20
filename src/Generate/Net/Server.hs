@@ -481,10 +481,10 @@ generate extraTypes fp net =
             in do
                 createDirectoryIfMissing True $ fp </> "server" </> "src" </> T.unpack name
                 createDirectoryIfMissing True $ fp </> "server" </> "src" </> T.unpack name </> "Static"
-                writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Init" <.> "hs") inits 
+                writeIfNotExists (fp </> "server" </> "src" </> T.unpack name </> "Init" <.> "hs") inits 
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Types" <.> "hs") types
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Init" <.> "hs") hiddenInit
-                writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Update" <.> "hs") update
+                writeIfNotExists (fp </> "server" </> "src" </> T.unpack name </> "Update" <.> "hs") update
                 createDirectoryIfMissing True $ fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers"
                 mapM_ (\(HybridPlace pName edts _ _ _ _ _)  -> writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Haskell name (T.unpack pName,edts) False]) places
                 mapM_ (\(HybridPlace pName _ pEdts _ _ _ _) -> writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName ++ "Player" <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Haskell name (T.unpack pName ++ "Player",pEdts) False]) places
