@@ -101,7 +101,8 @@ generate extraTypes fp net =
                     let
                         transitions = transFromPlace placeName
                         transConstrs = map (\(_,NetTransition (n,ets) _ _) -> (T.unpack name++".Static.Types."++T.unpack placeName++"."++n,ets)) transitions
-                        zippedTrans = zip transConstrs wOutgoingClientTransitions
+                        wrappedTransConstrs = map (\(_,NetTransition (n,ets) _ _) -> ("T"++n,ets)) transitions
+                        zippedTrans = zip transConstrs wrappedTransConstrs
                     in
                     T.unlines
                     [
