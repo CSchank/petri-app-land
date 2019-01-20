@@ -31,21 +31,29 @@ draftType = ec -- helper to make custom types
                             ,edt ElmString "author" "author"
                             ,edt (ElmIntRange 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
                             ,edt ElmString "body" "article body"
-                            ,edt (ElmList $ edt (ElmPair (edt (ElmIntRange 0 99999) "uid" "userid") (edt ElmString "comment" "comment"))) "comments" "[(uid,comment)]"
+                            ,edt (ElmList $ edt (ElmPair (edt (ElmIntRange 0 99999) "uid" "userid")
+                                                         (edt ElmString "comment" "comment")
+                                                )
+                                                "uidComment" "(uid,comment)"
+                                  ) "comments" "[(uid,comment)]"
                             ]
                  )
                 ,("DraftLetter",  [edt ElmString "title"{-valid function name, used in helper functions-} "title of the article"
                             ,edt ElmString "author" "author"
                             ,edt (ElmIntRange 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
                             ,edt ElmString "body" "article body"
-                            ,edt (ElmList $ edt (ElmPair (edt (ElmIntRange 0 99999) "uid" "userid") (edt ElmString "comment" "comment"))) "comments" "[(uid,comment)]"
+                            ,edt (ElmList $ edt (ElmPair (edt (ElmIntRange 0 99999) "uid" "userid")
+                                                         (edt ElmString "comment" "comment")
+                                                )
+                                                "uidComment" "(uid,comment)"
+                                  ) "comments" "[(uid,comment)]"
                             ]
                  )
                 ]
-testNet :: Net
-testNet =
+newspaperNet :: Net
+newspaperNet =
     let
-        place1 = 
+        mainStreet = 
             HybridPlace "MainStreet" 
                 [] --server state
                 [] --player state
@@ -54,7 +62,7 @@ testNet =
                 (Nothing, Nothing)
                 Nothing
 
-        place2 = 
+        readingRoom = 
             HybridPlace "ReadingRoom" 
                 [edt (ElmList $ edt (ElmType "Article") "article" "") "articles" ""] --server state
                 [edt ElmString "nowReading" "title of current article being read"] --player state
@@ -65,11 +73,11 @@ testNet =
                 (Nothing, Nothing)
                 Nothing
 
-        place3 = 
+        editingRoom = 
             HybridPlace "EditingRoom" 
                 [edt (ElmList $ edt (ElmType "Draft") "drafts" "") "articles" ""] --server state
                 [edt (ElmMaybe (edt ElmString "nowEditing" "title of current article being read")) "maybeEditing" "article being edited or Nothing for index"] --player state
-                [edt (ElmMaybe (edt (ElmType "Draft") "article" "article currently being edited") "maybeEditing" "article being edited or Nothing for index"
+                [edt (ElmMaybe (edt (ElmType "Draft") "article" "article currently being edited")) "maybeEditing" "article being edited or Nothing for index"
                 ,edt (ElmList $ edt ElmString "title" "") "titles" "" -- all article titles
                 ] --client state
                 Nothing
@@ -138,17 +146,17 @@ testNet =
                 Nothing
     in
         HybridNet
-            "TestNet"
-            "A"
-            [place1,place2,place3]
-            [(ServerOnlyTransition,trans1),(ClientOnlyTransition,trans2),(HybridTransition,trans3)]
+            "NewspaperExample"
+            "MainStreet"
+            [mainStreet,readingRoom,editingRoom]
+            [(HybridTransition,enterRR),(HybridTransition,enterER),(HybridTransition,startEditing),(HybridTransition,leaveRR),(HybridTransition,leaveER),(HybridTransition,publishArticle),(HybridTransition,saveDraft),(HybridTransition,enterTitle),(HybridTransition,enterText),(HybridTransition,enterComment),(HybridTransition,postComment)]
             []
 
 
 clientServerApp :: ClientServerApp
 clientServerApp =
-    ( "TestNet"           --starting net for a client
-    , [testNet]           --all the nets in this client/server app
-    , []                  --extra client types used in states or messages
-    , []                  --extra server types used in states or messages
+    ( "NewspaperExample"           --starting net for a client
+    , [newspaperNet]           --all the nets in this client/server app
+    , [articleType,draftType]                  --extra client types used in states or messages
+    , [articleType,draftType]                  --extra server types used in states or messages
     )

@@ -8,11 +8,28 @@ change
 
 outputDirectory = "NewspaperExample"
 
+create custom types, places and transitions
+
 types are in
 
 elm-haskell-state-diagram anand$ open src/Types.hs
 
+elm-haskell-state-diagram anand$ stack build
 
+(fix errors)
+
+elm-haskell-state-diagram anand$ stack exec elm-haskell-state-diagram-exe
+
+(this will make a bunch of modules)
+
+elm-haskell-state-diagram anand$ cd NewspaperExample/
+
+edit View's
+
+elm-haskell-state-diagram/NewspaperExample/client/src/NewspaperExample/View
+
+helper functions are in
+elm-haskell-state-diagram/NewspaperExample/client/src/NewspaperExample/Static/Helpers
 
 # Anything after this point is out of date
 # elm-haskell-state-diagram early alpha notes
