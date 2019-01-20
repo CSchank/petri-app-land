@@ -285,6 +285,8 @@ generate extraTypes fp net =
                     ,   "import Utils.Utils exposing(..)"
                     ,   "import Static.Types"
                     ,   generateEncoder Elm outgoingTransitions
+                    ,   "--extra types encoders"
+                    ,   T.unlines $ map (generateEncoder Elm) $ M.elems extraTypes
                     ]
                 outgoingClientTransitions = mapMaybe (\(tt,NetTransition constr _ _) -> if tt == HybridTransition || tt == ClientOnlyTransition then Just constr else Nothing) transitions
                 wOutgoingClientTransitions = map (\(n,t) -> ("T"++n,t)) outgoingClientTransitions
@@ -297,6 +299,8 @@ generate extraTypes fp net =
                     ,   T.concat ["import ",name,".Static.Types exposing(..)\n"]
                     ,   "import Utils.Utils exposing(..)"
                     ,   generateDecoder Elm $ incomingTransitions
+                    ,   "--extra types decoders"
+                    ,   T.unlines $ map (generateDecoder Elm) $ M.elems extraTypes
                     ]
                 wrappers = 
                     T.unlines

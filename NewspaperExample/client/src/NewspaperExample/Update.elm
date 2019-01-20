@@ -6,22 +6,12 @@ import Debug exposing(todo)
 
 updateMainStreetDidEnterReadingRoomReadingRoom : FromSuperPlace -> DidEnterReadingRoom -> MainStreet -> ReadingRoom
 updateMainStreetDidEnterReadingRoomReadingRoom fsp (DidEnterReadingRoom articles)  mainStreet =
-  let
-      getTitles art = case art of
-        Article title _ _ _ -> title
-        Letter title _ _ _ -> title
-  in
-      ReadingRoom articles {-articles-} (List.map getTitles articles) {-titles-} (Nothing) {-maybeViewing-}
+    todo "Please implement update function updateMainStreetDidEnterReadingRoomReadingRoom for the NewspaperExample net."
 
 
 updateMainStreetDidEnterEditingRoomReadingRoom : FromSuperPlace -> DidEnterEditingRoom -> MainStreet -> ReadingRoom
 updateMainStreetDidEnterEditingRoomReadingRoom fsp (DidEnterEditingRoom articles)  mainStreet =
-  let
-      getTitles art = case art of
-        DraftArticle title _ _ _ -> title
-        DraftLetter title _ _ _ -> title
-  in
-      EditingRoom Nothing {-maybeEditing-} (List String {-title-}) {-titles-}
+    todo "Please implement update function updateMainStreetDidEnterEditingRoomReadingRoom for the NewspaperExample net."
 
 
 updateEditingRoomDidStartEditingEditingRoom : FromSuperPlace -> DidStartEditing -> EditingRoom -> EditingRoom
@@ -64,6 +54,9 @@ updateEditingRoomDidEnterCommentEditingRoom fsp (DidEnterComment comment)  editi
     todo "Please implement update function updateEditingRoomDidEnterCommentEditingRoom for the NewspaperExample net."
 
 
-updateEditingRoomDidEnterCommentEditingRoom : FromSuperPlace -> DidEnterComment -> EditingRoom -> EditingRoom
-updateEditingRoomDidEnterCommentEditingRoom fsp (DidEnterComment comment)  editingRoom =
-    todo "Please implement update function updateEditingRoomDidEnterCommentEditingRoom for the NewspaperExample net."
+updateEditingRoomDidPostCommentEditingRoom : FromSuperPlace -> DidPostComment -> EditingRoom -> EditingRoom
+updateEditingRoomDidPostCommentEditingRoom fsp (DidPostComment comment)  editingRoom =
+    todo "Please implement update function updateEditingRoomDidPostCommentEditingRoom for the NewspaperExample net."
+
+
+

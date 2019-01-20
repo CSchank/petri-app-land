@@ -6,11 +6,8 @@ import Debug exposing(todo)
 
 view : MainStreet -> Html Msg
 view mainStreet =
-  div []
-  [ button [ onClick EnterEditingRoom ] [ text "Reading Room" ]
-  , button [ onClick EnterReadingRoom ] [ text "Editing Room" ]
-  ]
+    todo "Please fill out the view function for the NewspaperExample net for the MainStreet place."
 
 title : MainStreet -> String
 title mainStreet =
-    "Main Street"
+    todo "Please fill out the title function for the NewspaperExample net for the MainStreet place."

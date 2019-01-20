@@ -6,12 +6,8 @@ import Debug exposing(todo)
 
 view : ReadingRoom -> Html Msg
 view readingRoom =
-  div []
-  [ button [ onClick LeaveReadingRoom ] [ text "Exit" ]
-  -- EnterTitle
-  -- EnterText
-  ]
+    todo "Please fill out the view function for the NewspaperExample net for the ReadingRoom place."
 
 title : ReadingRoom -> String
 title readingRoom =
-    "Reading Room"
+    todo "Please fill out the title function for the NewspaperExample net for the ReadingRoom place."

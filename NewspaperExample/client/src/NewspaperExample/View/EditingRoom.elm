@@ -1,17 +1,13 @@
 module NewspaperExample.View.EditingRoom exposing(..)
-import NewspaperExample.Static.Types.EditingRoom exposing(Msg(..),getTitles)
+import NewspaperExample.Static.Types.EditingRoom exposing(Msg(..))
 import NewspaperExample.Static.Types exposing(EditingRoom(..))
 import Html exposing(Html)
 import Debug exposing(todo)
 
 view : EditingRoom -> Html Msg
 view editingRoom =
-  div []
-  [ button [ onClick LeaveEditingRoom ] [ text "Exit" ]
-  , div [] [ text (String.join ", " <| getTitles editingRoom) ]
-  , button [ onClick PublishArticle ] [ text "Publish" ]
-  ]
+    todo "Please fill out the view function for the NewspaperExample net for the EditingRoom place."
 
 title : EditingRoom -> String
 title editingRoom =
-    "Editing Room"
+    todo "Please fill out the title function for the NewspaperExample net for the EditingRoom place."
