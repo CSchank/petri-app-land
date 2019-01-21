@@ -90,7 +90,7 @@ data EnterEditingRoomfromMainStreet  =
     deriving(Ord,Eq,Show)
 
 data StartEditingfromEditingRoom  =
-      StartEditing_EditingRoomtoEditingRoom EditingRoomPlayer DidStartEditing
+      StartEditing_EditingRoomtoEditingRoom EditingRoomPlayer (Maybe DidStartEditing)
     deriving(Ord,Eq,Show)
 
 data LeaveReadingRoomfromReadingRoom  =
@@ -107,23 +107,23 @@ data PublishArticlefromEditingRoom  =
     deriving(Ord,Eq,Show)
 
 data SaveDraftfromEditingRoom  =
-      SaveDraft_EditingRoomtoEditingRoom EditingRoomPlayer DidSaveDraft
+      SaveDraft_EditingRoomtoEditingRoom EditingRoomPlayer (Maybe DidSaveDraft)
     deriving(Ord,Eq,Show)
 
 data EnterTitlefromEditingRoom  =
-      EnterTitle_EditingRoomtoEditingRoom EditingRoomPlayer DidEnterTitle
+      EnterTitle_EditingRoomtoEditingRoom EditingRoomPlayer (Maybe DidEnterTitle)
     deriving(Ord,Eq,Show)
 
 data EnterTextfromEditingRoom  =
-      EnterText_EditingRoomtoEditingRoom EditingRoomPlayer DidEnterText
+      EnterText_EditingRoomtoEditingRoom EditingRoomPlayer (Maybe DidEnterText)
     deriving(Ord,Eq,Show)
 
 data EnterCommentfromEditingRoom  =
-      EnterComment_EditingRoomtoEditingRoom EditingRoomPlayer DidEnterComment
+      EnterComment_EditingRoomtoEditingRoom EditingRoomPlayer (Maybe DidEnterComment)
     deriving(Ord,Eq,Show)
 
 data PostCommentfromEditingRoom  =
-      PostComment_EditingRoomtoEditingRoom EditingRoomPlayer DidPostComment
+      PostComment_EditingRoomtoEditingRoom EditingRoomPlayer (Maybe DidPostComment)
     deriving(Ord,Eq,Show)
 
 

@@ -104,9 +104,10 @@ generate extraTypes fp net =
                         constructors :: (T.Text, [(T.Text, Maybe Constructor)]) -> [Constructor]
                         constructors (from,toLst) =
                             map (\(to,mConstr) -> 
-                                case mConstr of 
-                                    Just (msgName,_) -> constructor (T.unpack $ T.concat[T.pack msgN,"_",from,"to",to]) [edt (ElmType $ T.unpack $ T.concat [to,"Player"]) "" "", edt (ElmType msgName) "" ""]
-                                    Nothing          -> constructor (T.unpack $ T.concat[T.pack msgN,"_",from,"to",to]) [edt (ElmType $ T.unpack $ T.concat [to,"Player"]) "" ""]
+                                case (mConstr,from == to) of 
+                                    (Just (msgName,_), False) -> constructor (T.unpack $ T.concat[T.pack msgN,"_",from,"to",to]) [edt (ElmType $ T.unpack $ T.concat [to,"Player"]) "" "", edt (ElmType msgName) "" ""]
+                                    (Just (msgName,_), True) -> constructor (T.unpack $ T.concat[T.pack msgN,"_",from,"to",to]) [edt (ElmType $ T.unpack $ T.concat [to,"Player"]) "" "", edt (ElmMaybe (edt (ElmType msgName) "" "")) "" ""]
+                                    _          -> constructor (T.unpack $ T.concat[T.pack msgN,"_",from,"to",to]) [edt (ElmType $ T.unpack $ T.concat [to,"Player"]) "" ""]
                                         ) toLst
                     in
                         map (\(from,toLst) -> ElmCustom (T.unpack $ transName from msgN) $ constructors (from,toLst)) (grouped connections)

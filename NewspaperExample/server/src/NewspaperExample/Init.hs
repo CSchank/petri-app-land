@@ -9,6 +9,6 @@ initReadingRoom :: ReadingRoom
 initReadingRoom = ReadingRoom [Article "title" "author" 0 "A long story." ]
 
 initEditingRoom :: EditingRoom
-initEditingRoom = EditingRoom [DraftArticle "title" "author" 0 "A long story." [(10000,"Needs more words."")]]
+initEditingRoom = EditingRoom [DraftArticle "title" "author" 0 "A long story." [(10000,"Needs more words.")]]
 
 
