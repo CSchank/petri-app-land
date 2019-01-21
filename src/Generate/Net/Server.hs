@@ -454,6 +454,8 @@ generate extraTypes fp net =
                     ,   "import qualified Data.Text as T"
                     ,   "import Static.Types"
                     ,   generateEncoder Haskell clientMsg
+                    ,   "-- extra type encoders"
+                    ,   T.unlines $ map (generateEncoder Haskell) $ M.elems extraTypes
                     ]
                 incomingClientTransitions = mapMaybe (\(tt,NetTransition (name,ets) _ _) -> if tt == HybridTransition || tt == ClientOnlyTransition then Just ("T"++name,ets) else Nothing) transitions
                 clientTransitions = ElmCustom "Transition" incomingClientTransitions
@@ -465,6 +467,8 @@ generate extraTypes fp net =
                     ,   "import Utils.Utils"
                     ,   "import qualified Data.Text as T"
                     ,   generateDecoder Haskell clientTransitions
+                    ,   "-- extra type decoders"
+                    ,   T.unlines $ map (generateDecoder Haskell) $ M.elems extraTypes
                     ]
                 wrappers = 
                     T.unlines

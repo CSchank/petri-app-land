@@ -135,3 +135,87 @@ encodeClientMessage clientmessage =
                 tConcat ["MDidPostComment\0", commentTxt]
 
 
+-- extra type encoders
+encodeArticle :: Article -> T.Text
+encodeArticle article = 
+    case article of
+        Article title author timestamp body -> 
+            let
+                titleTxt = T.pack title
+                authorTxt = T.pack author
+                timestampTxt = encodeInt 0 999999999 timestamp
+                bodyTxt = T.pack body
+            in
+                tConcat ["Article\0", titleTxt,"\0",authorTxt,"\0",timestampTxt,"\0",bodyTxt]
+        Letter title author timestamp body -> 
+            let
+                titleTxt = T.pack title
+                authorTxt = T.pack author
+                timestampTxt = encodeInt 0 999999999 timestamp
+                bodyTxt = T.pack body
+            in
+                tConcat ["Letter\0", titleTxt,"\0",authorTxt,"\0",timestampTxt,"\0",bodyTxt]
+
+
+encodeDraft :: Draft -> T.Text
+encodeDraft draft = 
+    case draft of
+        DraftArticle title author timestamp body comments -> 
+            let
+                titleTxt = T.pack title
+                authorTxt = T.pack author
+                timestampTxt = encodeInt 0 999999999 timestamp
+                bodyTxt = T.pack body
+                commentsTxt =
+                    let
+                        encodecomments_ _ (str4,commentsList) =
+                            case commentsList of
+                                uidComment : rest ->
+                                    let
+                                        uidCommentTxt =
+                                            let
+                                                (uid,comment) = uidComment
+                                                uidTxt = encodeInt 0 99999 uid
+                                                commentTxt = T.pack comment
+                                            in
+                                                tConcat [uidTxt,"\0",commentTxt]
+                                    in
+                                        (tConcat [str4,"\0",uidCommentTxt], rest)
+                                [] -> (str4,commentsList)
+                        encodecomments ls =
+                            lFoldl encodecomments_ ("",ls) (lRange 0 (lLength comments))
+                    in
+                        tConcat [encodeInt 0 16777216 <| lLength comments, pFst <| encodecomments comments]
+            in
+                tConcat ["DraftArticle\0", titleTxt,"\0",authorTxt,"\0",timestampTxt,"\0",bodyTxt,"\0",commentsTxt]
+        DraftLetter title author timestamp body comments -> 
+            let
+                titleTxt = T.pack title
+                authorTxt = T.pack author
+                timestampTxt = encodeInt 0 999999999 timestamp
+                bodyTxt = T.pack body
+                commentsTxt =
+                    let
+                        encodecomments_ _ (str4,commentsList) =
+                            case commentsList of
+                                uidComment : rest ->
+                                    let
+                                        uidCommentTxt =
+                                            let
+                                                (uid,comment) = uidComment
+                                                uidTxt = encodeInt 0 99999 uid
+                                                commentTxt = T.pack comment
+                                            in
+                                                tConcat [uidTxt,"\0",commentTxt]
+                                    in
+                                        (tConcat [str4,"\0",uidCommentTxt], rest)
+                                [] -> (str4,commentsList)
+                        encodecomments ls =
+                            lFoldl encodecomments_ ("",ls) (lRange 0 (lLength comments))
+                    in
+                        tConcat [encodeInt 0 16777216 <| lLength comments, pFst <| encodecomments comments]
+            in
+                tConcat ["DraftLetter\0", titleTxt,"\0",authorTxt,"\0",timestampTxt,"\0",bodyTxt,"\0",commentsTxt]
+
+
+
