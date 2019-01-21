@@ -6,9 +6,9 @@ initMainStreet :: MainStreet
 initMainStreet = MainStreet 
 
 initReadingRoom :: ReadingRoom
-initReadingRoom = ReadingRoom []
+initReadingRoom = ReadingRoom [Article "title" "author" 0 "A long story." ]
 
 initEditingRoom :: EditingRoom
-initEditingRoom = EditingRoom []
+initEditingRoom = EditingRoom [DraftArticle "title" "author" 0 "A long story." [(10000,"Needs more words."")]]
 
 

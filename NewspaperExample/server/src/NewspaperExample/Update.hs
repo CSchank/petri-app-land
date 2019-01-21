@@ -8,30 +8,32 @@ import Static.ServerTypes
 -- function called when new client connects (do not delete)
 clientConnect :: FromSuperPlace -> ClientID -> MainStreet -> (MainStreet, MainStreetPlayer)
 clientConnect fsp clientID mainStreet =
-    error "Please fill out clientConnect function for the NewspaperExample net."
+    (mainStreet, MainStreetPlayer)
 
 -- functions called when a client disconnects (do not delete)
 clientDisconnectFromEditingRoom :: FromSuperPlace -> ClientID -> EditingRoom -> EditingRoomPlayer -> EditingRoom
 clientDisconnectFromEditingRoom fsp clientID editingRoom editingRoomPlayer =
-    error "Please fill out the clientDisconnectFromEditingRoom function for the NewspaperExample net."
+    editingRoom
 
 clientDisconnectFromMainStreet :: FromSuperPlace -> ClientID -> MainStreet -> MainStreetPlayer -> MainStreet
 clientDisconnectFromMainStreet fsp clientID mainStreet mainStreetPlayer =
-    error "Please fill out the clientDisconnectFromMainStreet function for the NewspaperExample net."
+    mainStreet
 
 clientDisconnectFromReadingRoom :: FromSuperPlace -> ClientID -> ReadingRoom -> ReadingRoomPlayer -> ReadingRoom
 clientDisconnectFromReadingRoom fsp clientID readingRoom readingRoomPlayer =
-    error "Please fill out the clientDisconnectFromReadingRoom function for the NewspaperExample net."
+    readingRoom
 
 
 -- functions for each transition
+-- tried to write this one
 updateEnterReadingRoom :: FromSuperPlace -> Maybe ClientID -> EnterReadingRoom -> MainStreet -> ReadingRoom -> List MainStreetPlayer -> (MainStreet, ReadingRoom, MainStreetPlayer -> EnterReadingRoomfromMainStreet)
 updateEnterReadingRoom fsp mClientId EnterReadingRoom mainStreet readingRoom lstMainStreet =
     let
         fromMainStreet :: MainStreetPlayer -> EnterReadingRoomfromMainStreet
-        fromMainStreet pmainStreet = error "Please fill in function stub."
+        fromMainStreet pmainStreet = EnterReadingRoom_MainStreettoReadingRoom (ReadingRoomPlayer "Nothing, should be Maybe?")
+                                            (DidEnterReadingRoom $ articles)
 
-
+        ReadingRoom articles = readingRoom
     in
         (mainStreet, readingRoom, fromMainStreet)
 
