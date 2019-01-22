@@ -86,62 +86,62 @@ newspaperNet =
         enterRR =
             NetTransition
                 (constructor "EnterReadingRoom" [])
-                [("MainStreet", ("ReadingRoom", Just $ constructor "DidEnterReadingRoom" [edt (ElmList $ edt (ElmType "Article") "article" "") "articles" ""]))]
+                [("MainStreet", Just ("ReadingRoom", constructor "DidEnterReadingRoom" [edt (ElmList $ edt (ElmType "Article") "article" "") "articles" ""]))]
                 Nothing
         enterER =
             NetTransition
                 (constructor "EnterEditingRoom" [])
-                [("MainStreet", ("ReadingRoom", Just $ constructor "DidEnterEditingRoom" [edt (ElmList $ edt ElmString "title" "") "articles" ""]))]
+                [("MainStreet", Just ("ReadingRoom", constructor "DidEnterEditingRoom" [edt (ElmList $ edt ElmString "title" "") "articles" ""]))]
                 Nothing
         startEditing =
             NetTransition
                 (constructor "StartEditing" [edt ElmString "title" "article to start editing"])
-                [("EditingRoom", ("EditingRoom", Just $ constructor "DidStartEditing" [edt (ElmType "Draft") "draft" "article to edit"]))]
+                [("EditingRoom", Just ("EditingRoom", constructor "DidStartEditing" [edt (ElmType "Draft") "draft" "article to edit"]))]
                 Nothing
         leaveRR =
             NetTransition
                 (constructor "LeaveReadingRoom" [])
-                [("ReadingRoom", ("MainStreet", Just $ constructor "DidLeaveReadingRoom" []))]
+                [("ReadingRoom", Just ("MainStreet", constructor "DidLeaveReadingRoom" []))]
                 Nothing
         leaveER =
             NetTransition
                 (constructor "LeaveEditingRoom" [])
-                [("EditingRoom", ("MainStreet", Just $ constructor "DidLeaveEditingRoom" []))]
+                [("EditingRoom", Just ("MainStreet", constructor "DidLeaveEditingRoom" []))]
                 Nothing
         publishArticle =
             NetTransition
                 (constructor "PublishArticle" [])
-                [("EditingRoom", ("ReadingRoom", Just $ constructor "DidPublish" [edt (ElmList $ edt (ElmType "Article") "article" "") "articles" ""]))
-                ,("EditingRoom", ("EditingRoom", Nothing))] -- if you are not editing, then go back to the same place
+                [("EditingRoom", Just ("ReadingRoom", constructor "DidPublish" [edt (ElmList $ edt (ElmType "Article") "article" "") "articles" ""]))
+                ,("EditingRoom", Nothing)] -- if you are not editing, then go back to the same place
                 Nothing
         saveDraft =
             NetTransition
                 (constructor "SaveDraft" [edt (ElmType "Draft") "draft" "edited draft"])
-                [("EditingRoom", ("EditingRoom", Just $ constructor "DidSaveDraft" [edt (ElmList $ edt ElmString "article" "article title") "articles" "titles of all drafts"]))
+                [("EditingRoom", Just ("EditingRoom", constructor "DidSaveDraft" [edt (ElmList $ edt ElmString "article" "article title") "articles" "titles of all drafts"]))
                 ] -- if you are not editing, then go back to the same place
                 Nothing
         enterTitle =
             NetTransition
                 (constructor "EnterTitle" [edt ElmString "title" "edited title"])
-                [("EditingRoom", ("EditingRoom", Just $ constructor "DidEnterTitle" [edt (ElmList $ edt ElmString "article" "article title") "articles" "titles of all drafts"]))
+                [("EditingRoom", Just ("EditingRoom", constructor "DidEnterTitle" [edt (ElmList $ edt ElmString "article" "article title") "articles" "titles of all drafts"]))
                 ] -- if you are not editing, then go back to the same place
                 Nothing
         enterText =
             NetTransition
                 (constructor "EnterText" [edt ElmString "text" "edited text"])
-                [("EditingRoom", ("EditingRoom", Just $ constructor "DidEnterText" [edt (ElmList $ edt ElmString "article" "article title") "articles" "titles of all drafts"]))
+                [("EditingRoom", Just ("EditingRoom", constructor "DidEnterText" [edt (ElmList $ edt ElmString "article" "article title") "articles" "titles of all drafts"]))
                 ] -- if you are not editing, then go back to the same place
                 Nothing
         enterComment =
             NetTransition
                 (constructor "EnterComment" [edt ElmString "comment" "edited comment"])
-                [("EditingRoom", ("EditingRoom", Just $ constructor "DidEnterComment" [edt ElmString "comment" "edited comment"]))
+                [("EditingRoom", Just ("EditingRoom", constructor "DidEnterComment" [edt ElmString "comment" "edited comment"]))
                 ] -- if you are not editing, then go back to the same place
                 Nothing
         postComment =
             NetTransition
                 (constructor "PostComment" [edt ElmString "comment" "edited comment"])
-                [("EditingRoom", ("EditingRoom", Just $ constructor "DidPostComment" [edt ElmString "comment" "edited comment"]))
+                [("EditingRoom", Just ("EditingRoom", constructor "DidPostComment" [edt ElmString "comment" "edited comment"]))
                 ] -- if you are not editing, then go back to the same place
                 Nothing
     in

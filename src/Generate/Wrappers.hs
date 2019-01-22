@@ -57,17 +57,9 @@ createTransitionUnwrap def l (transType,NetTransition (transName,_) connections 
                 transitionName = T.concat [T.pack transName,"from",from]
                 typE = T.concat [name, (.::.),transitionName," -> (Player, Maybe ClientMessage)"]
                 decl = T.concat [name," trans ="]   
-                genConstructors = map (\(to,mConstr) -> 
-                    case (mConstr, from == to) of 
-                        (Just (msgName,_), True) ->
-                            let 
-                                (n,args) = constructor (T.unpack $ T.concat[transTxt,"_",from,"to",to]) [edt (ElmType "") "player" "", edt (ElmType msgName) "msg" ""]
-                            in
-                                T.concat
-                                    [
-                                        T.concat ["        ",generatePattern (n,args), " -> (unwrap",to,"Player player, fmap unwrap",T.pack msgName," msg)"]
-                                    ]
-                        (Just (msgName,_), False) -> 
+                genConstructors = map (\mTo -> 
+                    case mTo of 
+                        Just (to,(msgName,_)) ->
                             let 
                                 (n,args) = constructor (T.unpack $ T.concat[transTxt,"_",from,"to",to]) [edt (ElmType "") "player" "", edt (ElmType msgName) "msg" ""]
                             in
@@ -75,13 +67,13 @@ createTransitionUnwrap def l (transType,NetTransition (transName,_) connections 
                                     [
                                         T.concat ["        ",generatePattern (n,args), " -> (unwrap",to,"Player player, Just $ unwrap",T.pack msgName," msg)"]
                                     ]
-                        (Nothing, _)          -> 
+                        Nothing -> 
                             let 
-                                (n,args) = constructor (T.unpack $ T.concat[transTxt,"_",from,"to",to]) [edt (ElmType "") "player" ""]
+                                (n,args) = constructor (T.unpack $ T.concat[transTxt,"_",from,"to",from]) [edt (ElmType "") "player" ""]
                             in
                                 T.concat
                                     [
-                                        T.concat ["        ",generatePattern (n,args), " -> (unwrap",to,"Player player, Nothing)"]
+                                        T.concat ["        ",generatePattern (n,args), " -> (unwrap",from,"Player player, Nothing)"]
                                     ]
                             ) toLst     
             in

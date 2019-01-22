@@ -178,7 +178,7 @@ unwrapEnterEditingRoomfromMainStreet trans =
 unwrapStartEditingfromEditingRoom :: StartEditingfromEditingRoom -> (Player, Maybe ClientMessage)
 unwrapStartEditingfromEditingRoom trans =
     case trans of
-        (StartEditing_EditingRoomtoEditingRoom player msg)  -> (unwrapEditingRoomPlayer player, fmap unwrapDidStartEditing msg)
+        (StartEditing_EditingRoomtoEditingRoom player msg)  -> (unwrapEditingRoomPlayer player, Just $ unwrapDidStartEditing msg)
 
 
 
@@ -211,7 +211,7 @@ unwrapPublishArticlefromEditingRoom trans =
 unwrapSaveDraftfromEditingRoom :: SaveDraftfromEditingRoom -> (Player, Maybe ClientMessage)
 unwrapSaveDraftfromEditingRoom trans =
     case trans of
-        (SaveDraft_EditingRoomtoEditingRoom player msg)  -> (unwrapEditingRoomPlayer player, fmap unwrapDidSaveDraft msg)
+        (SaveDraft_EditingRoomtoEditingRoom player msg)  -> (unwrapEditingRoomPlayer player, Just $ unwrapDidSaveDraft msg)
 
 
 
@@ -219,7 +219,7 @@ unwrapSaveDraftfromEditingRoom trans =
 unwrapEnterTitlefromEditingRoom :: EnterTitlefromEditingRoom -> (Player, Maybe ClientMessage)
 unwrapEnterTitlefromEditingRoom trans =
     case trans of
-        (EnterTitle_EditingRoomtoEditingRoom player msg)  -> (unwrapEditingRoomPlayer player, fmap unwrapDidEnterTitle msg)
+        (EnterTitle_EditingRoomtoEditingRoom player msg)  -> (unwrapEditingRoomPlayer player, Just $ unwrapDidEnterTitle msg)
 
 
 
@@ -227,7 +227,7 @@ unwrapEnterTitlefromEditingRoom trans =
 unwrapEnterTextfromEditingRoom :: EnterTextfromEditingRoom -> (Player, Maybe ClientMessage)
 unwrapEnterTextfromEditingRoom trans =
     case trans of
-        (EnterText_EditingRoomtoEditingRoom player msg)  -> (unwrapEditingRoomPlayer player, fmap unwrapDidEnterText msg)
+        (EnterText_EditingRoomtoEditingRoom player msg)  -> (unwrapEditingRoomPlayer player, Just $ unwrapDidEnterText msg)
 
 
 
@@ -235,7 +235,7 @@ unwrapEnterTextfromEditingRoom trans =
 unwrapEnterCommentfromEditingRoom :: EnterCommentfromEditingRoom -> (Player, Maybe ClientMessage)
 unwrapEnterCommentfromEditingRoom trans =
     case trans of
-        (EnterComment_EditingRoomtoEditingRoom player msg)  -> (unwrapEditingRoomPlayer player, fmap unwrapDidEnterComment msg)
+        (EnterComment_EditingRoomtoEditingRoom player msg)  -> (unwrapEditingRoomPlayer player, Just $ unwrapDidEnterComment msg)
 
 
 
@@ -243,7 +243,7 @@ unwrapEnterCommentfromEditingRoom trans =
 unwrapPostCommentfromEditingRoom :: PostCommentfromEditingRoom -> (Player, Maybe ClientMessage)
 unwrapPostCommentfromEditingRoom trans =
     case trans of
-        (PostComment_EditingRoomtoEditingRoom player msg)  -> (unwrapEditingRoomPlayer player, fmap unwrapDidPostComment msg)
+        (PostComment_EditingRoomtoEditingRoom player msg)  -> (unwrapEditingRoomPlayer player, Just $ unwrapDidPostComment msg)
 
 
 

@@ -145,10 +145,10 @@ generate extraTypes fp net =
                     ]
                 incomingMsgs :: [(String,Constructor)]
                 incomingMsgs = concat $ map (\(_,NetTransition (n,_) lstTrans _) -> 
-                                            mapMaybe (\(from,(to,mConstr)) -> case mConstr of 
-                                                                                        Just msg -> Just (n,msg)
-                                                                                        Nothing -> Nothing)
-                                                                                          lstTrans) transitions
+                                            mapMaybe (\(from,mTo) -> case mTo of 
+                                                                        Just (to,msg) -> Just (n,msg)
+                                                                        Nothing -> Nothing)
+                                                                            lstTrans) transitions
                 incomingCM = map (\(_,(msgN,edts)) -> (msgN,edts)) incomingMsgs
                 incomingMsg = ElmCustom "IncomingMessage" $ map (\(n,t) -> ("M"++n,t)) incomingCM
 
@@ -200,9 +200,9 @@ generate extraTypes fp net =
                         trUpFn :: (HybridTransition,NetTransition) -> T.Text
                         trUpFn (_, NetTransition (transName,_) connections _) =
                             let
-                                conUpFn (from,(to,mConstr)) = 
-                                    case mConstr of
-                                        Just (n,et) -> 
+                                conUpFn (from,mTo) = 
+                                    case mTo of
+                                        Just (to,(n,et)) -> 
                                             let
                                                 fnName = T.concat["update",from,T.pack n,to]
                                             in Just $ 
@@ -229,16 +229,16 @@ generate extraTypes fp net =
                     fnub $ map (\(from,(to,_)) -> (from,to)) connections-}
                 fromsTos :: (HybridTransition, NetTransition) -> ([T.Text],[T.Text])
                 fromsTos (_, NetTransition (transName,_) connections mCmd) =
-                    (fnub $ map (\(from,(to,_)) -> from) connections,fnub $ map (\(from,(to,_)) -> to) connections)
+                    (fnub $ map (\(from,_) -> from) connections,fnub $ mapMaybe (\(from,mTo) -> if isJust mTo then fmap fst mTo else Just from) connections)
                 hiddenUpdate :: T.Text
                 hiddenUpdate = 
                     let
                         updateCase :: (HybridTransition, NetTransition) -> T.Text
                         updateCase (_, NetTransition (transName,_) connections _) =
                             let
-                                connectionCase (from,(to,mConstr)) =
-                                    case mConstr of 
-                                        Just (n,t) -> Just $ T.concat ["        ("
+                                connectionCase (from,mTo) =
+                                    case mTo of 
+                                        Just (to,(n,t)) -> Just $ T.concat ["        ("
                                                                       ,generatePattern ("M"++n,map (\_ -> edt ElmBool "_" "") t)
                                                                       ,", S",from," st)"
                                                                       ," -> (S",to
@@ -292,7 +292,11 @@ generate extraTypes fp net =
                 outgoingClientTransitions = mapMaybe (\(tt,NetTransition constr _ _) -> if tt == HybridTransition || tt == ClientOnlyTransition then Just constr else Nothing) transitions
                 wOutgoingClientTransitions = map (\(n,t) -> ("T"++n,t)) outgoingClientTransitions
                 outgoingTransitions = ElmCustom "OutgoingTransition" wOutgoingClientTransitions
-                incomingClientTransitions = concat $ mapMaybe (\(tt,NetTransition (name,ets) clientTransitions _) -> if tt == HybridTransition || tt == ClientOnlyTransition then Just $ mapMaybe (\(from,(to,indivC)) -> if isJust indivC then indivC else Nothing) clientTransitions else Nothing) transitions
+                incomingClientTransitions = 
+                    concat $ mapMaybe (\(tt,NetTransition (name,ets) clientTransitions _) -> 
+                        if tt == HybridTransition || tt == ClientOnlyTransition then 
+                            Just $ mapMaybe (\(from,mTo) -> fmap snd mTo) clientTransitions 
+                        else Nothing) transitions
                 incomingTransitions = ElmCustom "IncomingMessage" $ map (\(n,et) -> ("M"++n,et)) incomingClientTransitions
                 decoder = T.unlines 
                     [
