@@ -6,20 +6,22 @@ import Types
 import Data.Map as M
 import TypeHelpers
 
-outputDirectory = "NewspaperExample"
+outputDirectory = "NewYouthHack"
+
+timestampET doc = edt (ElmIntRange 1548438211 9999999999) "timestamp" doc
 
 articleType :: ElmCustom
 articleType = ec -- helper to make custom types
                 "Article" -- name of type (Elm syntax rules)
                 [("Article",[edt ElmString "title"{-valid function name, used in helper functions-} "title of the article"
                             ,edt ElmString "author" "author"
-                            ,edt (ElmIntRange 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
+                            ,timestampET "publication time"
                             ,edt ElmString "body" "article body"
                             ]
                  )
                 ,("Letter",[edt ElmString "title" "title of the article being referred to"
                             ,edt ElmString "author" "author"
-                            ,edt (ElmIntRange 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
+                            ,timestampET "publication time"
                             ,edt ElmString "body" "article body"
                             ]
                  )
@@ -29,7 +31,7 @@ draftType = ec -- helper to make custom types
                 "Draft" -- name of type (Elm syntax rules)
                 [("DraftArticle",  [edt ElmString "title"{-valid function name, used in helper functions-} "title of the article"
                             ,edt ElmString "author" "author"
-                            ,edt (ElmIntRange 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
+                            ,timestampET "time of last edit"
                             ,edt ElmString "body" "article body"
                             ,edt (ElmList $ edt (ElmPair (edt (ElmIntRange 0 99999) "uid" "userid")
                                                          (edt ElmString "comment" "comment")
@@ -40,7 +42,7 @@ draftType = ec -- helper to make custom types
                  )
                 ,("DraftLetter",  [edt ElmString "title"{-valid function name, used in helper functions-} "title of the article"
                             ,edt ElmString "author" "author"
-                            ,edt (ElmIntRange 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
+                            ,timestampET "time of last edit"
                             ,edt ElmString "body" "article body"
                             ,edt (ElmList $ edt (ElmPair (edt (ElmIntRange 0 99999) "uid" "userid")
                                                          (edt ElmString "comment" "comment")
@@ -50,113 +52,158 @@ draftType = ec -- helper to make custom types
                             ]
                  )
                 ]
-newspaperNet :: Net
-newspaperNet =
+noticeType :: ElmCustom
+noticeType = ec -- helper to make custom types
+                "Notice" -- name of type (Elm syntax rules)
+                [("Notice",  [edt ElmString "title"{-valid function name, used in helper functions-} "short description of the notice"
+                            ,edt ElmString "contact" "person to contact for more information"
+                            ,edt ElmString "location" "preferably an address which will be searchable in maps"
+                            ,timestampET "time the notice was posted (no expiry date)"
+                            ,edt ElmString "body" "article body"
+                            ,edt (ElmList $ edt (ElmPair (edt (ElmIntRange 0 99999) "uid" "userid")
+                                                            (edt ElmString "comment" "comment")
+                                                )
+                                                "uidComment" "(uid,comment)"
+                                    ) "comments" "public "
+                            ]
+                    )
+                ]
+
+clientID = edt (ElmIntRange 0 999999) "clientID" "id assigned when logging in"-- almost a type alias
+
+newYouthNet :: Net
+newYouthNet =
     let
-        mainStreet = 
-            HybridPlace "MainStreet" 
-                [] --server state
+        squareOne = 
+            HybridPlace "SquareOne" 
+                [edt (ElmList $ edt (ElmType "Notice") "notice" "") "notices" ""] --server state
                 [] --player state
                 [] --client state
                 Nothing
                 (Nothing, Nothing)
                 Nothing
 
-        readingRoom = 
-            HybridPlace "ReadingRoom" 
-                [edt (ElmList $ edt (ElmType "Article") "article" "") "articles" ""] --server state
-                [edt ElmString "nowReading" "title of current article being read"] --player state
-                [edt (ElmList $ edt (ElmType "Article") "article" "") "articles" "" -- partial list of articles
-                ,edt (ElmList $ edt ElmString "title" "") "titles" "" -- all article titles
-                ,edt (ElmMaybe (edt ElmString "viewing" "title of article begin viewed")) "maybeViewing" "article being viewed or Nothing for index"] --client state
+        universities = 
+            HybridPlace "UniversitiesAndColleges" 
+                [edt (ElmList $ edt (ElmType "Notice") "notice" "") "notices" ""] --server state
+                [clientID] --player state
+                [] --client state
                 Nothing
                 (Nothing, Nothing)
                 Nothing
 
-        editingRoom = 
-            HybridPlace "EditingRoom" 
-                [edt (ElmList $ edt (ElmType "Draft") "drafts" "") "articles" ""] --server state
-                [edt (ElmMaybe (edt ElmString "nowEditing" "title of current article being read")) "maybeEditing" "article being edited or Nothing for index"] --player state
-                [edt (ElmMaybe (edt (ElmType "Draft") "article" "article currently being edited")) "maybeEditing" "article being edited or Nothing for index"
-                ,edt (ElmList $ edt ElmString "title" "") "titles" "" -- all article titles
-                ] --client state
+        mcmaster = 
+            HybridPlace "McMasterUniversity" 
+                [edt (ElmList $ edt (ElmType "Notice") "notice" "") "notices" ""
+                ,edt (ElmList $ edt (ElmTriple (edt (ElmIntRange 0 99999) "uid" "userid") 
+                                                (timestampET "time posted")
+                                                (edt ElmString "body" "public statement")) "statement" "") "statements" ""
+                ] --server state
+                [clientID] --player state
+                [edt (ElmList $ edt (ElmType "Notice") "notice" "") "notices" ""
+                ,edt (ElmList $ edt (ElmTriple (edt (ElmIntRange 0 99999) "uid" "userid") 
+                                                (timestampET "time posted")
+                                                (edt ElmString "body" "public statement")) "statement" "") "statements" ""] --client state
                 Nothing
                 (Nothing, Nothing)
                 Nothing
-        enterRR =
-            NetTransition
-                (constructor "EnterReadingRoom" [])
-                [("MainStreet", Just ("ReadingRoom", constructor "DidEnterReadingRoom" [edt (ElmList $ edt (ElmType "Article") "article" "") "articles" ""]))]
+
+        mcmasterNoticeRoom = 
+            HybridPlace "McMasterCreateNotice" 
+                [] --server state
+                [clientID] --player state
+                [edt (ElmType "Notice") "notice" ""] --client state
                 Nothing
-        enterER =
-            NetTransition
-                (constructor "EnterEditingRoom" [])
-                [("MainStreet", Just ("ReadingRoom", constructor "DidEnterEditingRoom" [edt (ElmList $ edt ElmString "title" "") "articles" ""]))]
+                (Nothing, Nothing)
                 Nothing
-        startEditing =
-            NetTransition
-                (constructor "StartEditing" [edt ElmString "title" "article to start editing"])
-                [("EditingRoom", Just ("EditingRoom", constructor "DidStartEditing" [edt (ElmType "Draft") "draft" "article to edit"]))]
+{-}
+        mcmasterStudenCentre = 
+            HybridPlace "McMasterStudentCentre" 
+                [edt (ElmList $ edt (ElmType "Notice") "notice" "") "notices" ""] --server state
+                [clientID] --player state
+                [] --client state
                 Nothing
-        leaveRR =
-            NetTransition
-                (constructor "LeaveReadingRoom" [])
-                [("ReadingRoom", Just ("MainStreet", constructor "DidLeaveReadingRoom" []))]
+                (Nothing, Nothing)
                 Nothing
-        leaveER =
+  -}      
+                        
+        mcmasterCreateNotice =
             NetTransition
-                (constructor "LeaveEditingRoom" [])
-                [("EditingRoom", Just ("MainStreet", constructor "DidLeaveEditingRoom" []))]
+                (constructor "EnterMcMasterCreateNotice" [])
+                [("McMasterUniversity", Just ("McMasterCreateNotice", constructor "DidEnterMcMasterCreateNotice" [])) -- the user's client gets this
+                ,("McMasterUniversity", Nothing)] -- everyone else gets this
                 Nothing
-        publishArticle =
+        editMcMasterNotice =
             NetTransition
-                (constructor "PublishArticle" [])
-                [("EditingRoom", Just ("ReadingRoom", constructor "DidPublish" [edt (ElmList $ edt (ElmType "Article") "article" "") "articles" ""]))
-                ,("EditingRoom", Nothing)] -- if you are not editing, then go back to the same place
+                (constructor "EditMcMasterNotice" [edt ElmString "partialNotice" "notice after every keystroke"])
+                [("McMasterCreateNotice", Just ("McMasterCreateNotice", constructor "DidEditMcMasterNotice" []))
+                ,("McMasterCreateNotice", Nothing)]
                 Nothing
-        saveDraft =
+        publishMcMasterNotice =                 
             NetTransition
-                (constructor "SaveDraft" [edt (ElmType "Draft") "draft" "edited draft"])
-                [("EditingRoom", Just ("EditingRoom", constructor "DidSaveDraft" [edt (ElmList $ edt ElmString "article" "article title") "articles" "titles of all drafts"]))
-                ] -- if you are not editing, then go back to the same place
+                (constructor "PublishMcMasterNotice" [edt (ElmType "Notice") "notice" "new notice"])
+                [("PublishMcMasterNotice", Just ("McMasterUniversity", constructor "DidPublishMcMasterNotice" [edt (ElmType "Notice") "notice" "new notice"]))
+                ,("PublishMcMasterNotice", Nothing)
+                ,("McMasterUniversity", Just ("McMasterUniversity", constructor "NewMcMasterNotice" [edt (ElmType "Notice") "notice" "new notice"]))]
                 Nothing
-        enterTitle =
+        mcmasterCancelNotice =
             NetTransition
-                (constructor "EnterTitle" [edt ElmString "title" "edited title"])
-                [("EditingRoom", Just ("EditingRoom", constructor "DidEnterTitle" [edt (ElmList $ edt ElmString "article" "article title") "articles" "titles of all drafts"]))
-                ] -- if you are not editing, then go back to the same place
+                (constructor "CancelNotice" [])
+                [("McMasterCreateNotice", Just ("McMasterUniversity", constructor "DidCancelNotice" []))
+                ,("McMasterCreateNotice", Nothing)] -- if you are not editing, then go back to the same place
                 Nothing
-        enterText =
+
+        enterUniversities =
             NetTransition
-                (constructor "EnterText" [edt ElmString "text" "edited text"])
-                [("EditingRoom", Just ("EditingRoom", constructor "DidEnterText" [edt (ElmList $ edt ElmString "article" "article title") "articles" "titles of all drafts"]))
-                ] -- if you are not editing, then go back to the same place
+                (constructor "EnterUniversities" [])
+                [("SquareOne", Just ("UniversitiesAndColleges", constructor "DidEnterUniversitiesAndColleges" []))
+                ,("SquareOne", Nothing)]
                 Nothing
-        enterComment =
+        universitiesToSquareOne =
             NetTransition
-                (constructor "EnterComment" [edt ElmString "comment" "edited comment"])
-                [("EditingRoom", Just ("EditingRoom", constructor "DidEnterComment" [edt ElmString "comment" "edited comment"]))
-                ] -- if you are not editing, then go back to the same place
+                (constructor "ExitUniversities" [])
+                [("UniversitiesAndColleges", Just ("SquareOne", constructor "DidLeaveUniversities" []))
+                ,("UniversitiesAndColleges", Nothing)]
                 Nothing
-        postComment =
+        enterMcMaster =
             NetTransition
-                (constructor "PostComment" [edt ElmString "comment" "edited comment"])
-                [("EditingRoom", Just ("EditingRoom", constructor "DidPostComment" [edt ElmString "comment" "edited comment"]))
-                ] -- if you are not editing, then go back to the same place
+                (constructor "EnterMcMasterUniversity" [])
+                [("UniversitiesAndColleges", Just ("McMasterUniversity", constructor "DidEnterMcMasterUniversity" []))
+                ,("UniversitiesAndColleges", Nothing)]
+                Nothing
+        exitMcMaster =
+            NetTransition
+                (constructor "ExitMcMasterUniversity" [])
+                [("McMasterUniversity", Just ("UniversitiesAndColleges", constructor "DidLeaveMcMasterUniversity" []))
+                ,("McMasterUniversity", Nothing)]
+                Nothing
+        editMcMasterComment =
+            NetTransition
+                (constructor "EditMcMasterComment" [edt ElmString "partialComment" "comment after every keystroke"])
+                [("McMasterUniversity", Just ("McMasterUniversity", constructor "DidEditMcMasterComment" []))
+                ,("McMasterUniversity", Nothing)]
+                Nothing
+        sendMcMasterComment =                 
+            NetTransition
+                (constructor "SendMcMasterComment" [edt ElmString "comment" "comment as it will be sent"])
+                [("McMasterUniversity", Just ("McMasterUniversity", constructor "DidSendMcMasterComment" [edt ElmString "comment" "comment as it will be sent"]))]
                 Nothing
     in
         HybridNet
-            "NewspaperExample"
-            "MainStreet"
-            [mainStreet,readingRoom,editingRoom]
-            [(HybridTransition,enterRR),(HybridTransition,enterER),(HybridTransition,startEditing),(HybridTransition,leaveRR),(HybridTransition,leaveER),(HybridTransition,publishArticle),(HybridTransition,saveDraft),(HybridTransition,enterTitle),(HybridTransition,enterText),(HybridTransition,enterComment),(HybridTransition,postComment)]
+            "NewYouthHack"
+            "SquareOne"
+            [squareOne, universities, mcmaster, mcmasterNoticeRoom]
+            [(ClientOnlyTransition,mcmasterCreateNotice),(ClientOnlyTransition,mcmasterCancelNotice)
+            ,(ClientOnlyTransition,enterUniversities),(ClientOnlyTransition,universitiesToSquareOne),(ClientOnlyTransition,enterMcMaster)
+            ,(ClientOnlyTransition,exitMcMaster),(ClientOnlyTransition,editMcMasterComment),(ClientOnlyTransition,sendMcMasterComment)
+            ,(ClientOnlyTransition,editMcMasterNotice),(ClientOnlyTransition,publishMcMasterNotice)]
             []
 
 
 clientServerApp :: ClientServerApp
 clientServerApp =
-    ( "NewspaperExample"           --starting net for a client
-    , [newspaperNet]           --all the nets in this client/server app
-    , [articleType,draftType]                  --extra client types used in states or messages
-    , [articleType,draftType]                  --extra server types used in states or messages
+    ( "NewYouthHack"           --starting net for a client
+    , [newYouthNet]           --all the nets in this client/server app
+    , [noticeType]                  --extra client types used in states or messages
+    , [noticeType]                  --extra server types used in states or messages
     )
