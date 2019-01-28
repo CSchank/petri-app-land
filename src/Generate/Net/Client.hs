@@ -190,8 +190,8 @@ generate extraTypes fp net =
                             ,   T.unlines $ map (\(pl,etd) -> generateType Elm False [] $ ec pl [(pl,etd)]) outgoingClientTransitions
                             ,   "-- outgoing server message types"
                             ,   clientMsgType
-                            ,   "-- extra server types"
-                            ,   T.unlines $ map (generateType Elm False [DOrd,DEq,DShow] . snd) $ M.toList extraTypes
+                            ,   "-- extra client types"
+                            ,   T.unlines $ map (generateType Elm True [DOrd,DEq,DShow] . snd) $ M.toList extraTypes
                             ]
 
                 update :: T.Text

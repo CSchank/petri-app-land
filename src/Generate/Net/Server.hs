@@ -158,7 +158,7 @@ generate extraTypes fp net =
                             ,   "-- player state union type"
                             ,   generateType Haskell False [DOrd,DEq,DShow] playerUnionType
                             ,   "-- extra server types"
-                            ,   T.unlines $ map (generateType Haskell False [DOrd,DEq,DShow] . snd) $ M.toList extraTypes
+                            ,   T.unlines $ map (generateType Haskell True [DOrd,DEq,DShow] . snd) $ M.toList extraTypes
                             ]
 
                 --singularTransFns :: [T.Text]
