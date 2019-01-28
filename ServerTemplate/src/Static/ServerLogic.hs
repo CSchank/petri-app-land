@@ -103,8 +103,6 @@ processCentralMessage centralMessageChan state (ReceivedMessage mClientID incomi
     let
         connectedClients = clients state
 
-        --ps = pluginState state
-
         sendMessages :: [(ClientID, NetOutgoingMessage)] -> IO ()
         sendMessages msgs =
             mapM_ sendToID msgs
@@ -120,12 +118,11 @@ processCentralMessage centralMessageChan state (ReceivedMessage mClientID incomi
     in do
     t <- Time.getPOSIXTime
 
-    let (nextState, outgoingMsgs, cmd) = update (round $ t * 1000,startTime state) mClientID incomingMsg state
-
+    let (nextState, outgoingMsgs, mCmd) = update (round $ t * 1000,startTime state) mClientID incomingMsg state
 
     sendMessages outgoingMsgs
 
-    --FIXME: do something with the commands
+    processCmd centralMessageChan mCmd nextState
 
     return nextState
 

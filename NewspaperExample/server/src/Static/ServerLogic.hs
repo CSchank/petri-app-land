@@ -103,8 +103,6 @@ processCentralMessage centralMessageChan state (ReceivedMessage mClientID incomi
     let
         connectedClients = clients state
 
-        --ps = pluginState state
-
         sendMessages :: [(ClientID, NetOutgoingMessage)] -> IO ()
         sendMessages msgs =
             mapM_ sendToID msgs
@@ -114,18 +112,14 @@ processCentralMessage centralMessageChan state (ReceivedMessage mClientID incomi
             case IM'.lookup clientID connectedClients of
                 Just (Client decodeChannel chan netID) -> atomically $ writeTQueue chan $ SendMessage (encodeOutgoingMessage cm)
                 Nothing -> Prelude.putStrLn $ "Unable to send message to client " ++ show mClientID ++ " because that client doesn't exist or is logged out."    
-        
-
-
     in do
     t <- Time.getPOSIXTime
 
-    let (nextState, outgoingMsgs, cmd) = update (round $ t * 1000,startTime state) mClientID incomingMsg state
-
+    let (nextState, outgoingMsgs, mCmd) = update (round $ t * 1000,startTime state) mClientID incomingMsg state
 
     sendMessages outgoingMsgs
 
-    --FIXME: do something with the commands
+    processCmd centralMessageChan mCmd incomingMsg nextState
 
     return nextState
 

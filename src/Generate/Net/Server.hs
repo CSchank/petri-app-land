@@ -432,17 +432,20 @@ generate extraTypes fp net =
                     ,   T.concat ["import ",name,".Init as Init"]
                     ,   T.concat ["import ",name,".Update as Update"]
                     ,   T.concat ["import ",name,".Static.Wrappers"]
+                    ,   T.concat ["import ",name,".Static.Plugins (initPlugins)"]
                     ,   "import Static.ServerTypes"
                     ,   "import qualified Data.IntMap as IM'"
                     ,   "import Data.Maybe (fromJust)"
                     ,   "import qualified Data.TMap as TM\n"
-                    ,   "init :: NetState Player"
-                    ,   "init = NetState"
-                    ,   "    {"
-                    ,   "      playerStates = IM'.empty"
-                    ,   T.concat["    , placeStates = ",T.concat $ map (\(HybridPlace name _ _ _ _ (mCmd,_) _) -> T.concat["TM.insert",if isJust mCmd then T.concat[" (fst init",name] else T.concat[" init",name]," $ "]) places,"TM.empty"]
-                    ,   T.concat["    , pluginStates = TM.empty"]
-                    ,   "    }"
+                    ,   "init :: IO (NetState Player)"
+                    ,   "init = do"
+                    ,   "    ip <- initPlugins"
+                    ,   "    return $ NetState"
+                    ,   "        {"
+                    ,   "          playerStates = IM'.empty"
+                    ,   T.concat["        , placeStates = ",T.concat $ map (\(HybridPlace name _ _ _ _ (mCmd,_) _) -> T.concat["TM.insert",if isJust mCmd then T.concat[" (fst init",name] else T.concat[" init",name]," $ "]) places,"TM.empty"]
+                    ,   T.concat["        , pluginStates = ip"]
+                    ,   "        }"
                     ]
                 encoder = T.unlines 
                     [
@@ -497,3 +500,4 @@ generate extraTypes fp net =
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Wrappers" <.> "hs") wrappers
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Update" <.> "hs") hiddenUpdate
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "FromSuperPlace" <.> "hs") fromSuperPlace
+                generatePlugins (fp </> "server" </> "src" </> T.unpack name) name plugins

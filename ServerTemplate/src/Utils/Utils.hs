@@ -10,6 +10,8 @@ import           Control.Concurrent.STM         (TQueue, atomically, readTQueue,
                                                  writeTQueue, STM, newTQueue)
 import qualified Data.Map.Strict as Dict
 import Static.Dict
+import Data.TMap as TM
+import Data.Maybe (fromJust)
 
 
 (|>) :: a -> (a -> b) -> b
@@ -382,6 +384,17 @@ cmdMap f ca =
     case ca of 
         Cmd msg -> Cmd (fmap f msg)
         StateCmd msg -> StateCmd (fmap f . msg)
+
+processCmd :: Cmd NetTransition -> TQueue CentralMessage -> NetState player -> IO ()
+processCmd cmd centralMsgQ ns = do
+    case cmd of
+        Cmd msg -> do
+            result <- msg
+            atomically $ writeTQueue centralMsgQ $ ReceivedMessage Nothing result
+        StateCmd toMsg -> do
+            result <- toMsg (fromJust $ TM.lookup $ pluginStates ns)
+            atomically $ writeTQueue centralMsgQ $ ReceivedMessage Nothing result
+
 
 {-
 processCmd :: Cmd a -> IO ()

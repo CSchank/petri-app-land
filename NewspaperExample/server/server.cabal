@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 79eea85b56af7806fb6702427dc85502ace421d1e02a75be49743f255d81de85
+-- hash: 68d16ce226bdff801784dc24ddb90ed32407cfef9b79858e40d0c5540e959e7f
 
 name:           server
 version:        0.1.0.0
@@ -38,6 +38,7 @@ library
       NewspaperExample.Static.Helpers.ReadingRoom
       NewspaperExample.Static.Helpers.ReadingRoomPlayer
       NewspaperExample.Static.Init
+      NewspaperExample.Static.Plugins
       NewspaperExample.Static.Types
       NewspaperExample.Static.Update
       NewspaperExample.Static.Wrappers

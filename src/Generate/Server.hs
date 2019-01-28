@@ -161,6 +161,35 @@ generateServer gsvg onlyStatic fp
             ,   "    case netTrans of"
             ,   T.unlines $ map encodeCase netNames
             ]
+        plugins :: T.Text
+        plugins =
+            let
+                cmdCase netName = 
+                    T.unlines
+                    [
+                        T.concat ["                ",netName,"Trans {} ->"]
+                    ,   T.concat ["                      Utils.processCmd cmd centralMessageQueue (fromJust $ TM.lookup $ serverState state :: NetState ",netName,".Player)"]
+                    ] 
+            in
+            T.unlines
+            [
+                "module Static.Plugins where"
+            ,   T.unlines $ map (\netName -> T.concat["import ",netName,".Static.Types as ",netName]) netNames
+            ,   "import Static.ServerTypes"
+            ,   "import Static.Types"
+            ,   "import Data.Maybe (fromJust)"
+            ,   "import Control.Concurrent.STM (TQueue, atomically, writeTQueue)"
+            ,   "import Data.TMap as TM (TMap,lookup)"
+            ,   "import Utils.Utils as Utils"
+            ,   ""
+            ,   "processCmd :: TQueue CentralMessage -> Maybe (Cmd NetTransition) -> NetTransition -> ServerState -> IO ()"
+            ,   "processCmd centralMessageQueue mCmd nTrans state ="
+            ,   "    case mCmd of"
+            ,   "        Just cmd ->"
+            ,   "            case nTrans of"
+            ,   T.unlines $ map cmdCase netNames
+            ,   "        Nothing -> return ()"
+            ]
 
     in do
         createDirectoryIfMissing True (fp </> "server" </> "src" </> "Static")
@@ -169,6 +198,6 @@ generateServer gsvg onlyStatic fp
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Types" <.> "hs") types 
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Decode" <.> "hs") decode 
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Encode" <.> "hs") encode 
-        writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Update" <.> "hs") update 
+        writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Update" <.> "hs") update
+        writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Plugins" <.> "hs") plugins
         mapM_ (Generate.Net.Server.generate sExtraT fp) netLst
-        generatePlugins (fp </> "server" </> "src") []--plugins

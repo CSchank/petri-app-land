@@ -8,8 +8,8 @@ import                  System.FilePath.Posix   ((</>),(<.>))
 import Utils
 
 
-generatePlugins :: FilePath -> [Plugin] -> IO ()
-generatePlugins fp ps = 
+generatePlugins :: FilePath -> T.Text -> [Plugin] -> IO ()
+generatePlugins fp netName ps = 
     let
         onePlugin n (Plugin name) = T.concat["    (_,rp",T.pack $ show n,") <- forkIO $ (initPlugin :: IO Plugins.",T.pack name,".",T.pack name,")"]
         onePlugin n (PluginGen name _) = T.concat["    (_,rp",T.pack $ show n,") <- forkIO $ (initPlugin :: IO Plugins.",T.pack name,".",T.pack name,")"]
@@ -18,16 +18,21 @@ generatePlugins fp ps =
     in do
         writeIfNew 0 (fp </> "Static" </> "Plugins" <.> "hs") $ T.unlines
             ([
-                "module Static.Plugins where"
+                T.concat["module ",netName,".Static.Plugins where"]
+            ,   T.concat["import ",netName,".Static.Types"]
             ,   "import Static.ServerTypes"
             ,   "import qualified Data.TMap as TM"
+            ,   "import Control.Concurrent.STM (TQueue, atomically, writeTQueue)"
+            ,   "import           Control.Monad          (void)"
+            ,   "import Data.Maybe (fromJust)"
             ,   "import Control.Concurrent.Thread (forkIO, result)\n"
             ,   T.concat $ map (\p -> case p of 
                                     Plugin n -> T.concat["import qualified Plugins.",T.pack n,"\n"]
                                     PluginGen n _ -> T.concat["import qualified Plugins.",T.pack n,"\n"]
                                 ) ps,""
-            ,   "initStateCmds :: IO PluginState"
-            ,   "initStateCmds = do"
+            ,   ""
+            ,   "initPlugins :: IO PluginState"
+            ,   "initPlugins = do"
             ] 
             ++
             (map (uncurry onePlugin) $ zip [0..] ps)
