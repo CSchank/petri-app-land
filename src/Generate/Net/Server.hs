@@ -106,7 +106,7 @@ generate extraTypes fp net =
                             map (\mTo -> 
                                 case mTo of 
                                     Just (to,(msgName,_))   -> constructor (T.unpack $ T.concat[T.pack msgN,"_",from,"to",to]) [edt (ElmType $ T.unpack $ T.concat [to,"Player"]) "" "", edt (ElmType msgName) "" ""]
-                                    _                       -> constructor (T.unpack $ T.concat[T.pack msgN,"_",from,"to",from]) [edt (ElmType $ T.unpack $ T.concat [from,"Player"]) "" ""]
+                                    _                       -> constructor (T.unpack $ T.concat[T.pack msgN,"_Stay_",from]) [edt (ElmType $ T.unpack $ T.concat [from,"Player"]) "" ""]
                                         ) toLst
                     in
                         map (\(from,toLst) -> ElmCustom (T.unpack $ transName from msgN) $ constructors (from,toLst)) (grouped connections)

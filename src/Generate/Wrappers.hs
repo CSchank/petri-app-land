@@ -69,7 +69,7 @@ createTransitionUnwrap def l (transType,NetTransition (transName,_) connections 
                                     ]
                         Nothing -> 
                             let 
-                                (n,args) = constructor (T.unpack $ T.concat[transTxt,"_",from,"to",from]) [edt (ElmType "") "player" ""]
+                                (n,args) = constructor (T.unpack $ T.concat[transTxt,"_Stay_",from]) [edt (ElmType "") "player" ""]
                             in
                                 T.concat
                                     [
