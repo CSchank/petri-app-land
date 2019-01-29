@@ -27,6 +27,7 @@ dependencies:
 - filepath
 - directory
 - process
+- ansi-terminal
 
 
 library:

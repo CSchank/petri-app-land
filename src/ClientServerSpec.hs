@@ -142,8 +142,8 @@ newYouthNet =
         publishMcMasterNotice =                 
             NetTransition
                 (constructor "PublishMcMasterNotice" [edt (ElmType "Notice") "notice" "new notice"])
-                [("PublishMcMasterNotice", Just ("McMasterUniversity", constructor "DidPublishMcMasterNotice" [edt (ElmType "Notice") "notice" "new notice"]))
-                ,("PublishMcMasterNotice", Nothing)
+                [("McMasterCreateNotice", Just ("McMasterUniversity", constructor "DidPublishMcMasterNotice" [edt (ElmType "Notice") "notice" "new notice"]))
+                ,("McMasterCreateNotice", Nothing)
                 ,("McMasterUniversity", Just ("McMasterUniversity", constructor "NewMcMasterNotice" [edt (ElmType "Notice") "notice" "new notice"]))]
                 Nothing
         mcmasterCancelNotice =
@@ -205,5 +205,4 @@ clientServerApp =
     ( "NewYouthHack"           --starting net for a client
     , [newYouthNet]           --all the nets in this client/server app
     , [noticeType]                  --extra client types used in states or messages
-    , [noticeType]                  --extra server types used in states or messages
     )

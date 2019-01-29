@@ -10,12 +10,12 @@ import qualified Data.Maybe as MA
 import Types
 import Generate.Types
 
-generateDot :: ClientServerApp -> IO ()
+{-generateDot :: ClientServerApp -> IO ()
 generateDot (startCp
             ,netLst
             ,cExtraTlst
             ,sExtraTlst
-            )= error ""
+            )= error ""-}
     {-let
         replace :: [T.Text] -> [T.Text]
         replace (l1:ls) = ( case lookup l1 swaps of

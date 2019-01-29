@@ -11,7 +11,7 @@ import qualified Data.Map as M
 import                  System.FilePath.Posix   ((</>),(<.>))
 import Generate.Types
 
-generateStandalones :: ExtraClientTypes -> FilePath -> [ClientState] -> IO ()
+generateStandalones :: ExtraTypes -> FilePath -> [ClientState] -> IO ()
 generateStandalones ects fp cStates =
     let
         cState2ConstrMap (ClientState (n,edt)) = (n,edt)

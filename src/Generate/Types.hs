@@ -2,7 +2,7 @@
 
 module Generate.Types where
 
-import Types                 (Language(..),ElmDocType, ElmType(..), ElmCustom(..), ClientStateDiagram, ServerStateDiagram, ClientServerApp, Constructor, OutgoingClientMessage(..))
+import Types                 (Language(..),ElmDocType, ElmType(..), ElmCustom(..), Constructor)
 import qualified Data.Map       as M
 import qualified Data.Text      as T
 import qualified Data.Set       as S
@@ -120,18 +120,6 @@ et2Def (ElmWildcardType s)              = T.concat["default", T.pack s]
 et2Def (ElmMaybe _)                     = "Nothing"
 et2Def ElmBool                          = "False"
 et2Def (ElmResult _ (et,_,_))           = T.concat["Err ",et2Def et]
-{-
-et2Def :: ElmType -> T.Text
-et2Def (ElmIntRange _ _)            = "Int"
-et2Def  (ElmFloatRange _ _ _)        = if l then "Double" else "Float"
-et2Def l c ElmString                    = "String"
-et2Def l c (ElmSizedString _)           = "String"
-et2Def l c (ElmPair edt0 edt1)          = T.concat ["(",edt2Txt l c edt0,", ",edt2Txt l c edt1,")"]
-et2Def l c (ElmTriple edt0 edt1 edt2)   = T.concat ["(",edt2Txt l c edt0,", ",edt2Txt l c edt1,", ",edt2Txt l c edt2,")"]
-et2Def l c (ElmList edt)                = T.concat ["(List ",edt2Txt l c edt,")"]
-et2Def l c (ElmDict edt0 edt1)          = T.concat ["(Dict ",edt2Txt l c edt0," ",edt2Txt l c edt1,")"]
-et2Def l c (ElmType name)               = T.pack name
--}
 
 generatePattern :: Constructor -> T.Text
 generatePattern (constrName, args) =
@@ -139,26 +127,3 @@ generatePattern (constrName, args) =
         patternTxt = T.intercalate " " $ map edt2Pat args
     in
         T.concat [if length args > 0 then "(" else "",T.pack constrName, " ", patternTxt, if length args > 0 then ") " else ""]
-
-{-
-generatePattern :: Bool -> Bool -> ElmCustom -> T.Text
-generatePattern haskell commentsEnabled (ElmCustom typeName constrs) =
-    let
-        float = if haskell then "Double" else "Float"
-        typ   = if haskell then "data" else "type"
-
-        constrs2Txt = map (\(constrName, elmDocTypes) -> T.intercalate " " $ T.pack constrName : map (edt2Txt haskell commentsEnabled) elmDocTypes) constrs
-
-        edt2Txt (et, n, d) = T.pack n
-    in
-        T.concat [ typ, " ", T.pack typeName, " =\n    "
-                 , T.intercalate "\n    | " constrs2Txt
-                 ]-}
-
-ocm2Txt (ToSender (ctn,_))          = T.concat["ToSender ",T.pack ctn]
-ocm2Txt (ToAllExceptSender (ctn,_)) = T.concat["ToAllExceptSender ",T.pack ctn]
-ocm2Txt (ToSenderAnd (ctn,_))       = T.concat["ToSenderAnd ",T.pack ctn]
-ocm2Txt (ToSet (ctn,_))             = T.concat["ToSet ",T.pack ctn]
-ocm2Txt (ToAll (ctn,_))             = T.concat["ToAll ",T.pack ctn]
-ocm2Txt (OneOf ocms)                = T.concat["OneOf",T.pack $ show $ length ocms," (",T.intercalate ") (" $ map ocm2Txt ocms,")"]
-ocm2Txt (AllOf ocms)                = T.concat["AllOf",T.pack $ show $ length ocms," (",T.intercalate ") (" $ map ocm2Txt ocms,")"]

@@ -54,9 +54,9 @@ processEditMcMasterNoticePlayer fromMcMasterCreateNotice (cId,player) = case pla
     (PMcMasterCreateNoticePlayer clientID)  -> let (np, mCm) = (unwrapEditMcMasterNoticefromMcMasterCreateNotice $ fromMcMasterCreateNotice $ wrapMcMasterCreateNoticePlayer player) in ((cId, np), (cId, mCm))
 
 
-processPublishMcMasterNoticePlayer :: (McMasterUniversityPlayer -> PublishMcMasterNoticefromMcMasterUniversity) -> (PublishMcMasterNoticePlayer -> PublishMcMasterNoticefromPublishMcMasterNotice) -> (ClientID, Player) -> ((ClientID, Player), (ClientID, Maybe ClientMessage))
-processPublishMcMasterNoticePlayer fromPublishMcMasterNotice fromMcMasterUniversity (cId,player) = case player of
-    PPlayer  -> let (np, mCm) = (unwrapPublishMcMasterNoticefromPublishMcMasterNotice $ fromPublishMcMasterNotice $ wrapPublishMcMasterNoticePlayer player) in ((cId, np), (cId, mCm))
+processPublishMcMasterNoticePlayer :: (McMasterCreateNoticePlayer -> PublishMcMasterNoticefromMcMasterCreateNotice) -> (McMasterUniversityPlayer -> PublishMcMasterNoticefromMcMasterUniversity) -> (ClientID, Player) -> ((ClientID, Player), (ClientID, Maybe ClientMessage))
+processPublishMcMasterNoticePlayer fromMcMasterCreateNotice fromMcMasterUniversity (cId,player) = case player of
+    (PMcMasterCreateNoticePlayer clientID)  -> let (np, mCm) = (unwrapPublishMcMasterNoticefromMcMasterCreateNotice $ fromMcMasterCreateNotice $ wrapMcMasterCreateNoticePlayer player) in ((cId, np), (cId, mCm))
     (PMcMasterUniversityPlayer clientID)  -> let (np, mCm) = (unwrapPublishMcMasterNoticefromMcMasterUniversity $ fromMcMasterUniversity $ wrapMcMasterUniversityPlayer player) in ((cId, np), (cId, mCm))
 
 
@@ -116,10 +116,10 @@ splitEditMcMasterNoticePlayers players = foldl (\t@(fromMcMasterCreateNoticelst)
 
     _ -> t) ([]) players
 
-splitPublishMcMasterNoticePlayers :: [(ClientID,Player)] -> ([(ClientID,PublishMcMasterNoticePlayer)],[(ClientID,McMasterUniversityPlayer)])
-splitPublishMcMasterNoticePlayers players = foldl (\t@(fromPublishMcMasterNoticelst,fromMcMasterUniversitylst) pl -> case pl of
-    (cId,p@(PPublishMcMasterNoticePlayer {})) -> ((cId,wrapPublishMcMasterNoticePlayer p):fromPublishMcMasterNoticelst,fromMcMasterUniversitylst)
-    (cId,p@(PMcMasterUniversityPlayer {})) -> (fromPublishMcMasterNoticelst,(cId,wrapMcMasterUniversityPlayer p):fromMcMasterUniversitylst)
+splitPublishMcMasterNoticePlayers :: [(ClientID,Player)] -> ([(ClientID,McMasterCreateNoticePlayer)],[(ClientID,McMasterUniversityPlayer)])
+splitPublishMcMasterNoticePlayers players = foldl (\t@(fromMcMasterCreateNoticelst,fromMcMasterUniversitylst) pl -> case pl of
+    (cId,p@(PMcMasterCreateNoticePlayer {})) -> ((cId,wrapMcMasterCreateNoticePlayer p):fromMcMasterCreateNoticelst,fromMcMasterUniversitylst)
+    (cId,p@(PMcMasterUniversityPlayer {})) -> (fromMcMasterCreateNoticelst,(cId,wrapMcMasterUniversityPlayer p):fromMcMasterUniversitylst)
 
     _ -> t) ([],[]) players
 
@@ -239,10 +239,10 @@ update tld mClientID trans state =
 
                 (TPublishMcMasterNotice notice) ->
                     let
-                        (publishMcMasterNoticePlayerLst,mcMasterUniversityPlayerLst) = splitPublishMcMasterNoticePlayers (IM'.toList players)
-                        (publishMcMasterNotice,mcMasterUniversity,fromPublishMcMasterNotice,fromMcMasterUniversity) = updatePublishMcMasterNotice tld (fromJust mClientID) (wrapPublishMcMasterNotice trans) (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) (map snd publishMcMasterNoticePlayerLst) (map snd mcMasterUniversityPlayerLst)
-                        newPlaces = TM.insert publishMcMasterNotice $ TM.insert mcMasterUniversity places
-                        (newPlayers, clientMessages) = unzip $ map (processPublishMcMasterNoticePlayer fromPublishMcMasterNotice fromMcMasterUniversity) (IM'.toList players)
+                        (mcMasterCreateNoticePlayerLst,mcMasterUniversityPlayerLst) = splitPublishMcMasterNoticePlayers (IM'.toList players)
+                        (mcMasterCreateNotice,mcMasterUniversity,fromMcMasterCreateNotice,fromMcMasterUniversity) = updatePublishMcMasterNotice tld (fromJust mClientID) (wrapPublishMcMasterNotice trans) (fromJust $ TM.lookup places) (fromJust $ TM.lookup places) (map snd mcMasterCreateNoticePlayerLst) (map snd mcMasterUniversityPlayerLst)
+                        newPlaces = TM.insert mcMasterCreateNotice $ TM.insert mcMasterUniversity places
+                        (newPlayers, clientMessages) = unzip $ map (processPublishMcMasterNoticePlayer fromMcMasterCreateNotice fromMcMasterUniversity) (IM'.toList players)
                     in
                         (newPlaces, newPlayers, clientMessages, Nothing)
 

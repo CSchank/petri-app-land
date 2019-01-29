@@ -25,7 +25,7 @@ update fsp trans state =
 
         (MDidEditMcMasterNotice , SMcMasterCreateNotice st) -> (SMcMasterCreateNotice <| updateMcMasterCreateNoticeDidEditMcMasterNoticeMcMasterCreateNotice fsp (wrapDidEditMcMasterNotice trans) st, Nothing)
 
-        ((MDidPublishMcMasterNotice _) , SPublishMcMasterNotice st) -> (SMcMasterUniversity <| updatePublishMcMasterNoticeDidPublishMcMasterNoticeMcMasterUniversity fsp (wrapDidPublishMcMasterNotice trans) st, Nothing)
+        ((MDidPublishMcMasterNotice _) , SMcMasterCreateNotice st) -> (SMcMasterUniversity <| updateMcMasterCreateNoticeDidPublishMcMasterNoticeMcMasterUniversity fsp (wrapDidPublishMcMasterNotice trans) st, Nothing)
         ((MNewMcMasterNotice _) , SMcMasterUniversity st) -> (SMcMasterUniversity <| updateMcMasterUniversityNewMcMasterNoticeMcMasterUniversity fsp (wrapNewMcMasterNotice trans) st, Nothing)
 
 

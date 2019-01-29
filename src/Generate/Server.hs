@@ -27,12 +27,10 @@ generateServer :: Bool -> Bool -> FilePath -> ClientServerApp -> IO ()
 generateServer gsvg onlyStatic fp 
                   (startNet
                   ,netLst
-                  ,cExtraTlst
-                  ,sExtraTlst
+                  ,extraTlst
                   ) =
     let
-        cExtraT = M.fromList $ map (\(ElmCustom n constrs) -> (n,ElmCustom n constrs)) cExtraTlst
-        sExtraT = M.fromList $ map (\(ElmCustom n constrs) -> (n,ElmCustom n constrs)) sExtraTlst
+        extraT = M.fromList $ map (\(ElmCustom n constrs) -> (n,ElmCustom n constrs)) extraTlst
         netNames = map (\(HybridNet name _ _ _ _) -> name) netLst
         init :: T.Text
         init = 
@@ -200,4 +198,4 @@ generateServer gsvg onlyStatic fp
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Encode" <.> "hs") encode 
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Update" <.> "hs") update
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Plugins" <.> "hs") plugins
-        mapM_ (Generate.Net.Server.generate sExtraT fp) netLst
+        mapM_ (Generate.Net.Server.generate extraT fp) netLst

@@ -7,4 +7,5 @@ unwrap msg =
     case msg of
         NewYouthHack.Static.Types.McMasterCreateNotice.CancelNotice  -> TCancelNotice 
         (NewYouthHack.Static.Types.McMasterCreateNotice.EditMcMasterNotice partialNotice)  -> (TEditMcMasterNotice partialNotice) 
+        (NewYouthHack.Static.Types.McMasterCreateNotice.PublishMcMasterNotice notice)  -> (TPublishMcMasterNotice notice) 
 

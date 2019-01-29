@@ -12,6 +12,7 @@ import                  System.Directory
 import                  Control.Monad (unless)
 import Data.Char (toUpper,toLower)
 import qualified Data.Set as S
+import Types
 
 
 
@@ -86,3 +87,19 @@ capStr str =
 
 fnub :: Ord a => [a] -> [a]
 fnub = nub --S.toList . S.fromList
+
+getPlaceState :: HybridPlace -> Constructor
+getPlaceState p =
+    case p of
+        (HybridPlace n _ s _ _ _ _) -> (T.unpack n,s)
+
+getPlaceName :: HybridPlace -> T.Text
+getPlaceName p =
+    case p of
+        (HybridPlace n _ _ _ _ _ _) -> n
+
+
+getPlayerState :: HybridPlace -> Constructor
+getPlayerState p =
+    case p of
+        (HybridPlace n _ s _ _ _ _) -> (T.unpack n,s)

@@ -24,22 +24,6 @@ trans2constr trans =
 
 transName from msgN = T.concat [T.pack msgN,"from",from]
 
-getPlaceState :: HybridPlace -> Constructor
-getPlaceState p =
-    case p of
-        (HybridPlace n _ s _ _ _ _) -> (T.unpack n,s)
-
-getPlaceName :: HybridPlace -> T.Text
-getPlaceName p =
-    case p of
-        (HybridPlace n _ _ _ _ _ _) -> n
-
-
-getPlayerState :: HybridPlace -> Constructor
-getPlayerState p =
-    case p of
-        (HybridPlace n _ s _ _ _ _) -> (T.unpack n,s)
-
 
 generate :: M.Map String ElmCustom -> FilePath -> Net -> IO ()
 generate extraTypes fp net =

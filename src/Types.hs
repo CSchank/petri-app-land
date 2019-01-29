@@ -34,39 +34,10 @@ type Constructor = (String,[ElmDocType]) -- (name, arguments)
 data ElmCustom = ElmCustom String [Constructor] -- name of the type 
   deriving (Ord,Eq,Show,Typeable)
 
-type ServerState        = Constructor
-data OutgoingClientMessage   = 
-      ToSender            Constructor                   --reply back to the client that sent the orignal message
-    | ToAllExceptSender   Constructor                   --not used
-    | ToSenderAnd         Constructor                   --reply to sender and a set of other clients
-    | ToSet               Constructor                   --reply to sender and a set of other clients
-    | ToAll               Constructor                   --send a message to all connected clients
-    | OneOf               [OutgoingClientMessage]       --send one of a list of possible messages
-    | AllOf               [OutgoingClientMessage]       --send all of a list of possible messages
-    | NoClientMessage
-  deriving (Ord,Eq,Show,Typeable)
 type ClientTransition   = Constructor
 type ClientCmd          = Constructor
 type ServerTransition   = Constructor
 type ServerCmd          = Constructor
-
-type ClientStateDiagram =
-    M.Map (String, ClientTransition) (String, Maybe ClientCmd, Maybe ServerTransition)
-
-type ServerStateDiagram =
-    M.Map (String, ServerTransition) (String, Maybe ServerCmd, OutgoingClientMessage)
-
-{-data NetType =
-      ClientNet     --a net only on the client
-    | HybridNet     --a net on the server and on the client
-    | ServerNet     --a net only on the server
--}
-{-data Place =
-    Place 
-        T.Text          --name of the place
-        [ElmDocType]    --place state
-        [ElmDocType]    --player state at this place
-        (Maybe T.Text)  --Maybe the name of a subnet-}
 
 data HybridPlace =
     HybridPlace 
@@ -106,10 +77,7 @@ data Net =
     deriving(Typeable)
 
 
-type ExtraClientTypes =
-    [ElmCustom]
-
-type ExtraServerTypes =
+type ExtraTypes =
     [ElmCustom]
 
 data ClientState =
@@ -121,8 +89,7 @@ data ClientState =
 type ClientServerApp =
     ( T.Text                            --starting net for client
     , [Net]                             --all the nets in this client/server app
-    , ExtraClientTypes                  --extra client types used in states or messages
-    , ExtraServerTypes                  --extra server types used in states or messages
+    , ExtraTypes                        --extra server types used in states or messages
     )
 
 data Plugin = 

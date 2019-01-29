@@ -91,37 +91,37 @@ data ClientMessage  =
 
 -- individual transition types
 data EnterMcMasterCreateNoticefromMcMasterUniversity  =
-      EnterMcMasterCreateNotice_McMasterUniversitytoMcMasterUniversity McMasterUniversityPlayer
+      EnterMcMasterCreateNotice_Stay_McMasterUniversity McMasterUniversityPlayer
     | EnterMcMasterCreateNotice_McMasterUniversitytoMcMasterCreateNotice McMasterCreateNoticePlayer DidEnterMcMasterCreateNotice
     deriving(Ord,Eq,Show)
 
 data CancelNoticefromMcMasterCreateNotice  =
-      CancelNotice_McMasterCreateNoticetoMcMasterCreateNotice McMasterCreateNoticePlayer
+      CancelNotice_Stay_McMasterCreateNotice McMasterCreateNoticePlayer
     | CancelNotice_McMasterCreateNoticetoMcMasterUniversity McMasterUniversityPlayer DidCancelNotice
     deriving(Ord,Eq,Show)
 
 data EnterUniversitiesfromSquareOne  =
-      EnterUniversities_SquareOnetoSquareOne SquareOnePlayer
+      EnterUniversities_Stay_SquareOne SquareOnePlayer
     | EnterUniversities_SquareOnetoUniversitiesAndColleges UniversitiesAndCollegesPlayer DidEnterUniversitiesAndColleges
     deriving(Ord,Eq,Show)
 
 data ExitUniversitiesfromUniversitiesAndColleges  =
-      ExitUniversities_UniversitiesAndCollegestoUniversitiesAndColleges UniversitiesAndCollegesPlayer
+      ExitUniversities_Stay_UniversitiesAndColleges UniversitiesAndCollegesPlayer
     | ExitUniversities_UniversitiesAndCollegestoSquareOne SquareOnePlayer DidLeaveUniversities
     deriving(Ord,Eq,Show)
 
 data EnterMcMasterUniversityfromUniversitiesAndColleges  =
-      EnterMcMasterUniversity_UniversitiesAndCollegestoUniversitiesAndColleges UniversitiesAndCollegesPlayer
+      EnterMcMasterUniversity_Stay_UniversitiesAndColleges UniversitiesAndCollegesPlayer
     | EnterMcMasterUniversity_UniversitiesAndCollegestoMcMasterUniversity McMasterUniversityPlayer DidEnterMcMasterUniversity
     deriving(Ord,Eq,Show)
 
 data ExitMcMasterUniversityfromMcMasterUniversity  =
-      ExitMcMasterUniversity_McMasterUniversitytoMcMasterUniversity McMasterUniversityPlayer
+      ExitMcMasterUniversity_Stay_McMasterUniversity McMasterUniversityPlayer
     | ExitMcMasterUniversity_McMasterUniversitytoUniversitiesAndColleges UniversitiesAndCollegesPlayer DidLeaveMcMasterUniversity
     deriving(Ord,Eq,Show)
 
 data EditMcMasterCommentfromMcMasterUniversity  =
-      EditMcMasterComment_McMasterUniversitytoMcMasterUniversity McMasterUniversityPlayer
+      EditMcMasterComment_Stay_McMasterUniversity McMasterUniversityPlayer
     | EditMcMasterComment_McMasterUniversitytoMcMasterUniversity McMasterUniversityPlayer DidEditMcMasterComment
     deriving(Ord,Eq,Show)
 
@@ -130,16 +130,16 @@ data SendMcMasterCommentfromMcMasterUniversity  =
     deriving(Ord,Eq,Show)
 
 data EditMcMasterNoticefromMcMasterCreateNotice  =
-      EditMcMasterNotice_McMasterCreateNoticetoMcMasterCreateNotice McMasterCreateNoticePlayer
+      EditMcMasterNotice_Stay_McMasterCreateNotice McMasterCreateNoticePlayer
     | EditMcMasterNotice_McMasterCreateNoticetoMcMasterCreateNotice McMasterCreateNoticePlayer DidEditMcMasterNotice
     deriving(Ord,Eq,Show)
 
+data PublishMcMasterNoticefromMcMasterCreateNotice  =
+      PublishMcMasterNotice_Stay_McMasterCreateNotice McMasterCreateNoticePlayer
+    | PublishMcMasterNotice_McMasterCreateNoticetoMcMasterUniversity McMasterUniversityPlayer DidPublishMcMasterNotice
+    deriving(Ord,Eq,Show)
 data PublishMcMasterNoticefromMcMasterUniversity  =
       PublishMcMasterNotice_McMasterUniversitytoMcMasterUniversity McMasterUniversityPlayer NewMcMasterNotice
-    deriving(Ord,Eq,Show)
-data PublishMcMasterNoticefromPublishMcMasterNotice  =
-      PublishMcMasterNotice_PublishMcMasterNoticetoPublishMcMasterNotice PublishMcMasterNoticePlayer
-    | PublishMcMasterNotice_PublishMcMasterNoticetoMcMasterUniversity McMasterUniversityPlayer DidPublishMcMasterNotice
     deriving(Ord,Eq,Show)
 
 

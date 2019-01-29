@@ -2,7 +2,7 @@
 
 module Generate.Codec where
 
-import Types (Language(..), ElmDocType(..), ElmType(..), ElmCustom(..), ClientStateDiagram, ServerStateDiagram, ClientServerApp, ClientTransition, ServerTransition)
+import Types (Language(..), ElmDocType(..), ElmType(..), ElmCustom(..))
 import qualified Data.Map as M
 import qualified Data.Text as T
 

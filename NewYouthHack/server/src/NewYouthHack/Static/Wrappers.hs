@@ -173,7 +173,7 @@ wrapMcMasterCreateNoticePlayer x__ =
 unwrapEnterMcMasterCreateNoticefromMcMasterUniversity :: EnterMcMasterCreateNoticefromMcMasterUniversity -> (Player, Maybe ClientMessage)
 unwrapEnterMcMasterCreateNoticefromMcMasterUniversity trans =
     case trans of
-        (EnterMcMasterCreateNotice_McMasterUniversitytoMcMasterUniversity player)  -> (unwrapMcMasterUniversityPlayer player, Nothing)
+        (EnterMcMasterCreateNotice_Stay_McMasterUniversity player)  -> (unwrapMcMasterUniversityPlayer player, Nothing)
         (EnterMcMasterCreateNotice_McMasterUniversitytoMcMasterCreateNotice player msg)  -> (unwrapMcMasterCreateNoticePlayer player, Just $ unwrapDidEnterMcMasterCreateNotice msg)
 
 
@@ -182,7 +182,7 @@ unwrapEnterMcMasterCreateNoticefromMcMasterUniversity trans =
 unwrapCancelNoticefromMcMasterCreateNotice :: CancelNoticefromMcMasterCreateNotice -> (Player, Maybe ClientMessage)
 unwrapCancelNoticefromMcMasterCreateNotice trans =
     case trans of
-        (CancelNotice_McMasterCreateNoticetoMcMasterCreateNotice player)  -> (unwrapMcMasterCreateNoticePlayer player, Nothing)
+        (CancelNotice_Stay_McMasterCreateNotice player)  -> (unwrapMcMasterCreateNoticePlayer player, Nothing)
         (CancelNotice_McMasterCreateNoticetoMcMasterUniversity player msg)  -> (unwrapMcMasterUniversityPlayer player, Just $ unwrapDidCancelNotice msg)
 
 
@@ -191,7 +191,7 @@ unwrapCancelNoticefromMcMasterCreateNotice trans =
 unwrapEnterUniversitiesfromSquareOne :: EnterUniversitiesfromSquareOne -> (Player, Maybe ClientMessage)
 unwrapEnterUniversitiesfromSquareOne trans =
     case trans of
-        (EnterUniversities_SquareOnetoSquareOne player)  -> (unwrapSquareOnePlayer player, Nothing)
+        (EnterUniversities_Stay_SquareOne player)  -> (unwrapSquareOnePlayer player, Nothing)
         (EnterUniversities_SquareOnetoUniversitiesAndColleges player msg)  -> (unwrapUniversitiesAndCollegesPlayer player, Just $ unwrapDidEnterUniversitiesAndColleges msg)
 
 
@@ -200,7 +200,7 @@ unwrapEnterUniversitiesfromSquareOne trans =
 unwrapExitUniversitiesfromUniversitiesAndColleges :: ExitUniversitiesfromUniversitiesAndColleges -> (Player, Maybe ClientMessage)
 unwrapExitUniversitiesfromUniversitiesAndColleges trans =
     case trans of
-        (ExitUniversities_UniversitiesAndCollegestoUniversitiesAndColleges player)  -> (unwrapUniversitiesAndCollegesPlayer player, Nothing)
+        (ExitUniversities_Stay_UniversitiesAndColleges player)  -> (unwrapUniversitiesAndCollegesPlayer player, Nothing)
         (ExitUniversities_UniversitiesAndCollegestoSquareOne player msg)  -> (unwrapSquareOnePlayer player, Just $ unwrapDidLeaveUniversities msg)
 
 
@@ -209,7 +209,7 @@ unwrapExitUniversitiesfromUniversitiesAndColleges trans =
 unwrapEnterMcMasterUniversityfromUniversitiesAndColleges :: EnterMcMasterUniversityfromUniversitiesAndColleges -> (Player, Maybe ClientMessage)
 unwrapEnterMcMasterUniversityfromUniversitiesAndColleges trans =
     case trans of
-        (EnterMcMasterUniversity_UniversitiesAndCollegestoUniversitiesAndColleges player)  -> (unwrapUniversitiesAndCollegesPlayer player, Nothing)
+        (EnterMcMasterUniversity_Stay_UniversitiesAndColleges player)  -> (unwrapUniversitiesAndCollegesPlayer player, Nothing)
         (EnterMcMasterUniversity_UniversitiesAndCollegestoMcMasterUniversity player msg)  -> (unwrapMcMasterUniversityPlayer player, Just $ unwrapDidEnterMcMasterUniversity msg)
 
 
@@ -218,7 +218,7 @@ unwrapEnterMcMasterUniversityfromUniversitiesAndColleges trans =
 unwrapExitMcMasterUniversityfromMcMasterUniversity :: ExitMcMasterUniversityfromMcMasterUniversity -> (Player, Maybe ClientMessage)
 unwrapExitMcMasterUniversityfromMcMasterUniversity trans =
     case trans of
-        (ExitMcMasterUniversity_McMasterUniversitytoMcMasterUniversity player)  -> (unwrapMcMasterUniversityPlayer player, Nothing)
+        (ExitMcMasterUniversity_Stay_McMasterUniversity player)  -> (unwrapMcMasterUniversityPlayer player, Nothing)
         (ExitMcMasterUniversity_McMasterUniversitytoUniversitiesAndColleges player msg)  -> (unwrapUniversitiesAndCollegesPlayer player, Just $ unwrapDidLeaveMcMasterUniversity msg)
 
 
@@ -227,7 +227,7 @@ unwrapExitMcMasterUniversityfromMcMasterUniversity trans =
 unwrapEditMcMasterCommentfromMcMasterUniversity :: EditMcMasterCommentfromMcMasterUniversity -> (Player, Maybe ClientMessage)
 unwrapEditMcMasterCommentfromMcMasterUniversity trans =
     case trans of
-        (EditMcMasterComment_McMasterUniversitytoMcMasterUniversity player)  -> (unwrapMcMasterUniversityPlayer player, Nothing)
+        (EditMcMasterComment_Stay_McMasterUniversity player)  -> (unwrapMcMasterUniversityPlayer player, Nothing)
         (EditMcMasterComment_McMasterUniversitytoMcMasterUniversity player msg)  -> (unwrapMcMasterUniversityPlayer player, Just $ unwrapDidEditMcMasterComment msg)
 
 
@@ -244,9 +244,17 @@ unwrapSendMcMasterCommentfromMcMasterUniversity trans =
 unwrapEditMcMasterNoticefromMcMasterCreateNotice :: EditMcMasterNoticefromMcMasterCreateNotice -> (Player, Maybe ClientMessage)
 unwrapEditMcMasterNoticefromMcMasterCreateNotice trans =
     case trans of
-        (EditMcMasterNotice_McMasterCreateNoticetoMcMasterCreateNotice player)  -> (unwrapMcMasterCreateNoticePlayer player, Nothing)
+        (EditMcMasterNotice_Stay_McMasterCreateNotice player)  -> (unwrapMcMasterCreateNoticePlayer player, Nothing)
         (EditMcMasterNotice_McMasterCreateNoticetoMcMasterCreateNotice player msg)  -> (unwrapMcMasterCreateNoticePlayer player, Just $ unwrapDidEditMcMasterNotice msg)
 
+
+
+
+unwrapPublishMcMasterNoticefromMcMasterCreateNotice :: PublishMcMasterNoticefromMcMasterCreateNotice -> (Player, Maybe ClientMessage)
+unwrapPublishMcMasterNoticefromMcMasterCreateNotice trans =
+    case trans of
+        (PublishMcMasterNotice_Stay_McMasterCreateNotice player)  -> (unwrapMcMasterCreateNoticePlayer player, Nothing)
+        (PublishMcMasterNotice_McMasterCreateNoticetoMcMasterUniversity player msg)  -> (unwrapMcMasterUniversityPlayer player, Just $ unwrapDidPublishMcMasterNotice msg)
 
 
 
@@ -254,14 +262,6 @@ unwrapPublishMcMasterNoticefromMcMasterUniversity :: PublishMcMasterNoticefromMc
 unwrapPublishMcMasterNoticefromMcMasterUniversity trans =
     case trans of
         (PublishMcMasterNotice_McMasterUniversitytoMcMasterUniversity player msg)  -> (unwrapMcMasterUniversityPlayer player, Just $ unwrapNewMcMasterNotice msg)
-
-
-
-unwrapPublishMcMasterNoticefromPublishMcMasterNotice :: PublishMcMasterNoticefromPublishMcMasterNotice -> (Player, Maybe ClientMessage)
-unwrapPublishMcMasterNoticefromPublishMcMasterNotice trans =
-    case trans of
-        (PublishMcMasterNotice_PublishMcMasterNoticetoPublishMcMasterNotice player)  -> (unwrapPublishMcMasterNoticePlayer player, Nothing)
-        (PublishMcMasterNotice_PublishMcMasterNoticetoMcMasterUniversity player msg)  -> (unwrapMcMasterUniversityPlayer player, Just $ unwrapDidPublishMcMasterNotice msg)
 
 
 
