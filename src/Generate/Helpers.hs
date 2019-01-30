@@ -66,9 +66,10 @@ generateHelper l netName (sn,edts) getOnly =
             ,   if getOnly then 
                     T.concat ["import Static.Types.",snTxt," exposing(Model(..))"] 
                 else ""
-            ,   T.concat ["import Static.Types",if not $ l == Haskell then " exposing(..)\nimport Static.ExtraUserTypes exposing(..)" else ""]
+            ,   if l == Elm then T.concat["import ",netName,".Static.ExtraTypes exposing(..)"] else ""
+            ,   T.concat ["import ",netName,".Static.Types",if not $ l == Haskell then " exposing(..)" else ""]
             ,   T.concat ["import ",netName,".Static.Types"]
-            ,   "import Static.List"
+            ,   if l == Haskell then "import Static.List" else ""
             ,   T.unlines $ map generateGetter edts
             ,   if length edts == 0 then "x = Nothing" else ""
             ] ++

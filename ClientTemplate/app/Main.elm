@@ -194,27 +194,12 @@ update msg model =
             let 
                 (newAppModel, mCmd) = Static.Update.update () incomingMsg model.appModel 
             in
-                model |> withNoCmd
+                { model | appModel = newAppModel } |> withNoCmd
         OutgoingTrans outgoingTrans ->
-            model |> withNoCmd
-                {-case mCmd of 
-                    Just cmd -> 
-                        let
-                            respTxt = encodeOutgoingTransition sMsg
-                        in
-                            { model | appModel = newAppModel } 
-                                |> wsSend respTxt 
-                                |> addCmd (Cmd.map AppMsg cmd)
-                    Nothing -> 
-                        let
-                            respTxt = encodeOutgoingTransition sMsg
-                        in
-                            { model | appModel = newAppModel
-                            } |> wsSend respTxt
-                    Just cmd -> 
-                        { model | appModel = newAppModel } |> withCmd (Cmd.map AppMsg cmd)
-                    _ ->
-                        { model | appModel = newAppModel } |> withNoCmd-}
+            let
+                respTxt = encodeOutgoingTransition outgoingTrans
+            in
+                model |> wsSend respTxt
 
 wsSend : String -> InternalModel -> (InternalModel, Cmd Msg)
 wsSend m model = 

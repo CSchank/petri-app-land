@@ -10,8 +10,9 @@ import           Control.Concurrent.STM         (TQueue, atomically, readTQueue,
                                                  writeTQueue, STM, newTQueue)
 import qualified Data.Map.Strict as Dict
 import Static.Dict
-import Data.TMap as TM
-import Data.Maybe (fromJust)
+import qualified Data.TMap as TM
+import Data.Maybe (fromJust,isJust)
+import qualified Data.IntMap.Strict as IM'
 
 
 (|>) :: a -> (a -> b) -> b
@@ -392,10 +393,23 @@ processCmd cmd centralMsgQ ns = do
             result <- msg
             atomically $ writeTQueue centralMsgQ $ ReceivedMessage Nothing result
         StateCmd toMsg -> do
-            result <- toMsg (fromJust $ TM.lookup $ pluginStates ns)
+            result <- toMsg ((safeFromJust "processCmd") $ TM.lookup $ pluginStates ns)
             atomically $ writeTQueue centralMsgQ $ ReceivedMessage Nothing result
 
 
+safeFromJust msg j = 
+    if isJust j then
+        fromJust j
+    else
+        error $ "not isJust: " ++ msg
+
+mapSnd :: (a -> b) -> [(c, a)] -> [(c, b)]
+mapSnd f l =
+    map (\(c,a) -> (c,f a)) l
+
+insertList :: [(IM'.Key, a)] -> IM'.IntMap a -> IM'.IntMap a
+insertList l im =
+    foldl (\m (i,a) -> IM'.insert i a m) im l
 {-
 processCmd :: Cmd a -> IO ()
 processCmd cmd =

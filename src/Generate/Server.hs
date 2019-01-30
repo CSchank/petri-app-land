@@ -103,13 +103,13 @@ generateServer gsvg rootDir fp
                     [
                         T.concat["        ",netName,"Trans msg ->"]
                     ,   "            let"
-                    ,   T.concat["                (newNetState, clientMessages, mCmd) = ",netName,".update tld mClientID msg (fromJust $ TM.lookup $ serverState state)"]
+                    ,   T.concat["                (newNetState, clientMessages, mCmd) = ",netName,".update tld mClientID msg (safeFromJust \"update case\" $ TM.lookup $ serverState state)"]
                     ,   T.concat["                cmd = fmap (\\m -> cmdMap ",netName,"Trans m) mCmd"]
                     ,   T.concat["                cMsgs = map (\\(cId,m) -> (cId,",netName,"OMsg m)) clientMessages"]
                     ,   T.concat["                newServerState = state { serverState = TM.insert newNetState (serverState state) }"]
                     ,   "            in (newServerState, cMsgs, cmd)"
                     ]
-                disconnectCase netName = T.concat ["                ",netName," {} -> ",netName,".disconnect tld clientID (fromJust $ TM.lookup $ serverState state)"]
+                disconnectCase netName = T.concat ["                ",netName," {} -> ",netName,".disconnect tld clientID (safeFromJust \"top level disconnect\" $ TM.lookup $ serverState state)"]
             in
             T.unlines
             [
@@ -128,7 +128,7 @@ generateServer gsvg rootDir fp
             ,   "clientConnect :: TopLevelData -> ClientID -> ServerState -> ServerState"
             ,   "clientConnect tld clientID state ="
             ,   "    let"
-            ,   T.concat["        newNetState = ",startNet,".clientConnect tld clientID (fromJust $ TM.lookup $ serverState state)"]
+            ,   T.concat["        newNetState = ",startNet,".clientConnect tld clientID (safeFromJust \"client connect\" $ TM.lookup $ serverState state)"]
             ,   "    in"
             ,   "        state { serverState = TM.insert newNetState $ serverState state }"
             ,   ""
@@ -166,7 +166,7 @@ generateServer gsvg rootDir fp
                     T.unlines
                     [
                         T.concat ["                ",netName,"Trans {} ->"]
-                    ,   T.concat ["                      Utils.processCmd cmd centralMessageQueue (fromJust $ TM.lookup $ serverState state :: NetState ",netName,".Player)"]
+                    ,   T.concat ["                      Utils.processCmd cmd centralMessageQueue (safeFromJust \"plugins\" $ TM.lookup $ serverState state :: NetState ",netName,".Player)"]
                     ] 
             in
             T.unlines

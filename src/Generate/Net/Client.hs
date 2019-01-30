@@ -16,6 +16,7 @@ import Generate.Helpers
 import Generate.Codec
 import Generate.Wrappers
 import Generate.Plugins
+import Generate.Standalone
 
 trans2constr :: NetTransition -> Constructor
 trans2constr trans = 
@@ -59,7 +60,9 @@ generate extraTypes fp net =
                         ]
                 types = T.unlines 
                     [
-                    T.concat ["module ", name, ".Static.Types exposing(..)"]
+                        T.concat ["module ", name, ".Static.Types exposing(..)"]
+                    ,   T.concat ["import ", name,".Static.ExtraTypes exposing(..)"]
+                    
                     , ""
                     , "-- the types of all places in the net"
                     , generateNetTypes name places -- the initial places
@@ -91,8 +94,9 @@ generate extraTypes fp net =
                     T.unlines
                     [
                         T.concat["module ",name,".Static.Wrappers.",placeName," exposing(..)"]
-                    ,   T.concat["import ",name,".Static.Types.",placeName," exposing(..)"]
-                    ,   T.concat["import ",name,".Static.Types exposing(..)"]
+                        ,   T.concat["import ",name,".Static.Types.",placeName," exposing(..)"]
+                        ,   T.concat["import ",name,".Static.ExtraTypes exposing(..)"]
+                        ,   T.concat["import ",name,".Static.Types exposing(..)"]
                     ,   ""
                     ,   "unwrap : Msg -> OutgoingTransition"
                     ,   "unwrap msg ="
@@ -109,6 +113,8 @@ generate extraTypes fp net =
                         T.concat["module ",name,".View.",placeName," exposing(..)"]
                     ,   T.concat["import ",name,".Static.Types.",placeName," exposing(Msg(..))"]
                     ,   T.concat["import ",name,".Static.Types exposing(",placeName,"(..))"]
+                    ,   T.concat["import ",name,".Static.Helpers.",placeName," exposing(..)"]
+                    ,   T.concat ["import ",name,".Static.ExtraTypes exposing(..)\n"]
                     ,   "import Html exposing(Html)"
                     ,   "import Debug exposing(todo)"
                     ,   ""
@@ -174,10 +180,16 @@ generate extraTypes fp net =
                             ,   T.unlines $ map (\(pl,etd) -> generateType Elm False [] $ ec pl [(pl,etd)]) outgoingClientTransitions
                             ,   "-- outgoing server message types"
                             ,   clientMsgType
-                            ,   "-- extra client types"
-                            ,   T.unlines $ map (generateType Elm True [DOrd,DEq,DShow] . snd) $ M.toList extraTypes
                             ]
 
+                hiddenExtraTypes = 
+                    T.unlines
+                    [
+                        T.concat ["module ",name,".Static.ExtraTypes exposing(..)"]
+                    ,   "-- extra client types"
+                    ,   T.unlines $ map (generateType Elm True [DOrd,DEq,DShow] . snd) $ M.toList extraTypes
+                    ]
+                
                 update :: T.Text
                 update =
                     let
@@ -203,6 +215,8 @@ generate extraTypes fp net =
                         T.concat ["module ",name,".Update exposing(..)"]
                     ,   T.concat ["import ",name,".Static.Types exposing(..)"]
                     ,   T.concat ["import ",name,".Static.FromSuperPlace exposing(..)"]
+                    ,   T.concat ["import ",name,".Static.ExtraTypes exposing(..)"]
+                    ,   T.intercalate "\n" $ map (\placeName -> T.concat ["import ",name,".Static.Helpers.",placeName," as ",placeName]) placeNames
                     ,   "import Utils.Utils"
                     ,   "import Debug exposing(todo)"
                     ,   ""
@@ -260,13 +274,15 @@ generate extraTypes fp net =
                     ,   T.concat ["import ",name,".Static.Types exposing (NetState(..))"]
                     ,   T.concat ["import ",name,".Update as Update"]
                     ,   T.concat ["import ",name,".Static.Wrappers"]
+                    ,   T.concat ["import ",name,".Static.ExtraTypes exposing(..)\n"]
                     ,   "init : NetState"
                     ,   T.concat ["init = S",startingPlace," Init.init"]
                     ]
                 encoder = T.unlines 
                     [
                         T.concat ["module ",name,".Static.Encode exposing(..)"]
-                    ,   T.concat ["import ",name,".Static.Types exposing(..)\n"]
+                    ,   T.concat ["import ",name,".Static.Types exposing(..)"]
+                    ,   T.concat ["import ",name,".Static.ExtraTypes exposing(..)\n"]
                     ,   "import Utils.Utils exposing(..)"
                     ,   "import Static.Types"
                     ,   generateEncoder Elm outgoingTransitions
@@ -285,7 +301,8 @@ generate extraTypes fp net =
                 decoder = T.unlines 
                     [
                         T.concat ["module ",name,".Static.Decode exposing(..)"]
-                    ,   T.concat ["import ",name,".Static.Types exposing(..)\n"]
+                    ,   T.concat ["import ",name,".Static.Types exposing(..)"]
+                    ,   T.concat ["import ",name,".Static.ExtraTypes exposing(..)\n"]
                     ,   "import Utils.Utils exposing(..)"
                     ,   generateDecoder Elm $ incomingTransitions
                     ,   "--extra types decoders"
@@ -295,6 +312,7 @@ generate extraTypes fp net =
                     T.unlines
                         [
                             T.concat ["module ",name,".Static.Wrappers exposing(..)"]
+                        ,   T.concat["import ",name,".Static.ExtraTypes exposing(..)"]
                         ,   T.concat ["import ",name,".Static.Types exposing(..)\n"]
                         ,   T.unlines $ map (createWrap extraTypes (length places > 1) Elm "IncomingMessage" "M") incomingCM
                         ,   T.unlines $ map (createUnwrap Elm "OutgoingTransition" "T") outgoingClientTransitions
@@ -345,3 +363,6 @@ generate extraTypes fp net =
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Update" <.> "elm") hiddenUpdate
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "FromSuperPlace" <.> "elm") fromSuperPlace
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "View" <.> "elm") hiddenView
+                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "ExtraTypes" <.> "elm") hiddenExtraTypes
+                createDirectoryIfMissing True $ fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Standalone"
+                generateStandalones extraTypes name fp places

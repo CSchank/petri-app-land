@@ -8,8 +8,10 @@ launch:
 	cd build && elm reactor &
 
 sa:
-	elm make src/Static/Standalone/${m}.elm --output=build/Standalone${m}.html
-	open build/Standalone${m}.html
+	killall elm || true
+	open http://localhost:8000/src/${n}/Static/Standalone/${m}.elm && elm reactor
+	#elm make src/Static/Standalone/${m}.elm --output=build/Standalone${m}.html
+	#open build/Standalone${m}.html
 
 stop:
 	killall elm

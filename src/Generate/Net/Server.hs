@@ -264,14 +264,14 @@ generate extraTypes fp net =
                                     Just cmd -> 
                                         T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,",cmd) = update",transTxt," tld ",clientIdTxt,"(wrap",transTxt," trans)",T.replicate (length allStates) "(fromJust $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat ["(map snd ",uncapitalize t, "PlayerLst)"]) froms]
                                     Nothing ->
-                                        T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,") = update",transTxt," tld ",clientIdTxt,"(wrap",transTxt," trans) ",T.replicate (length allStates) "(fromJust $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat ["(map snd ",uncapitalize t, "PlayerLst)"]) froms]
+                                        T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,") = update",transTxt," tld ",clientIdTxt,"(wrap",transTxt," trans) ",T.replicate (length allStates) "((safeFromJust \"place lookup\") $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat ["(map snd ",uncapitalize t, "PlayerLst)"]) froms]
                             ,   T.concat["        newPlaces = ",T.intercalate " $ " $ map (\state -> T.concat["TM.insert ",uncapitalize state]) allStates, " places"]
-                            ,   T.concat["        (newPlayers, clientMessages) = unzip $ map (process",transTxt,"Player ",T.intercalate " " fromVars,") (IM'.toList players)"]
+                            ,   T.concat["        (newPlayers, clientMessages) = unzip $ map (process",transTxt,"Player ",T.intercalate " " fromVars,") (",T.intercalate "++" $ map (\from -> T.concat["mapSnd unwrap",from,"Player ",uncapitalize from,"PlayerLst"]) froms,")"]
                             ,   "    in"
                             ,   T.concat["        (newPlaces, newPlayers, clientMessages, ", if isJust mCmd then "Just cmd" else "Nothing",")" ]
                             ]
                         disconnectCase placeName = 
-                            T.concat ["            P",placeName,"Player {} -> (flip TM.insert) places $ clientDisconnectFrom",placeName," fsp clientID (fromJust $ TM.lookup places) (wrap",placeName,"Player player)"]
+                            T.concat ["            P",placeName,"Player {} -> (flip TM.insert) places $ clientDisconnectFrom",placeName," fsp clientID (safeFromJust \"clientDisconnectFrom\" $ TM.lookup places) (wrap",placeName,"Player player)"]
                     in T.unlines
                     [
                         T.concat ["module ",name,".Static.Update where"]
@@ -283,6 +283,7 @@ generate extraTypes fp net =
                     ,   "import Static.ServerTypes"
                     ,   "import qualified Data.IntMap.Strict as IM'"
                     ,   "import Data.Maybe (fromJust, isJust, mapMaybe)"
+                    ,   "import Utils.Utils"
                     ,   ""
                     ,   "-- player processing functions"
                     ,   T.unlines $ map processTransPlayer transitions
@@ -292,7 +293,7 @@ generate extraTypes fp net =
                     ,   "clientConnect :: FromSuperPlace -> ClientID -> NetState Player -> NetState Player"
                     ,   "clientConnect fsp clientID state ="
                     ,   "    let"
-                    ,   T.concat["        (",uncapitalize startingPlace,",",uncapitalize startingPlace,"Player) = Update.clientConnect fsp clientID (fromJust $ TM.lookup $ placeStates state)"]
+                    ,   T.concat["        (",uncapitalize startingPlace,",",uncapitalize startingPlace,"Player) = Update.clientConnect fsp clientID (safeFromJust \"client connect Net\" $ TM.lookup $ placeStates state)"]
                     ,   "    in"
                     ,   T.concat["        state { placeStates = TM.insert ",uncapitalize startingPlace," $ placeStates state, playerStates = IM'.insert clientID (unwrap",startingPlace,"Player ",uncapitalize startingPlace,"Player) (playerStates state) }"]
                     ,   ""
@@ -300,7 +301,7 @@ generate extraTypes fp net =
                     ,   "disconnect :: FromSuperPlace -> ClientID -> NetState Player -> NetState Player"
                     ,   "disconnect fsp clientID state ="
                     ,   "    let"
-                    ,   "        player = fromJust $ IM'.lookup clientID $ players"
+                    ,   "        player = safeFromJust \"disconnect\" $ IM'.lookup clientID $ players"
                     ,   "        places = placeStates state"
                     ,   "        players = playerStates state"
                     ,   "        newPlaces = case player of"
@@ -321,7 +322,7 @@ generate extraTypes fp net =
                     ,   "        (state"
                     ,   "           {"
                     ,   "                placeStates = newPlaces"
-                    ,   "           ,    playerStates = IM'.fromList newPlayers"
+                    ,   "           ,    playerStates = insertList newPlayers $ players"
                     ,   "           }"
                     ,   "        , mapMaybe (\\(a,b) -> if isJust b then Just (a,fromJust b) else Nothing) clientMessages"
                     ,   "        , cmd)"
@@ -424,7 +425,6 @@ generate extraTypes fp net =
                     ,   T.concat ["import ",name,".Static.Plugins (initPlugins)"]
                     ,   "import Static.ServerTypes"
                     ,   "import qualified Data.IntMap as IM'"
-                    ,   "import Data.Maybe (fromJust)"
                     ,   "import qualified Data.TMap as TM\n"
                     ,   "init :: IO (NetState Player)"
                     ,   "init = do"

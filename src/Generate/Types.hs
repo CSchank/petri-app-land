@@ -107,8 +107,8 @@ etd2Def _ (ElmWildcardType s,_,_)         = error "Unknown default type for type
 etd2Def _ (et,_,_)                        = et2Def et
 
 et2Def :: ElmType -> T.Text
-et2Def (ElmIntRange lo _)               = T.pack $ show lo
-et2Def (ElmFloatRange lo _ _)           = T.pack $ show lo
+et2Def (ElmIntRange lo _)               = if lo < 0 then T.concat["(",T.pack $ show lo,")"] else T.pack $ show lo
+et2Def (ElmFloatRange lo _ _)           = if lo < 0 then T.concat["(",T.pack $ show lo,")"] else T.pack $ show lo
 et2Def ElmString                        = "\"\""
 et2Def (ElmSizedString _)               = "\"\""
 et2Def (ElmPair (etn0,_,_) (etn1,_,_))  = T.concat ["(",et2Def etn0,", ",et2Def etn1,")"]

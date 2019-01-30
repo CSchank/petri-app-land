@@ -16,7 +16,7 @@ import           Control.Exception      (finally)
 import qualified Data.Time.Clock.POSIX         as Time
 
 
-import           Data.Text.IO                   as Tio
+import           qualified Data.Text.IO                   as Tio
 import qualified Data.Set               as S
 import qualified Data.TMap              as TM
 import Data.Maybe (fromJust)
@@ -27,9 +27,10 @@ import Static.Encode
 import Static.Decode
 import Static.Init
 import Static.Plugins
-import Utils.Utils (Result(..))
+import Utils.Utils (Result(..),safeFromJust)
 import Static.Update (update, clientConnect, disconnect)
 
+import CounterNet.Static.Types
 
 newCentralMessageChan :: STM (TQueue CentralMessage)
 newCentralMessageChan =
@@ -49,16 +50,18 @@ processCentralChan chan =
         loop state =
             atomically (readTQueue chan) >>= processCentralMessage chan state >>= loop
 
-        initial :: Int -> ServerState
-        initial t = ServerState
+        initial :: Int -> TM.TMap -> ServerState
+        initial t serverState =
+            ServerState
             { clients = IM'.empty
-            , serverState = TM.insert Static.Init.init TM.empty
+            , serverState = serverState
             , nextClientId = 0
             , startTime = t
             }
     in do
         t <- Time.getPOSIXTime
-        loop $ initial (round $ t * 1000)
+        init <- Static.Init.init
+        loop $ initial (round $ t * 1000) (TM.insert init TM.empty)
 
 
 processCentralMessage :: (TQueue CentralMessage) -> ServerState -> CentralMessage -> IO ServerState
@@ -122,14 +125,16 @@ processCentralMessage centralMessageChan state (ReceivedMessage mClientID incomi
 
     sendMessages outgoingMsgs
 
-    processCmd centralMessageChan mCmd nextState
+    putStrLn $ show $ (fromJust $ TM.lookup $ serverState nextState :: NetState CounterNet.Static.Types.Player)
+
+    processCmd centralMessageChan mCmd incomingMsg nextState
 
     return nextState
 
 processCentralMessage centralMessageChan state (UserConnectionLost clientID) = 
     let
         connectedClients = clients state
-        (Client nmTvar clientQueue netID) = fromJust $ IM'.lookup clientID $ clients state
+        (Client nmTvar clientQueue netID) = (safeFromJust "userConnectionLost") $ IM'.lookup clientID $ clients state
 
     in do
     Prelude.putStrLn $ "Client " ++ show clientID ++ " lost connection."
