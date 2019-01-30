@@ -2,7 +2,6 @@
 
 module Generate.Standalone where
 
-import ClientServerSpec
 import Types
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -11,7 +10,7 @@ import qualified Data.Map as M
 import                  System.FilePath.Posix   ((</>),(<.>))
 import Generate.Types
 
-generateStandalones :: ExtraTypes -> FilePath -> [ClientState] -> IO ()
+{-generateStandalones :: ExtraTypes -> FilePath -> [ClientState] -> IO ()
 generateStandalones ects fp cStates =
     let
         cState2ConstrMap (ClientState (n,edt)) = (n,edt)
@@ -41,4 +40,4 @@ generateStandalone ecMap (sn,edts) =
             ,   "--Change the model here to preview your state"
             ,   T.concat["model : Model"]
             ,   T.concat["model = ",constr2Def ecMap (sn,edts)]
-            ]
+            ]-}

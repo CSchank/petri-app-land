@@ -23,8 +23,8 @@ import                  Data.Time               (getCurrentTime)
 import Data.Foldable (find)
 import TypeHelpers
 
-generateServer :: Bool -> Bool -> FilePath -> ClientServerApp -> IO ()
-generateServer gsvg onlyStatic fp 
+generateServer :: Bool -> FilePath -> FilePath -> ClientServerApp -> IO ()
+generateServer gsvg rootDir fp 
                   (startNet
                   ,netLst
                   ,extraTlst
@@ -191,7 +191,7 @@ generateServer gsvg onlyStatic fp
 
     in do
         createDirectoryIfMissing True (fp </> "server" </> "src" </> "Static")
-        copyDirectory "ServerTemplate/" (fp </> "server/")
+        copyDirectory (rootDir </> "ServerTemplate/") (fp </> "server/")
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Init" <.> "hs") init 
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Types" <.> "hs") types 
         writeIfNew 0 (fp </> "server" </> "src" </> "Static" </> "Decode" <.> "hs") decode 

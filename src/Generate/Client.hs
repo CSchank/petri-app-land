@@ -22,8 +22,8 @@ import                  Data.Time               (getCurrentTime)
 import Data.Foldable (find)
 import TypeHelpers
 
-generateClient :: Bool -> Bool -> FilePath -> ClientServerApp -> IO ()
-generateClient gsvg onlyStatic fp 
+generateClient :: Bool -> FilePath -> FilePath -> ClientServerApp -> IO ()
+generateClient gsvg rootDir fp 
                   (startNet
                   ,netLst
                   ,extraTlst
@@ -172,7 +172,8 @@ generateClient gsvg onlyStatic fp
 
     in do
         createDirectoryIfMissing True (fp </> "client" </> "src" </> "Static")
-        copyDirectory "ClientTemplate/" (fp </> "client/")
+        let templateDir = (rootDir </> "ClientTemplate/")
+        copyDirectory templateDir (fp </> "client/")
         writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Init" <.> "elm") init 
         writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Types" <.> "elm") types 
         writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Decode" <.> "elm") decode 
