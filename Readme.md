@@ -53,3 +53,8 @@ open port. You'll have to update the client's URL to point to the correct one.
 To edit your specification, make changes to the spec in `ClientServerSpec.hs` and then rebuild and execute the program. Note that any files the user is supposed to edit (views, updates) will NOT be rebuilt by the system if they already exist. If you haven't edited a certain file, you can delete it or move it before regenerating and it will be generated again. Otherwise, you can use the compiler errors to help you fix your code. S
 
 _Static files will be rebuilt if there are changes, so don't edit them as you will lose work from them._
+
+## Compiling Net Graphs
+When you generate your code, you will be given the code to generate codegraphs with `dot`. Either run them through dot, or use the
+following website: https://dreampuf.github.io/GraphvizOnline/. Copy the code from the dot file in `MyNewPetriProject/Diagrams/` into 
+the website to preview it.
