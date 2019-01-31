@@ -27,12 +27,12 @@ data ElmType = ElmIntRange Int Int -- upper and lower bounds (used for optimizin
              | ElmMaybe ElmDocType
              | ElmBool
              | ElmResult ElmDocType ElmDocType
-  deriving (Ord,Eq,Show,Typeable)
+  deriving (Ord,Eq,Show)
 
 type Constructor = (String,[ElmDocType]) -- (name, arguments)
 
 data ElmCustom = ElmCustom String [Constructor] -- name of the type 
-  deriving (Ord,Eq,Show,Typeable)
+  deriving (Ord,Eq,Show)
 
 type ClientTransition   = Constructor
 type ClientCmd          = Constructor
@@ -48,7 +48,6 @@ data HybridPlace =
         (Maybe T.Text)  --Maybe the name of a subnet
         (Maybe T.Text, Maybe T.Text) --initial commands
         (Maybe T.Text)  --client-side subscription
-    deriving(Typeable)
 
 data NetTransition =
     NetTransition
@@ -57,14 +56,12 @@ data NetTransition =
         ,Maybe (T.Text, Constructor))       --to place (must appear in map above) and client message
         ]
         (Maybe ServerCmd)                   --whether to issue a command when this transition is fired
-    deriving(Typeable)
-
 
 data HybridTransition =
         ClientOnlyTransition
     |   HybridTransition
     |   ServerOnlyTransition
-    deriving (Eq,Typeable)
+    deriving (Eq)
 
 -- a net describing a collections of places and transitions
 data Net = 
@@ -74,17 +71,9 @@ data Net =
         [HybridPlace]                           --all the places in this net
         [(HybridTransition,NetTransition)]      --transitions between the places
         [Plugin]                                --a list of plugins to be generated / installed on this net
-    deriving(Typeable)
-
 
 type ExtraTypes =
     [ElmCustom]
-
-data ClientState =
-      ClientState Constructor
-    | ClientStateWithSubs Constructor [Constructor] {-subs-}
-    deriving(Typeable)
-
 
 type ClientServerApp =
     ( T.Text                            --starting net for client
@@ -95,7 +84,6 @@ type ClientServerApp =
 data Plugin = 
       Plugin String {-name-}
     | PluginGen String {-name-} (IO [(FilePath,T.Text)]) {-function to generate the plugin-}
-    deriving(Typeable)
 
 data Language =
     Elm | Haskell
