@@ -1,13 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Static.ServerLogic
-    ( newCentralMessageChan
-    , newClientMessageChan
-    , processCentralChan
-    , processClienTQueue
-    ) where
+module Static.ServerLogic where
 
-import           Control.Concurrent.STM (STM, TQueue, atomically, newTQueue,
-                                         readTQueue, writeTQueue)
+import           Control.Concurrent.STM (STM, TQueue, TVar, atomically, newTQueue,
+                                         readTQueue, writeTQueue, newTVar, readTVar)
 import           Control.Monad          (forever,void)
 import qualified Data.Map.Strict        as M'
 import qualified Data.IntMap.Strict     as IM'
@@ -18,8 +13,10 @@ import qualified Network.WebSockets     as WS
 import           Control.Concurrent             (forkIO)
 import           Control.Concurrent.Async       (race_)
 import           Control.Exception      (finally)
+import qualified Data.Time.Clock.POSIX         as Time
 
-import           Data.Text.IO                   as Tio
+
+import           qualified Data.Text.IO                   as Tio
 import qualified Data.Set               as S
 import qualified Data.TMap              as TM
 import Data.Maybe (fromJust)
@@ -28,18 +25,19 @@ import Static.Types
 import Static.ServerTypes
 import Static.Encode
 import Static.Decode
-import Static.Init (init)
+import Static.Init
 import Static.Plugins
-import Utils.Utils (Result(..))
-import Static.Update (update)
+import Utils.Utils (Result(..),safeFromJust)
+import Static.Update (update, clientConnect, disconnect)
 
+import CounterNet.Static.Types
 
 newCentralMessageChan :: STM (TQueue CentralMessage)
 newCentralMessageChan =
     newTQueue
 
 
-newClientMessageChan :: STM (TQueue ClientThreadMessage)
+newClientMessageChan :: STM (TQueue OutgoingClientThreadMessage)
 newClientMessageChan =
     newTQueue
 
@@ -52,16 +50,18 @@ processCentralChan chan =
         loop state =
             atomically (readTQueue chan) >>= processCentralMessage chan state >>= loop
 
-        initial :: PluginState -> ServerState
-        initial ps = ServerState
+        initial :: Int -> TM.TMap -> ServerState
+        initial t serverState =
+            ServerState
             { clients = IM'.empty
-            , internalServerState = Static.Init.init
+            , serverState = serverState
             , nextClientId = 0
-            , pluginState = ps
+            , startTime = t
             }
     in do
-        ps <- initStateCmds
-        loop (initial ps)
+        t <- Time.getPOSIXTime
+        init <- Static.Init.init
+        loop $ initial (round $ t * 1000) (TM.insert init TM.empty)
 
 
 processCentralMessage :: (TQueue CentralMessage) -> ServerState -> CentralMessage -> IO ServerState
@@ -73,24 +73,23 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
 
     let newClientId = (nextClientId state)
 
+    tvar <- atomically $ newTVar Static.Init.initNet   --stores the user's current net (to know how to decode the message)
+
     Prelude.putStrLn $ "Processing new client with ID " ++ show newClientId
     Prelude.putStrLn $ "Current clients: " ++ show (IM'.keys $ clients state)
 
     -- Add the new Client to the server state.
-    let nextClients = IM'.insert newClientId (Client clientMessageChan) (clients state)
-
-    -- Construct the next state with the new list of Clients and new
-    -- Dict of scores.
-    let nextState = state { clients = nextClients, nextClientId = newClientId + 1 }
+    let nextClients = IM'.insert newClientId (Client tvar clientMessageChan 0) (clients state)
 
     -- Run two threads and terminate when either dies.
     -- (1) Process the new message channel responsible for this Client.
     -- (2) Read the WebSocket connection and pass it on to the central
     --     message channel.
-    forkIO $ finally (race_ (processClienTQueue conn clientMessageChan) $ forever (do
+    forkIO $ finally (race_ (processOutgoingMsg conn clientMessageChan) $ forever (do
         msg <- WS.receiveData conn
+        netToDecode <- atomically $ readTVar tvar --read which decoder to use
         Prelude.putStrLn $ "Received " ++ T.unpack msg ++ " from clientID " ++ show newClientId
-        parseIncomingMsg newClientId centralMessageChan msg
+        parseIncomingMsg newClientId netToDecode centralMessageChan msg
         ))  -- We don't care about the results of `race`
         -- when the connection closes, catch the exception or disconnect and inform our runtime
         (atomically $ writeTQueue centralMessageChan $ UserConnectionLost newClientId)
@@ -98,63 +97,54 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
     Prelude.putStrLn $ "Client with ID " ++ show newClientId ++ " connected successfully!"
 
     -- inform the user's app that the client has connected
-    atomically $ writeTQueue centralMessageChan $ ReceivedMessage newClientId MClientConnect
-
+    t <- Time.getPOSIXTime
+    let nextState = clientConnect (round $ t * 1000,startTime state) newClientId $ state { clients = nextClients, nextClientId = newClientId + 1 }
     -- Provide the new state back to the loop.
     return nextState
 
-processCentralMessage centralMessageChan state (ReceivedMessage clientId incomingMsg) = 
+processCentralMessage centralMessageChan state (ReceivedMessage mClientID incomingMsg) = 
     let
         connectedClients = clients state
 
-        ps = pluginState state
+        sendMessages :: [(ClientID, NetOutgoingMessage)] -> IO ()
+        sendMessages msgs =
+            mapM_ sendToID msgs
         
-        sendToID :: ClientMessage -> ClientID -> IO ()
-        sendToID cm clientId =
-            case IM'.lookup clientId connectedClients of
-                Just (Client chan) -> atomically $ writeTQueue chan $ SendMessage cm
-                Nothing -> Prelude.putStrLn $ "Unable to send message to client " ++ show clientId ++ " because that client doesn't exist or is logged out."    
-    in do
-    (nextServerState,mCmd,mMessage) <- update clientId incomingMsg $ internalServerState state
-    case mCmd of
-        Just (Cmd msg) -> void $ forkIO $ do
-            result <- msg
-            atomically $ writeTQueue centralMessageChan $ ReceivedMessage (-1) result
-        Just (StateCmd msg) -> void $ forkIO $ do
-            result <- msg (fromJust $ TM.lookup ps)
-            atomically $ writeTQueue centralMessageChan $ ReceivedMessage (-1) result
-        Nothing -> return ()
+        sendToID :: (ClientID,NetOutgoingMessage) -> IO ()
+        sendToID (clientID, cm) =
+            case IM'.lookup clientID connectedClients of
+                Just (Client decodeChannel chan netID) -> atomically $ writeTQueue chan $ SendMessage (encodeOutgoingMessage cm)
+                Nothing -> Prelude.putStrLn $ "Unable to send message to client " ++ show mClientID ++ " because that client doesn't exist or is logged out."    
+        
 
-    let nextState = state { internalServerState = nextServerState }
-        processICM icm =
-            case icm of
-                ICMNoClientMessage            -> return ()
-                ICMToSender msg               -> sendToID msg clientId 
-                ICMToAllExceptSender msg      -> mapM_ (sendToID msg) $ IM'.keys $ IM'.delete clientId connectedClients
-                ICMToAllExceptSenderF c2msg   -> mapM_ (\cId -> sendToID (c2msg cId) cId) $ IM'.keys $ IM'.delete clientId connectedClients
-                ICMToSenderAnd clients msg    -> mapM_ (sendToID msg) $ S.insert clientId clients
-                ICMToSenderAndF clients c2msg -> mapM_ (\cId -> sendToID (c2msg cId) cId) $ S.insert clientId clients
-                ICMToSet clients msg          -> mapM_ (sendToID msg) clients
-                ICMToSetF clients c2msg       -> mapM_ (\cId -> sendToID (c2msg cId) cId) clients
-                ICMToAll msg                  -> mapM_ (sendToID msg) $ IM'.keys connectedClients
-                ICMToAllF c2msg               -> mapM_ (\cId -> sendToID (c2msg cId) cId) $ IM'.keys connectedClients
-                ICMAllOf icms                 -> mapM_ processICM icms
-    _ <- case mMessage of
-            Just icm -> processICM icm
-            Nothing -> return ()
+
+    in do
+    t <- Time.getPOSIXTime
+
+    let (nextState, outgoingMsgs, mCmd) = update (round $ t * 1000,startTime state) mClientID incomingMsg state
+
+    sendMessages outgoingMsgs
+
+    putStrLn $ show $ (fromJust $ TM.lookup $ serverState nextState :: NetState CounterNet.Static.Types.Player)
+
+    processCmd centralMessageChan mCmd incomingMsg nextState
+
     return nextState
 
-processCentralMessage centralMessageChan state (UserConnectionLost clientId) = 
+processCentralMessage centralMessageChan state (UserConnectionLost clientID) = 
     let
         connectedClients = clients state
+        (Client nmTvar clientQueue netID) = (safeFromJust "userConnectionLost") $ IM'.lookup clientID $ clients state
+
     in do
-    Prelude.putStrLn $ "Client " ++ show clientId ++ " lost connection."
+    Prelude.putStrLn $ "Client " ++ show clientID ++ " lost connection."
+    netModel <- atomically $ readTVar nmTvar
+
+    t <- Time.getPOSIXTime
+
     -- inform the user's app that the client has disconnected
-    atomically $ writeTQueue centralMessageChan $ ReceivedMessage clientId MClientDisconnect
-    let nextState = state { clients = IM'.delete clientId connectedClients }
-
-    return nextState
-
+    return $ disconnect (round $ t * 1000,startTime state) clientID netModel state
+{-
 --get current state of central thread
 processCentralMessage centralMessageChan state (GetCurrentState queue) = do
     atomically $ writeTQueue queue state
@@ -169,27 +159,24 @@ processCentralMessage centralMessageChan state ResetClients = do
     let connectedClients = clients state
     atomically $ mapM_ (\(Client chan) -> writeTQueue chan ResetState) $ IM'.elems connectedClients
     return state
-
+-}
 --a new message has been received from a client. Process it and inform the central message about it.
-parseIncomingMsg :: ClientID -> TQueue CentralMessage -> Text -> IO ()
-parseIncomingMsg clientId chan msg = do
-    case (decodeServerMessage (Err "",T.splitOn "\0" msg)) of
-        (Ok msg,_) -> do
-                        atomically $ writeTQueue chan $ ReceivedMessage clientId msg
-        (Err er,l) -> Tio.putStrLn $ T.concat ["Error decoding message from client ", T.pack $ show clientId, ". Failed with error: ", er, " and the following still in the deocde buffer:", T.pack $ show l, "."]
+parseIncomingMsg :: ClientID -> NetModel -> TQueue CentralMessage -> Text -> IO ()
+parseIncomingMsg clientId netToDecode chan msg = do
+    case (decodeIncomingMessage msg netToDecode) of
+        Ok msg -> atomically $ writeTQueue chan $ ReceivedMessage (Just clientId) msg
+        Err er -> Tio.putStrLn $ T.concat ["Error decoding message from client ", T.pack $ show clientId, ". Failed with error: ", er]--, " and the following still in the deocde buffer:", T.pack $ show l, "."]
 
 
 
-processClienTQueue :: WS.Connection -> TQueue ClientThreadMessage -> IO ()
-processClienTQueue conn chan = forever $ do
+processOutgoingMsg :: WS.Connection -> TQueue OutgoingClientThreadMessage -> IO ()
+processOutgoingMsg conn chan = forever $ do
     -- This reads a ClientThreadMessage channel forever and passes any messages
     -- it reads to the WebSocket Connection.
     clientMsg{-(SendMessage outgoingMessage)-} <- atomically $ readTQueue chan
     case clientMsg of 
         SendMessage outgoingMessage -> do
-            let txtMsg = encodeClientMessage outgoingMessage
-
-            WS.sendTextData conn txtMsg
-            Tio.putStrLn $ T.concat $ ["Sent: ",  txtMsg]
-        ResetState ->
-            WS.sendTextData conn ("resetfadsfjewi" :: T.Text)
+            WS.sendTextData conn outgoingMessage
+            Tio.putStrLn $ T.concat $ ["Sent: ",  outgoingMessage]
+        {-ResetState ->
+            WS.sendTextData conn ("resetfadsfjewi" :: T.Text)-}

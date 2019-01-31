@@ -5,6 +5,8 @@ module Types where
 import Data.Map as M
 import Data.String
 import qualified Data.Text as T
+import Data.Typeable (Typeable)
+
 
 -- paper 1 will stick to messages arriving in order (websockets)
 -- paper 2 will allow messages out of order (webrtc)
@@ -32,50 +34,57 @@ type Constructor = (String,[ElmDocType]) -- (name, arguments)
 data ElmCustom = ElmCustom String [Constructor] -- name of the type 
   deriving (Ord,Eq,Show)
 
-type ServerState        = Constructor
-data OutgoingClientMessage   = 
-      ToSender            Constructor                   --reply back to the client that sent the orignal message
-    | ToAllExceptSender   Constructor                   --not used
-    | ToSenderAnd         Constructor                   --reply to sender and a set of other clients
-    | ToSet               Constructor                   --reply to sender and a set of other clients
-    | ToAll               Constructor                   --send a message to all connected clients
-    | OneOf               [OutgoingClientMessage]       --send one of a list of possible messages
-    | AllOf               [OutgoingClientMessage]       --send all of a list of possible messages
-    | NoClientMessage
-  deriving (Ord,Eq,Show)
 type ClientTransition   = Constructor
 type ClientCmd          = Constructor
 type ServerTransition   = Constructor
 type ServerCmd          = Constructor
 
-type ClientStateDiagram =
-    M.Map (String, ClientTransition) (String, Maybe ClientCmd, Maybe ServerTransition)
+data HybridPlace =
+    HybridPlace 
+        T.Text          --name of the place
+        [ElmDocType]    --server place state
+        [ElmDocType]    --player state
+        [ElmDocType]    --client place state
+        (Maybe T.Text)  --Maybe the name of a subnet
+        (Maybe T.Text, Maybe T.Text) --initial commands
+        (Maybe T.Text)  --client-side subscription
 
-type ServerStateDiagram =
-    M.Map (String, ServerTransition) (String, Maybe ServerCmd, OutgoingClientMessage)
+data NetTransition =
+    NetTransition
+        Constructor                         --message which attempts to fire this transition (must be unique) 
+        [(T.Text                            --from place (must appear in map above)
+        ,Maybe (T.Text, Constructor))       --to place (must appear in map above) and client message
+        ]
+        (Maybe ServerCmd)                   --whether to issue a command when this transition is fired
 
-type ExtraClientTypes =
+data HybridTransition =
+        ClientOnlyTransition
+    |   HybridTransition
+    |   ServerOnlyTransition
+    deriving (Eq)
+
+-- a net describing a collections of places and transitions
+data Net = 
+    HybridNet
+        T.Text                                  --net name
+        T.Text                                  --starting place for client
+        [HybridPlace]                           --all the places in this net
+        [(HybridTransition,NetTransition)]      --transitions between the places
+        [Plugin]                                --a list of plugins to be generated / installed on this net
+
+type ExtraTypes =
     [ElmCustom]
-
-type ExtraServerTypes =
-    [ElmCustom]
-
-data ClientState =
-      ClientState Constructor
-    | ClientStateWithSubs Constructor [Constructor] {-subs-}
 
 type ClientServerApp =
-    ( (String, Maybe Constructor)                   --starting state and command of client
-    , (String, Maybe Constructor)                --starting state of server
-    , [ClientState]          --all possible client states
-    , [ServerState]          --all possible server states
-    , ExtraClientTypes        --extra client types used in states or messages
-    , ExtraServerTypes        --extra server types used in states or messages
-    , ClientStateDiagram    --the client state diagram
-    , ServerStateDiagram    --the client state diagram
-    , [Plugin]              --a list of plugins to be installed
+    ( T.Text                            --starting net for client
+    , [Net]                             --all the nets in this client/server app
+    , ExtraTypes                        --extra server types used in states or messages
     )
 
 data Plugin = 
       Plugin String {-name-}
     | PluginGen String {-name-} (IO [(FilePath,T.Text)]) {-function to generate the plugin-}
+
+data Language =
+    Elm | Haskell
+    deriving (Eq)

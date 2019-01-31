@@ -3,15 +3,16 @@
 module Utils where
 
 import System.Process ( spawnCommand, waitForProcess )
-import Data.List (intercalate)
+import Data.List (intercalate, nub)
 import                  System.FilePath.Posix
 import                  Data.Maybe              (mapMaybe,fromMaybe)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import                  System.Directory
 import                  Control.Monad (unless)
-import Data.Char (toUpper)
-
+import Data.Char (toUpper,toLower)
+import qualified Data.Set as S
+import Types
 
 
 
@@ -50,10 +51,12 @@ writeIfNew n fp txt = do
          else do
             currentLines <- return . T.lines =<< TIO.readFile fp
             let diffLines = filter (\(a,b) -> a /= b) $ zipWithDefault "" "" currentLines (T.lines txt)
-            Prelude.putStrLn $ "Differences in " ++ fp ++ " : " ++ show (length diffLines)
-            if length diffLines > n then
+            Prelude.putStr $ "Differences in " ++ fp ++ " : " ++ show (length diffLines)
+            if length diffLines > n then do
+                putStr " [rewriting]\n"
                 TIO.writeFile fp txt
-            else
+            else do
+                putStr " [skipping]\n"
                 return ()
 
 disclaimer date = T.unlines ["{-"
@@ -68,9 +71,35 @@ capitalize txt =
     case T.unpack txt of
         h:rest -> T.pack $ toUpper h : rest
         _ -> txt
+    
+
+uncapitalize :: T.Text -> T.Text
+uncapitalize txt =
+    case T.unpack txt of
+        h:rest -> T.pack $ toLower h : rest
+        _ -> txt
 
 capStr :: String -> String
 capStr str =
     case str of
         h:rest -> toUpper h : rest
         _ -> str
+
+fnub :: Ord a => [a] -> [a]
+fnub = nub --S.toList . S.fromList
+
+getPlaceState :: HybridPlace -> Constructor
+getPlaceState p =
+    case p of
+        (HybridPlace n _ s _ _ _ _) -> (T.unpack n,s)
+
+getPlaceName :: HybridPlace -> T.Text
+getPlaceName p =
+    case p of
+        (HybridPlace n _ _ _ _ _ _) -> n
+
+
+getPlayerState :: HybridPlace -> Constructor
+getPlayerState p =
+    case p of
+        (HybridPlace n _ s _ _ _ _) -> (T.unpack n,s)

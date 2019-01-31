@@ -1,22 +1,7 @@
 {-# LANGUAGE OverloadedStrings, ExistentialQuantification #-}
-module Static.ServerTypes
-    ( CentralMessage(..)
-    , ClientThreadMessage(..)
-    , ServerState(..)
-    , Client(..)
-    , ClientID
-    , ToSender(..)
-    , ToAllExceptSender(..)
-    , ToSenderAnd(..)
-    , ToSet(..)
-    , ToAll(..)
-    , InternalCM(..)
-    , Cmd(..)
-    , Plugin(..)
-    , PluginState
-    ) where
+module Static.ServerTypes where
 
-import           Control.Concurrent.STM (STM, TQueue)
+import           Control.Concurrent.STM (STM, TQueue, TVar)
 import qualified Data.Map.Strict        as M'
 import qualified Data.IntMap.Strict     as IM'
 import           Static.Types
@@ -24,64 +9,53 @@ import           Network.WebSockets.Connection (Connection)
 import Data.Set as Set
 import Data.TMap (TMap)
 import Data.Typeable (Typeable)
+import qualified Data.Text as T
+
+type ClientID = Int
 
 data CentralMessage
-    = NewUser (TQueue ClientThreadMessage) Connection    --register a new user on the server
+    = NewUser (TQueue OutgoingClientThreadMessage) Connection    --register a new user on the server
     | UserConnectionLost ClientID
-    | ReceivedMessage ClientID ServerMessage
-    | GetCurrentState (TQueue ServerState)
-    | SetInternalState Model
-    | ResetClients
+    | ReceivedMessage 
+        (Maybe ClientID)    -- Just: message from a client, Nothing: message from a command
+        NetTransition       -- message that was sent
 
-data ClientThreadMessage 
-    = SendMessage ClientMessage
-    | ResetState
+data OutgoingClientThreadMessage
+    = SendMessage T.Text    -- send message to client
+   -- | ResetState
 
---types of messages that can be sent back from the user update function
+data Client = 
+    Client (TVar NetModel) (TQueue OutgoingClientThreadMessage) NetID {-current net for this user, for decoding-}
 
-data ToSender clientMessage =
-      ToSender clientMessage
-
-data ToAllExceptSender clientMessage =
-      ToAllExceptSender clientMessage
-    | ToAllExceptSenderF (ClientID -> clientMessage)
-
-data ToSenderAnd clientMessage =
-      ToSenderAnd (Set.Set ClientID) clientMessage
-    | ToSenderAndF (Set.Set ClientID) (ClientID -> clientMessage)
-
-data ToSet clientMessage =
-      ToSet (Set.Set ClientID) clientMessage
-    | ToSetF (Set.Set ClientID) (ClientID -> clientMessage)
-
-data ToAll clientMessage =
-      ToAll clientMessage
-    | ToAllF (ClientID -> clientMessage)
-
-data InternalCM clientMessage =
-      ICMNoClientMessage
-    | ICMToSender clientMessage
-    | ICMToAllExceptSender clientMessage
-    | ICMToAllExceptSenderF (ClientID -> clientMessage)
-    | ICMToSenderAnd (Set.Set ClientID) clientMessage
-    | ICMToSenderAndF (Set.Set ClientID) (ClientID -> clientMessage)
-    | ICMToSet (Set.Set ClientID) clientMessage
-    | ICMToSetF (Set.Set ClientID) (ClientID -> clientMessage)
-    | ICMToAll clientMessage
-    | ICMToAllF (ClientID -> clientMessage)
-    | ICMAllOf [InternalCM clientMessage]
-
-newtype Client = Client (TQueue ClientThreadMessage)
+type NetID = Int
 
 data ServerState = ServerState
     { clients :: IM'.IntMap Client
     , nextClientId :: ClientID
-    , internalServerState :: Model
-    , pluginState :: PluginState
+    , serverState :: TMap                       -- TMap of all the NetStates
+    , startTime :: Int                          -- Unix time the server was started
     }
+
+data NetState playerState = NetState
+    { playerStates :: IM'.IntMap playerState    -- the clients in the net (parameterized by that net's player state)
+    , placeStates :: TMap                       -- the place states in this net
+    , pluginStates :: TMap                      -- state of the plugins in this net
+    }
+
+-- data that the top-level update functions receive
+type TopLevelData = 
+    (Int {-start time-}, Int {-time-})
 
 type PluginState = TMap
 
+{- message type for each net's STM loop
+data NetMsg netMsg = 
+      ConnectClient ClientID
+    | DisconnectClient ClientID
+    | ReceiveClientMessage ClientID netMsg
+    | ReceiveServerMessage netMsg
+    -- | MoveClient ClientID NetID -- move a client to another net, gotta think this through a bit better
+-}
 data Cmd msg =
       Cmd (IO msg)
     | forall state. Plugin state => StateCmd (state -> IO msg)

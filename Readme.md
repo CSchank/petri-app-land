@@ -1,94 +1,55 @@
-# elm-haskell-state-diagram early alpha notes
-Each app is written in two main phases, and then iterated on as it is changed:
-1. Define the client and server states (including data types) and transitions
-2. Implement the generated function stubs for state transitions and view functions
+# How to create a new PetriAppWorld
 
-The code can then be compiled and run.
-This library will generate much of the client (Elm) and server (Haskell) code for you, including handling state and server 
-threads, encoding and decoding messages and ensuring that the code matches the specification directly. This ensures that
-you do less boring, tedious, error-prone work and do more of the fun work including writing the state transitions themselves
-and the view functions.
+GitHub will be the "main" directory from which we will be working for this example. Any
+folder is fine, as long as this repo and the one you create are in the same place.
 
-## Writing and generating your new app
-1. Write the server specification in `ClientServerSpec.hs`, make sure to change the output directory.
-It's best if your output directory is outside of this repository (create a new git repo and use `../` to 
-output the generated code to the new repo. See below section for notes on the specification.
-2. In a terminal window, compile the code generator by typing `stack build`.
-3. Run `stack exec elm-haskell-state-diagram-exe` to generate the code in the specified directory.
+## Specifying your app and generating the code
 
-## ClientServerSpec.hs notes
-- You must keep `csDiagram`, `ssDiagram` and `clientServerApp` in the spec (don't edit their names).
-- Do not edit `clientConnect` and `clientDisconnect` or their names
-- Each server state must be able to handle `ClientConnect` and a `ClientDisconnect` (your implementation
-doesn't actually have to change its state based on these if they're not important to your server).
-### ClientServerApp
-The specification of the entire client-server in question
-```
-type ClientServerApp =
-    ( String                  --starting state of client
-    , String                  --starting state of server
-    , ClientStates            --include all possible client states here
-    , ServerStates            --include all possible server states here
-    , ExtraClientTypes        --include all extra client types used in states or messages
-    , ExtraServerTypes        --include all extra server types used in states or messages
-    , ClientStateDiagram      --the client state diagram
-    , ServerStateDiagram      --the client state diagram
-    )
-```
-### ClientStateDiagram
-A dictionary of tuples as follows:
-`((currentState :: String, stateTransition :: ClientTransition), (nextState :: String, outgoingMessage :: Maybe ServerTransition))`.
-- ClientTransition is basically a constructor of a custom type.
-- If outgoingMessage is `Nothing` then no message will be sent to the server on that update function being called.
-If it is Just ServerTransition, then a message will be sent from that update transition.
-### ServerStateDiagram
-A dictionary of tuples as follows:
-`((currentState :: String, stateTransition :: ServerTransition), (nextState :: String, outgoingMessage :: OutgoingClientMessage))`.
-- ServerTransition is basically a constructor of a custom type.
-- The `OutgoingClientMessage` is a recursive type with the following constructors:
-  - `ToSender            Constructor`                   --reply back to the client that sent the orignal message
-  - `ToAllExceptSender   Constructor`                   --send a message to all clients except the sender (should only 
-  really be used with an `AllOf` to send a different message to the sender than to the other clients)
-  - `ToSenderAnd         Constructor`                   --reply to sender and a `Set` of other clients
-  - `ToAll               Constructor`                   --send a message to all connected clients
-  - `OneOf               [OutgoingClientMessage]`       --send one of a list of possible messages
-  - `AllOf               [OutgoingClientMessage]`       --send all of a list of possible messages
-  - `NoClientMessage`                                   -- do not send a message on this transition
-- These messages are implemented in much a similar way in the generated code stubs, with each of one except `ToSender`
-  having a variant with `F` (e.g. `ToAllF`) which is given a function to change the message data (but not the type)
-  based on which clientId it is being sent to.
-  
-## Implementing functions in the generated code
-- Client and server code are generated in their respective directories
-- Only code inside of `userApp` should be edited. Other generated code may be used as reference but changing it will break the system. Make sure to fill in the following files for both client and server:
-  - `Init`
-  - `View*`
-  - `Update*`
-- In the case of the client, View and Update files will be generated for each state.
-- Type signatures guide you as you code and ensure that your implementation matches the specification.
+1. Clone repo in `GitHub/elm-haskell-state-diagram`
+2. From `GitHub`, type `stack new YourProjectName elm-haskell-state-diagram/petriworld`
+to create a new PetriWorld project (remember to change `YourProjectName` to whatever you 
+want). This will create a folder `GitHub/YourProjectName`.
+3. Open `src/ClientServerSpec.hs`
+	- Change `outputDirectory = "MyNewPetriProject"` if desired. This will be where the new
+	code will be generated
+	- Modify your specification how you please, adding types, places, transitions, etc.
+	- Types for the specification are in `src/Types.hs`
+	- Type helper functions are in `src/TypeHelpers.hs`
+4. From `YourProjectName`, run `stack build`. Fix any compiler errors you may have with your
+specification, and rebuild.
+5. When it compiled successfully (you get no errors), run `stack exec YourProjectName-exe`.
+	- This will attempt to generate code based on your specification.
+	- If errors are found, you'll have to fix them, rebuild and execute again.
+6. Once the specification generates successfully, `cd YourProjectName` into the output folder 
+you set in your ClientServerSpec.hs in step 3. Inside you'll see `client` and `server`.
 
-## Building and running your new app
-### Client
-1. In terminal, navigate to the `client` directory 
-2. Run `make` or `make app` to build the Elm JavaScript files.
-3. If you haven't already, run `make launch` to view the file in `elm reactor` (the Elm program will not work if you 
-open the `index.html` file directly).
-4. To rebuild, re-run `make` or  `make app` and refresh the browser.
-5. You can use `make stop` to stop the elm reactor server when you're done.
-6. To preview state views as standalone files, use `make sa -m=State` where `State` is the state you wish to preview.
-You can change the state to preview by changing `model` in `src/Static/Standalone/State.elm`.
-### Server
-1. In terminal, navigate to the `server` directory.
-2. Run `stack build` to build the server.
-3. Run `stack exec server-exe` to execute the server.
-4. Use `Ctrl+C` (potentially twice) to stop the server.
-5. Navigating to `http://localhost:8080` directly in the browser will display the current server state, refresh to update
-it.
+## Completing the generated client
+1. Go into the client directory with `cd client`.
+2. For each Net that you generated, you'll need to complete `Init.elm`, `Update.elm` and all of the views
+in the `View` folder. 
+	- _All files in `Static` directories can be used for reference but should not be edited!_
+	- _No generated imports should be modified, but you can add new modules and import them,
+or import new libraries._
+	- Helper functions for models can be found in `Static/Helpers`.
+3. From the `client` directory, run `make` to build, then `make launch` to open your app in `elm 
+reactor`. Running `build/index.html` directly will not work from your local machine due to Elm's
+handling of URLs.
+4. To publish live on a server, copy all files in `build` into the directory you want them on your
+webserver.
 
-## Making changes to specification
-Currently, making changes to the specification is a somewhat manual process. In the case of the client, new states' files 
-will be generated but files already existing will not be overwritten. This section provides some guidelines about how to do 
-it properly for the time being:
-- Make small, incremental changes, regenerating the code each time.
-- After you regenerate the code, add in any new update functions, `Msg` types or changes to the `Model` types.
-- Use error messages to determine where and what changes need to be made.
+## Completing the generated server
+1. Go into the server directory with `cd ../server`
+2. For each Net generated, you'll need to complete `Init.hs` and `Update.hs`.
+	- _All files in `Static` directories can be used for reference but should not be edited!_
+	- _No generated imports should be modified, but you can add new modules and import them,
+or import new libraries._
+	- Helper functions for models can be found in `Static/Helpers`.
+3. From the `server` directory, use `stack build` to build your client. Then use `stack exec server-exe`
+to launch the server.
+4. To launch live on a server, clone the repository on your server, build the server there and run on an
+open port. You'll have to update the client's URL to point to the correct one.
+
+## Editing your specification
+To edit your specification, make changes to the spec in `ClientServerSpec.hs` and then rebuild and execute the program. Note that any files the user is supposed to edit (views, updates) will NOT be rebuilt by the system if they already exist. If you haven't edited a certain file, you can delete it or move it before regenerating and it will be generated again. Otherwise, you can use the compiler errors to help you fix your code. S
+
+_Static files will be rebuilt if there are changes, so don't edit them as you will lose work from them._

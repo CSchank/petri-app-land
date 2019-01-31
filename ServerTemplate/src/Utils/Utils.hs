@@ -9,6 +9,10 @@ import Static.Types
 import           Control.Concurrent.STM         (TQueue, atomically, readTQueue,
                                                  writeTQueue, STM, newTQueue)
 import qualified Data.Map.Strict as Dict
+import Static.Dict
+import qualified Data.TMap as TM
+import Data.Maybe (fromJust,isJust)
+import qualified Data.IntMap.Strict as IM'
 
 
 (|>) :: a -> (a -> b) -> b
@@ -344,25 +348,6 @@ decodeString ls =
         fst:rest -> (Ok $ T.unpack fst, rest)
         _ -> (Err "Error decoding string value",[])
 
-unwrapToSender :: (cm -> ClientMessage) -> ToSender cm -> InternalCM ClientMessage
-unwrapToSender m (ToSender cm) = ICMToSender (m cm)
-
-unwrapToAllExceptSender :: (cm -> ClientMessage) -> ToAllExceptSender cm -> InternalCM ClientMessage
-unwrapToAllExceptSender m (ToAllExceptSender cm) = ICMToAllExceptSender (m cm)
-unwrapToAllExceptSender m (ToAllExceptSenderF f) = ICMToAllExceptSenderF (m . f)
-
-unwrapSenderAnd :: (cm -> ClientMessage) -> ToSenderAnd cm -> InternalCM ClientMessage
-unwrapSenderAnd m (ToSenderAnd others cm) = ICMToSenderAnd others (m cm)
-unwrapSenderAnd m (ToSenderAndF others f) = ICMToSenderAndF others (m . f)
-
-unwrapToSet :: (cm -> ClientMessage) -> ToSet cm -> InternalCM ClientMessage
-unwrapToSet m (ToSet others cm) = ICMToSet others (m cm)
-unwrapToSet m (ToSetF others f) = ICMToSetF others (m . f)
-
-unwrapToAll :: (cm -> ClientMessage) -> ToAll cm -> InternalCM ClientMessage
-unwrapToAll m (ToAll cm) = ICMToAll (m cm)
-unwrapToAll m (ToAllF f) = ICMToAllF (m . f)
-
 decodeMaybe :: [T.Text] -> ((Result T.Text a, [T.Text]) -> (Result T.Text a, [T.Text])) -> (Result T.Text (Maybe a), [T.Text])
 decodeMaybe ls decodeFn =
     case ls of
@@ -400,3 +385,33 @@ cmdMap f ca =
     case ca of 
         Cmd msg -> Cmd (fmap f msg)
         StateCmd msg -> StateCmd (fmap f . msg)
+
+processCmd :: Cmd NetTransition -> TQueue CentralMessage -> NetState player -> IO ()
+processCmd cmd centralMsgQ ns = do
+    case cmd of
+        Cmd msg -> do
+            result <- msg
+            atomically $ writeTQueue centralMsgQ $ ReceivedMessage Nothing result
+        StateCmd toMsg -> do
+            result <- toMsg ((safeFromJust "processCmd") $ TM.lookup $ pluginStates ns)
+            atomically $ writeTQueue centralMsgQ $ ReceivedMessage Nothing result
+
+
+safeFromJust msg j = 
+    if isJust j then
+        fromJust j
+    else
+        error $ "not isJust: " ++ msg
+
+mapSnd :: (a -> b) -> [(c, a)] -> [(c, b)]
+mapSnd f l =
+    map (\(c,a) -> (c,f a)) l
+
+insertList :: [(IM'.Key, a)] -> IM'.IntMap a -> IM'.IntMap a
+insertList l im =
+    foldl (\m (i,a) -> IM'.insert i a m) im l
+{-
+processCmd :: Cmd a -> IO ()
+processCmd cmd =
+    case cmd of
+-}
