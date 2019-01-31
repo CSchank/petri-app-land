@@ -9,6 +9,7 @@ import Control.Monad (unless,when)
 import System.Directory (doesDirectoryExist)
 import System.FilePath.Posix ((</>))
 import System.Exit (exitFailure)
+import Generate.Dot
 
 generate :: FilePath -> FilePath -> ClientServerApp -> IO ()
 generate outputDirectory rootDir clientServerApp = do
@@ -47,3 +48,4 @@ generate outputDirectory rootDir clientServerApp = do
             rootDir             --True: regenerate only static files, False: regenerate static files and user files if they don't exist
             outputDirectory   --directory
             clientServerApp   --the server to generate
+    generateDot clientServerApp outputDirectory False

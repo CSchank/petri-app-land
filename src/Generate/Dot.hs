@@ -9,95 +9,80 @@ import qualified Data.Text.IO as Tio
 import qualified Data.Maybe as MA
 import Types
 import Generate.Types
+import                  System.FilePath.Posix   ((</>),(<.>))
+import Utils
+import                  System.Directory
 
-{-generateDot :: ClientServerApp -> IO ()
+
+generateDot :: ClientServerApp -> FilePath -> Bool -> IO ()
 generateDot (startCp
             ,netLst
             ,cExtraTlst
-            ,sExtraTlst
-            )= error ""-}
-    {-let
-        replace :: [T.Text] -> [T.Text]
-        replace (l1:ls) = ( case lookup l1 swaps of
-                            Just new -> new
-                            Nothing  -> l1
-                        )
-                        : (replace ls)
-        replace [] = []
-
-        swaps = [("*CLIENTD", T.unlines (clientDiagram))
-                ,("*SERVERD", T.unlines (serverDiagram))
-                ,("*COMMD",   T.unlines (c2sDiagram ++ s2cDiagram))
-                ,("*START",   T.unlines $ T.concat [ T.pack startClient,"[peripheries=2];"]:T.concat [ T.pack startServer,"[peripheries=2];"]:[])
-                ]
-
-        clientList = M.toList cDiagram
-        serverList = M.toList sDiagram
-        clientDiagram = map clientStateToGViz clientList
-        serverDiagram = map serverStateToGViz serverList
-        c2sDiagram = MA.mapMaybe (c2sStateToGViz $ T.pack startServer) clientList
-        s2cDiagram = MA.mapMaybe (s2cStateToGViz $ T.pack startClient) serverList
-    in do
-        dotTemplate <- Tio.readFile "template.dot"
-        Tio.writeFile ("rgbApp.dot") $ T.unlines $ replace $ T.lines dotTemplate
-        putStrLn $ show clientDiagram
-
---clientStateToGViz :: ClientStateDiagram -> T.Text
-clientStateToGViz ((cState0S, cTrans), (cState1S, mCmd, mServe)) =
-    let 
-        cState0 = T.pack cState0S
-        cState1 = T.pack cState1S
-        fakeName = T.concat["fake", cState0, T.pack $ fst cTrans,cState1]
-    in
-        case (mCmd,mServe) of 
-            Just m -> T.unlines $ 
-                        T.concat ["\t\t", cState0,"->",fakeName," [label=\"", generateConstructor False False cTrans,"\",arrowhead=none];"] :
-                        T.concat ["\t\t",fakeName, " [shape=diamond, width=0.2, height=0.2, label=\"\"];"] :
-                        T.concat ["\t\t",fakeName,"->",cState1,";"] : []
-            Nothing -> T.concat ["\t\t", cState0,"->", cState1," [label=\"",generateConstructor False False cTrans,"\"];"]
-
-serverStateToGViz ((sState0S, sTrans), (sState1S, mClien)) =
-    let 
-        sState0 = T.pack sState0S
-        sState1 = T.pack sState1S
-        fakeName = T.concat["fake", sState0, T.pack $ fst sTrans,sState1]
-    in
-        case mClien of
-            NoClientMessage    -> T.concat ["\t\t", sState0,"->", sState1," [label=\"",generateConstructor False False sTrans,"\"];"]
-            _ -> T.unlines $ 
-                    T.concat ["\t\t", sState0,"->",fakeName," [label=\"",generateConstructor False False sTrans,"\",arrowhead=none];"] :
-                    T.concat ["\t\t",fakeName, " [shape=diamond, width=0.2, height=0.2, label=\"\"];"] :
-                    T.concat ["\t\t",fakeName,"->", sState1,";"] : []
+            ) fp renderTypes = 
+    let
         
-c2sStateToGViz firstServe ((cState0S, cTrans), (cState1S, Just mClien)) = 
-    let 
-        cState0 = T.pack cState0S
-        cState1 = T.pack cState1S
-        fakeName = T.concat["fake", cState0, T.pack $ fst cTrans,cState1]
-    in
-        Just $ T.concat ["\t",fakeName,"->", firstServe," [label=\"",generateConstructor False False mClien,"\",lhead=cluster_1,style=dashed];"]
-c2sStateToGViz _ ((_, _), (_, Nothing)) = Nothing
+    in do
+        createDirectoryIfMissing True (fp </> "Diagrams")
+        mapM_ (\net -> writeIfNew 0 (fp </> "Diagrams" </> (T.unpack $ getNetName net) <.> "dot") (generateNetDot net)) netLst
+    
 
+generateNetDot :: Net -> T.Text
+generateNetDot
+        (HybridNet name startingPlace places transitions plugins)
+        =
+    let
+        nodes :: T.Text
+        nodes =
+            let
+                placeNodes =
+                    map (\place -> T.concat["  ",getPlaceName place,"node [label=\"",getPlaceName place,"\"]"]) places
+                transitionNodes =
+                    map (\trans -> T.concat["  ",getTransitionName trans,"node [label=\"",getTransitionName trans,"\",shape=box]"]) $ map snd transitions
+            in
+                T.unlines $
+                    placeNodes ++ transitionNodes
 
-s2cStateToGViz firstClien ((sState0S, sTrans), (sState1S, ToAll cMsg)) = 
-    let 
-        sState0 = T.pack sState0S
-        sState1 = T.pack sState1S
-        fakeName = T.concat["fake", sState0, T.pack $ fst sTrans,sState1]
+        transitionsTxt :: T.Text
+        transitionsTxt =
+            let
+                oneConnection :: T.Text -> (T.Text, Maybe (T.Text, Constructor)) -> T.Text
+                oneConnection transName (from,mTo) =
+                    case mTo of
+                        Just (to, (msgName,edts)) ->
+                            let
+                                sameTailName = 
+                                    T.concat[from,T.pack msgName,to]
+                            in
+                            T.unlines
+                                [
+                                    T.concat["  ",transName,"node -> ",from,"node [arrowhead=none",",sametail=",sameTailName,"]"]
+                                ,   T.concat["  ",transName,"node -> ",to,"node [label=\"",T.pack msgName,"\"",",sametail=",sameTailName,"]"]
+                                ]
+                        Nothing ->
+                            let
+                                sameTailName = 
+                                    T.concat[from,"same"]
+                            in   
+                            T.unlines
+                            [
+                                T.concat["  ",transName,"node -> ",from,"node [arrowhead=none",",sametail=",sameTailName,",style=dashed]"]
+                            ,   T.concat["  ",transName,"node -> ",from,"node [","sametail=",sameTailName,",","style=dashed]"]
+                            ]
+
+                oneTrans :: NetTransition -> T.Text
+                oneTrans (NetTransition (transName,_) connections cmd) =
+                    T.unlines $ map (oneConnection $ T.pack transName) connections
+
+                allTransitions =
+                    T.unlines $ map oneTrans $ map snd transitions
+            in
+                allTransitions
     in
-        Just $ T.concat ["\t",fakeName,"->", firstClien, "[label=\"∀ ",generateConstructor False False cMsg,"\",lhead=cluster_0,style=dashed];"]
-s2cStateToGViz firstClien ((sState0S, sTrans), (sState1S, ToSender cMsg)) = 
-    let 
-        sState0 = T.pack sState0S
-        sState1 = T.pack sState1S
-        fakeName = T.concat["fake", sState0, T.pack $ fst sTrans,sState1]
-    in
-        Just $ T.concat ["\t",fakeName,"->", firstClien, "[label=\"✉ ",generateConstructor False False cMsg,"\",lhead=cluster_0,style=dashed];"]
-s2cStateToGViz firstClien ((sState0S, sTrans), (sState1S, ToSenderAnd cMsg)) = 
-    let 
-        sState0 = T.pack sState0S
-        sState1 = T.pack sState1S
-        fakeName = T.concat["fake", sState0, T.pack $ fst sTrans,sState1]
-    in
-        Just $ T.concat ["\t",fakeName,"->", firstClien, "[label=\"✉+ ",generateConstructor False False cMsg,"\",lhead=cluster_0,style=dashed];"]
-s2cStateToGViz _ ((_, _), (_, NoClientMessage)) = Nothing-}
+    T.unlines 
+    [
+        "digraph D {"
+    ,   nodes
+    ,   ""
+    ,   transitionsTxt
+    ,   "}"
+    ]

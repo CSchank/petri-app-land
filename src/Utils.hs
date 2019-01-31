@@ -103,3 +103,9 @@ getPlayerState :: HybridPlace -> Constructor
 getPlayerState p =
     case p of
         (HybridPlace n _ s _ _ _ _) -> (T.unpack n,s)
+        
+getNetName :: Net -> T.Text
+getNetName (HybridNet name _ _ _ _) = name
+
+getTransitionName :: NetTransition -> T.Text
+getTransitionName (NetTransition (name,_) _ _) = T.pack name
