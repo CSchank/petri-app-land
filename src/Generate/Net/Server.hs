@@ -155,7 +155,7 @@ generate extraTypes fp net =
                                         let 
                                             output = transName from msgN
                                         in
-                                            T.concat [from,"Player -> ",output]) (grouped connections)
+                                            T.concat ["(ClientID, ",from,"Player) -> ",output]) (grouped connections)
 
                 update :: T.Text
                 update =
@@ -221,7 +221,7 @@ generate extraTypes fp net =
                                         let
                                             (placeName,placeType) = getPlayerState $ getPlace $ fromPlace
                                         in
-                                            T.concat ["    ",generatePattern ("P"++placeName++"Player", placeType)," -> let (np, mCm) = (unwrap",T.pack transName,"from",fromPlace," $ from",fromPlace," $ wrap",fromPlace,"Player player) in ((cId, np), (cId, mCm))"]
+                                            T.concat ["    ",generatePattern ("P"++placeName++"Player", placeType)," -> let (np, mCm) = (unwrap",T.pack transName,"from",fromPlace," $ from",fromPlace," (cId,wrap",fromPlace,"Player player)) in ((cId, np), (cId, mCm))"]
                                             ) $ fst $ fromsTos tr
                             ]
                         splitPlayers (tr@(_, NetTransition (transName,_) connections mCmd)) = 
@@ -346,8 +346,8 @@ generate extraTypes fp net =
                         placeOutputs = 
                             fnub $ mapMaybe (\(_,mTo) -> fmap fst mTo) connections
                         clientIdType = case transType of 
-                            HybridTransition -> "Maybe ClientID ->"
-                            ClientOnlyTransition -> "ClientID ->"
+                            HybridTransition -> "    Maybe ClientID ->\n"
+                            ClientOnlyTransition -> "    ClientID ->\n"
                             ServerOnlyTransition -> ""
                         
                         clientId = case transType of 
@@ -356,14 +356,14 @@ generate extraTypes fp net =
                             ServerOnlyTransition -> ""
 
                         fnName = T.concat["update",T.pack msgN]
-                        outputs = fnub $ placeInputs ++ placeOutputs ++ (singularTransFns msgN connections) ++ cmds
+                        outputs = fnub $ placeInputs ++ placeOutputs ++ singularTransFns msgN connections ++ cmds
 
                         oneOfs = T.concat $ "OneOf" : map (\txt -> T.concat[txt,"Player"]) placeOutputs
-                        typ = T.concat  [ fnName," :: FromSuperPlace -> "
-                                        , clientIdType," "
-                                        , T.pack msgN," -> "
-                                        , T.intercalate " -> " (fnub $ placeInputs ++ placeOutputs ++ map (\txt -> T.concat["List ",txt,"Player"]) placeInputs), " -> "
-                                        , T.concat ["(",T.intercalate ", " outputs,")"]
+                        typ = T.concat  [ fnName," :: FromSuperPlace -> \n"
+                                        , clientIdType
+                                        , "    ", T.pack msgN," ->\n    "
+                                        , T.intercalate " -> \n    " (fnub $ placeInputs ++ placeOutputs ++ map (\txt -> T.concat["List ",txt,"Player"]) placeInputs), " -> \n"
+                                        , T.concat ["    ( ",T.intercalate ",\n      " outputs,"\n    )"]
                                         ] 
                         
                         decl = T.concat [ fnName," fsp "
@@ -380,12 +380,12 @@ generate extraTypes fp net =
                                                         ) lst
                                                     output = transName from msgN
                                                     name = T.concat ["        from",from]
-                                                    typ = T.concat [name, " :: ",from,"Player -> ",output]
+                                                    typ = T.concat [name, " :: (ClientID, ",from,"Player) -> ",output]
                                                 in
                                                     T.unlines 
                                                     [
                                                         typ
-                                                    ,   T.concat [name," p",uncapitalize from," = error \"Please fill in function stub.\""]
+                                                    ,   T.concat [name," (pId, p",uncapitalize from,") = error \"Please fill in function stub.\""]
                                                     ]) (grouped connections)
                         cmds = 
                             case mCmd of 

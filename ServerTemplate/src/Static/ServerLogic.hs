@@ -30,8 +30,6 @@ import Static.Plugins
 import Utils.Utils (Result(..),safeFromJust)
 import Static.Update (update, clientConnect, disconnect)
 
-import CounterNet.Static.Types
-
 newCentralMessageChan :: STM (TQueue CentralMessage)
 newCentralMessageChan =
     newTQueue
@@ -124,8 +122,6 @@ processCentralMessage centralMessageChan state (ReceivedMessage mClientID incomi
     let (nextState, outgoingMsgs, mCmd) = update (round $ t * 1000,startTime state) mClientID incomingMsg state
 
     sendMessages outgoingMsgs
-
-    putStrLn $ show $ (fromJust $ TM.lookup $ serverState nextState :: NetState CounterNet.Static.Types.Player)
 
     processCmd centralMessageChan mCmd incomingMsg nextState
 
