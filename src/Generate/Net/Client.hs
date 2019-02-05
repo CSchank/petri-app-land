@@ -81,6 +81,7 @@ generate extraTypes fp net =
                     [
                         T.concat["module ",name,".Static.Types.",placeName," exposing(..)"]
                     ,   T.concat["import ",name,".Static.Types exposing(..)"]
+                    ,   T.concat["import ",name,".Static.ExtraTypes exposing(..)"]
                     ,   ""
                     ,   generateType Elm False [] $ ec "Msg" transConstrs
                     ]

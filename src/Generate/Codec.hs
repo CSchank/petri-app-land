@@ -184,7 +184,7 @@ generateDecoder l (ElmCustom name edts) =
                             ,T.concat["            case ls",T.pack $ show indt," of"]
                             ,T.concat["                (",T.pack n,"Txt " .:. " lls",T.pack $ show indt,") ->"]
                             ,T.concat["                     (\"\",ls",T.pack $ show indt,") |>"]
-                            ,T.unlines $ decodeEt (indt+5) (et1,n1,d1)
+                            ,T.unlines $ decodeEt (indt+5) (et2,n2,d2)
                             ,T.concat["                [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[])"]
                             ,T.concat["    in (rMap3 (\\rff",T.pack $ show indt," rss",T.pack $ show indt," rtt",T.pack $ show indt," -> (rff",T.pack $ show indt,",rss",T.pack $ show indt,",rtt",T.pack $ show indt,")) ", T.pack n0," ",T.pack n1," ",T.pack n2,",lt",T.pack $ show indt,")"]
                             ]
