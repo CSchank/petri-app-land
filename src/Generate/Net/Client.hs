@@ -62,7 +62,7 @@ generate extraTypes fp net =
                     [
                         T.concat ["module ", name, ".Static.Types exposing(..)"]
                     ,   T.concat ["import ", name,".Static.ExtraTypes exposing(..)"]
-                    
+                    ,   "import Dict exposing(Dict)"
                     , ""
                     , "-- the types of all places in the net"
                     , generateNetTypes name places -- the initial places
@@ -95,9 +95,10 @@ generate extraTypes fp net =
                     T.unlines
                     [
                         T.concat["module ",name,".Static.Wrappers.",placeName," exposing(..)"]
-                        ,   T.concat["import ",name,".Static.Types.",placeName," exposing(..)"]
-                        ,   T.concat["import ",name,".Static.ExtraTypes exposing(..)"]
-                        ,   T.concat["import ",name,".Static.Types exposing(..)"]
+                    ,   T.concat["import ",name,".Static.Types.",placeName," exposing(..)"]
+                    ,   T.concat["import ",name,".Static.ExtraTypes exposing(..)"]
+                    ,   T.concat["import ",name,".Static.Types exposing(..)"]
+                    ,   "import Dict exposing (Dict)"
                     ,   ""
                     ,   "unwrap : Msg -> OutgoingTransition"
                     ,   "unwrap msg ="
@@ -254,6 +255,7 @@ generate extraTypes fp net =
                     ,   T.concat ["import ",name,".Static.Wrappers exposing(..)"]
                     ,   T.concat ["import ",name,".Static.FromSuperPlace exposing (FromSuperPlace)"]
                     ,   T.concat ["import ",name,".Update exposing(..)"]
+                    ,   "import Dict"
                     ,   ""
                     ,   T.concat ["update : FromSuperPlace -> IncomingMessage -> NetState -> (NetState,Maybe (Cmd OutgoingTransition))"]
                     ,   T.concat ["update fsp trans state ="]
@@ -315,6 +317,7 @@ generate extraTypes fp net =
                             T.concat ["module ",name,".Static.Wrappers exposing(..)"]
                         ,   T.concat["import ",name,".Static.ExtraTypes exposing(..)"]
                         ,   T.concat ["import ",name,".Static.Types exposing(..)\n"]
+                        ,   "import Dict exposing (Dict)"
                         ,   T.unlines $ map (createWrap extraTypes (length places > 1) Elm "IncomingMessage" "M") incomingCM
                         ,   T.unlines $ map (createUnwrap Elm "OutgoingTransition" "T") outgoingClientTransitions
                         ]

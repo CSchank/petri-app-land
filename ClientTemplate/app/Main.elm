@@ -26,6 +26,8 @@ import Static.Types
 import Static.Subs
 import Static.Types exposing(NetModel)
 
+import Config exposing(serverUrl)
+
 
 port cmdPort : Value -> Cmd msg
 
@@ -56,7 +58,7 @@ type State =
 
 defaultUrl : String
 defaultUrl =
-    "ws://localhost:8080"
+    serverUrl
 
 
 type alias InternalModel =

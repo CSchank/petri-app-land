@@ -1,5 +1,5 @@
 module Static.Dict where
 
-import qualified Data.Map.Strict as M
+import qualified Data.Map.Strict as Dict
 
-type Dict k v = M.Map k v
+type Dict k v = Dict.Map k v

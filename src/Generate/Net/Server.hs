@@ -61,6 +61,7 @@ generate extraTypes fp net =
                     T.concat ["module ", name, ".Static.Types where"]
                     , "import Data.Typeable (Typeable)"
                     , "import Static.List"
+                    , "import Static.Dict"
                     , ""
                     , "-- the initial state of all places in this net"
                     , generateNetTypes name places -- the initial places
@@ -444,6 +445,7 @@ generate extraTypes fp net =
                     ,   "import Utils.Utils"
                     ,   "import qualified Data.Text as T"
                     ,   "import Static.Types"
+                    ,   "import Data.Map.Strict as Dict"
                     ,   generateEncoder Haskell clientMsg
                     ,   "-- extra type encoders"
                     ,   T.unlines $ map (generateEncoder Haskell) $ M.elems extraTypes
@@ -465,6 +467,8 @@ generate extraTypes fp net =
                     T.unlines
                         [
                             T.concat ["module ",name,".Static.Wrappers where"]
+                        ,   "import Static.Dict"
+                        ,   "import Data.Map.Strict as Dict"
                         ,   T.concat ["import ",name,".Static.Types\n"]
                         ,   T.unlines $ map (createUnwrap Haskell "ClientMessage" "M") outgoingCM
                         ,   T.unlines $ map (createWrap extraTypes (length places > 1) Haskell "ClientMessage" "M") outgoingCM

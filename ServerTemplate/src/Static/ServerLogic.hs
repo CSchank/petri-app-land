@@ -96,7 +96,10 @@ processCentralMessage centralMessageChan state (NewUser clientMessageChan conn) 
 
     -- inform the user's app that the client has connected
     t <- Time.getPOSIXTime
-    let nextState = clientConnect (round $ t * 1000,startTime state) newClientId $ state { clients = nextClients, nextClientId = newClientId + 1 }
+    let tld = TopLevelData { serverStartTime = startTime state
+                           , currentTime = round $ t * 1000
+                           }
+    let nextState = clientConnect tld newClientId $ state { clients = nextClients, nextClientId = newClientId + 1 }
     -- Provide the new state back to the loop.
     return nextState
 
@@ -119,7 +122,10 @@ processCentralMessage centralMessageChan state (ReceivedMessage mClientID incomi
     in do
     t <- Time.getPOSIXTime
 
-    let (nextState, outgoingMsgs, mCmd) = update (round $ t * 1000,startTime state) mClientID incomingMsg state
+    let tld = TopLevelData { serverStartTime = startTime state
+                           , currentTime = round $ t * 1000
+                           }
+        (nextState, outgoingMsgs, mCmd) = update tld mClientID incomingMsg state
 
     sendMessages outgoingMsgs
 
@@ -139,7 +145,12 @@ processCentralMessage centralMessageChan state (UserConnectionLost clientID) =
     t <- Time.getPOSIXTime
 
     -- inform the user's app that the client has disconnected
-    return $ disconnect (round $ t * 1000,startTime state) clientID netModel state
+
+    let tld = TopLevelData { serverStartTime = startTime state
+                           , currentTime = round $ t * 1000
+                           }
+
+    return $ disconnect tld clientID netModel state
 {-
 --get current state of central thread
 processCentralMessage centralMessageChan state (GetCurrentState queue) = do

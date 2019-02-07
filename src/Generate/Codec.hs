@@ -41,23 +41,29 @@ generateEncoder l (ElmCustom name edts) =
         encodeEt indt (ElmSizedString size, n, _) =
             error "Not implemented yet"--indtTxts indt $ [T.concat[T.pack n, "Txt =",T.pack n]
         encodeEt indt (ElmPair (et0,n0,d0) (et1,n1,d1), n, _) =
+            let
+                indtTxt = T.pack $ show indt
+            in
             indtTxts indt   [T.concat[T.pack n, "Txt ="]
                             ,"    let"
-                            ,T.concat["        (",T.pack n0,",",T.pack n1,") = ",T.pack n]] ++
-                            encodeEt (indt+2) (et0,n0,d0) ++
-                            encodeEt (indt+2) (et1,n1,d1) ++
+                            ,T.concat["        (fst",indtTxt,",snd",indtTxt,") = ",T.pack n]] ++
+                            encodeEt (indt+2) (et0,"fst"++T.unpack indtTxt,d0) ++
+                            encodeEt (indt+2) (et1,"snd"++T.unpack indtTxt,d1) ++
             indtTxts indt   ["    in"
-                            ,T.concat ["        tConcat [",T.pack n0,"Txt",",\"",elmDelim,"\",",T.pack n1,"Txt]"]
+                            ,T.concat ["        tConcat [fst",indtTxt,"Txt,\"",elmDelim,"\",snd",indtTxt,"Txt]"]
                             ]
         encodeEt indt (ElmTriple (et0,n0,d0) (et1,n1,d1) (et2,n2,d2), n, _) =
+            let
+                indtTxt = T.pack $ show indt
+            in
             indtTxts indt $ [T.concat[T.pack n, "Txt ="]
                             ,"    let"
-                            ,T.concat["        (",T.pack n0,",",T.pack n1,",",T.pack n2,") = ",T.pack n]
-                            ,T.unlines $ encodeEt (indt+2) (et0,n0,d0)
-                            ,T.unlines $ encodeEt (indt+2) (et1,n1,d1)
-                            ,T.unlines $ encodeEt (indt+2) (et2,n2,d2)
+                            ,T.concat["        (fst",indtTxt,",snd",indtTxt,",thd",indtTxt,") = ",T.pack n]
+                            ,T.unlines $ encodeEt 2 (et0,"fst"++T.unpack indtTxt,d0)
+                            ,T.unlines $ encodeEt 2 (et1,"snd"++T.unpack indtTxt,d1)
+                            ,T.unlines $ encodeEt 2 (et2,"thd"++T.unpack indtTxt,d2)
                             ,"    in"
-                            ,T.concat ["        tConcat[",T.pack n0,"Txt,",elmDelim,",",T.pack n1,"Txt,",elmDelim,",",T.pack n2,"Txt]"]
+                            ,T.concat ["        tConcat[fst",indtTxt,"Txt,\"",elmDelim,"\",snd",indtTxt,"Txt,\"",elmDelim,"\",thd",indtTxt,"Txt]"]
                             ]
         encodeEt indt (ElmList (et, etn, etd), n, _) =
             indtTxts indt   [T.concat[T.pack n, "Txt ="]
@@ -97,7 +103,14 @@ generateEncoder l (ElmCustom name edts) =
                                                     ,if length edt > 0 then T.concat ["\n            let\n"
                                                     ,T.unlines $ concat $ map (encodeEt 4) edt
                                                     ,"            in\n"] else ""
-                                                    ,"                tConcat [\"",T.pack constrName,elmDelim,if length edt > 0 then "\", " else "\"",T.intercalate (T.concat[",\"",elmDelim,"\","]) $ map (\(et,name,desc) -> T.pack $ name ++ "Txt") edt, "]"
+                                                    ,"                tConcat [\"",T.pack constrName,elmDelim
+                                                    ,if length edt > 0 then "\", " else "\""
+                                                    ,T.intercalate (T.concat[",\"",elmDelim,"\","]) $ 
+                                                            map (\(et,name,desc) -> case et of 
+                                                                                        ElmDict _ _ -> T.pack $ name ++ "AsListTxt"
+                                                                                        _           -> T.pack $ name ++ "Txt"
+                                                            
+                                                                ) edt, "]"
                                                     ]) edts
         fullTxt = T.unlines 
                     [T.concat["encode",T.pack name .::. T.pack name,if l == Haskell then " -> T.Text" else " -> String"]
@@ -150,14 +163,14 @@ generateDecoder l (ElmCustom name edts) =
                             ,T.concat["        (",T.pack n0,",lf",T.pack $ show indt,") ="]
                             ,T.concat["            case l",T.pack $ show indt," of"]
                             ,T.concat["                (",T.pack n,"Txt " .:. " llf",T.pack $ show indt,") ->"]
-                            ,T.concat["                     (\"\",l",T.pack $ show indt,") |>"]
+                            ,T.concat["                     (Err \"\",l",T.pack $ show indt,") |>"]
                             ,T.unlines $ decodeEt (indt+5) (et0,n0,d0)
                             ,T.concat["                [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[])"]
                             --parse second part of tuple
                             ,T.concat["        (",T.pack n1,",ls",T.pack $ show indt,") ="]
                             ,T.concat["            case lf",T.pack $ show indt," of"]
                             ,T.concat["                (",T.pack n,"Txt " .:. " lls",T.pack $ show indt,") ->"]
-                            ,T.concat["                     (\"\",lf",T.pack $ show indt,") |>"]
+                            ,T.concat["                     (Err \"\",lf",T.pack $ show indt,") |>"]
                             ,T.unlines $ decodeEt (indt+5) (et1,n1,d1)
                             ,T.concat["                [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[])"]
                             ,T.concat["    in (rMap2 (\\rff",T.pack $ show indt," rss",T.pack $ show indt," -> (rff",T.pack $ show indt,",rss",T.pack $ show indt,")) ", T.pack n0," ",T.pack n1,",ls",T.pack $ show indt,")"]
@@ -194,7 +207,7 @@ generateDecoder l (ElmCustom name edts) =
                             ,T.concat["    decodeList l",T.pack $ show indt]
                             ]
         decodeEt indt (ElmDict etd0 etd1, n, _) =
-            indtTxts indt $ [T.strip $ T.unlines $ decodeEt (indt+1) (ElmList (ElmPair etd0 etd1,n++"KeyValPair",""),n++"AsList","")
+            indtTxts indt $ [T.strip $ T.unlines $ decodeEt indt (ElmList (ElmPair etd0 etd1,n++"KeyValPair",""),n++"AsList","")
                             ,"|> decodeDict"
                             ]
                             
@@ -223,7 +236,11 @@ generateDecoder l (ElmCustom name edts) =
                                                    ,"\n            (Err \"\",rest) |> \n"
                                                    ,T.unlines $ concat $ map (\(n,et) -> (decodeEt (4+n) et) ++ indtTxts (4+n) [" |>"]) $ zip [0..] edt
                                                    ,indtTxt (5 + length edt) $ T.concat ["(\\(r"
-                                                                                        ,T.pack $ show $ length edt + 3,",l",T.pack $ show $ length edt + 4,") -> (",if length edt > 0 then T.concat ["rMap",T.pack $ show $ length edt] else "Ok <|"," ",T.pack constrName," ",T.intercalate " " $ map (\n -> T.pack $ "r" ++ show (n+4)) [0..length edt-1],",l",T.pack $ show $ length edt + 4,"))"]
+                                                                                        ,T.pack $ show $ length edt + 3,",l",T.pack $ show $ length edt + 4,") -> ("
+                                                                                        ,if length edt > 0 then T.concat ["rMap",T.pack $ show $ length edt] else "Ok <|"," "
+                                                                                        ,T.pack constrName," "
+                                                                                        ,T.intercalate " " $ map (\n -> T.pack $ "r" ++ show (n+4)) [0..length edt-1]
+                                                                                        ,",l",T.pack $ show $ length edt + 4,"))"]
                                                    ]) edts
     in
         T.unlines [typeSig

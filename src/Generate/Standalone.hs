@@ -31,6 +31,7 @@ generateStandalone ecMap netName (sn,edts) =
             ,   "import Browser exposing(..)"
             ,   T.concat ["import ",netName,".View.",snTxt," as View"]
             ,   T.concat ["import ",netName,".Static.Types exposing (..)"]
+            ,   T.concat ["import ",netName,".Static.ExtraTypes exposing (..)"]
             ,   T.concat ["import ",netName,".Static.Types.",snTxt," exposing (Msg)"]
             ,   T.concat ["import Dict exposing (Dict)"]
             ,   T.concat ["import Json.Decode as D"],""

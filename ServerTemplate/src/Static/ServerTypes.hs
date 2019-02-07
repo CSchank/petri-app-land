@@ -43,8 +43,11 @@ data NetState playerState = NetState
     }
 
 -- data that the top-level update functions receive
-type TopLevelData = 
-    (Int {-start time-}, Int {-time-})
+data TopLevelData = TopLevelData
+    {
+        serverStartTime :: Int
+    ,   currentTime :: Int
+    }
 
 type PluginState = TMap
 

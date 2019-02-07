@@ -61,7 +61,7 @@ generateHelper l netName (sn,edts) getOnly =
     in
         T.unlines 
             ([
-                if l == Haskell then T.concat ["module ",netName,".Static.Helpers.",snTxt," where\n\nimport Data.Map as Dict"]
+                if l == Haskell then T.concat ["module ",netName,".Static.Helpers.",snTxt," where\n\nimport Static.Dict"]
                 else      T.concat ["module ",netName,".Static.Helpers.",snTxt,if getOnly then "Model" else ""," exposing (..)\nimport Dict exposing (Dict)"]
             ,   if getOnly then 
                     T.concat ["import Static.Types.",snTxt," exposing(Model(..))"] 
