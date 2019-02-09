@@ -49,18 +49,22 @@ data HybridPlace =
         (Maybe T.Text, Maybe T.Text) --initial commands
         (Maybe T.Text)  --client-side subscription
 
-data NetTransition =
-    NetTransition
+data NetTransition
+    = NetTransition
+        TransitionOrigin
         Constructor                         --message which attempts to fire this transition (must be unique) 
         [(T.Text                            --from place (must appear in map above)
         ,Maybe (T.Text, Constructor))       --to place (must appear in map above) and client message
         ]
-        (Maybe ServerCmd)                   --whether to issue a command when this transition is fired
-
-data HybridTransition =
-        ClientOnlyTransition
-    |   HybridTransition
-    |   ServerOnlyTransition
+        (Maybe ServerCmd)              --whether to issue a command when this transition is fired
+    | ClientTransition
+        Constructor
+        (Maybe ClientCmd)
+                      
+data TransitionOrigin =
+        OriginClientOnly      
+    |   OriginEitherPossible  -- clientId is Maybe, with Nothing in case it comes from server
+    |   OriginServerOnly
     deriving (Eq)
 
 -- a net describing a collections of places and transitions
@@ -69,7 +73,7 @@ data Net =
         T.Text                                  --net name
         T.Text                                  --starting place for client
         [HybridPlace]                           --all the places in this net
-        [(HybridTransition,NetTransition)]      --transitions between the places
+        [NetTransition]      --transitions between the places
         [Plugin]                                --a list of plugins to be generated / installed on this net
 
 type ExtraTypes =
