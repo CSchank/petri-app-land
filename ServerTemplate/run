@@ -1,0 +1,4 @@
+# Start server on port 8080, merge stderr and stdout into one file, then pipe that to tee which writes to both log/latest and dated log.
+# And doesn't write to the console thanks to "> /dev/null".
+mkdir -p log
+stack exec server-exe 9001 2>&1 | tee log/latest log/`date +%Y-%m-%d-%H:%M:%S` > /dev/null &

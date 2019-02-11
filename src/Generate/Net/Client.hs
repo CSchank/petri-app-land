@@ -190,6 +190,7 @@ generate extraTypes fp net =
                         T.concat ["module ",name,".Static.ExtraTypes exposing(..)"]
                     ,   "-- extra client types"
                     ,   T.unlines $ map (generateType Elm True [DOrd,DEq,DShow] . snd) $ M.toList extraTypes
+                    ,   if length extraTypes == 0 then "x = 0" else ""
                     ]
                 
                 update :: T.Text

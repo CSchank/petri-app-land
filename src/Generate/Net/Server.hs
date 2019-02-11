@@ -15,6 +15,7 @@ import Generate.Helpers
 import Generate.Codec
 import Generate.Wrappers
 import Generate.Plugins
+import Data.List (sort)
 
 trans2constr :: NetTransition -> Constructor
 trans2constr trans = 
@@ -176,6 +177,8 @@ generate extraTypes fp net =
                         T.concat ["module ",name,".Update where"]
                     ,   T.concat ["import ",name,".Static.Types"]
                     ,   T.concat ["import ",name,".Static.FromSuperPlace"]
+                    ,   T.unlines $ map (\placeName -> T.concat["import ",name,".Static.Helpers.",placeName," as ",placeName]) placeNames
+                    ,   T.unlines $ map (\placeName -> T.concat["import ",name,".Static.Helpers.",placeName,"Player as ",placeName,"Player"]) placeNames
                     ,   "import Static.List"
                     ,   "import Utils.Utils"
                     ,   "import Static.ServerTypes"
@@ -392,18 +395,7 @@ generate extraTypes fp net =
                             case mCmd of 
                                 Just (msgN,msg) -> [T.pack msgN]
                                 Nothing -> []
-
-                    {-hiddenUpdate :: T.Text
-                    hiddenUpdate = 
-                        let
-                            decl = T.concat ["update",]
-                        in T.unlines
-                            [
-                                T.concat ["module ",name,".Static.Update where"]
-                            ,   T.concat ["import ",name,".Update"]
-                            ,   T.unlines $ map generateHiddenUpdate transitions
-                            ]-}
-                    in T.unlines 
+                        in T.unlines 
                         [
                             typ
                         ,   decl
