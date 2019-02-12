@@ -7,6 +7,7 @@ import Tuple    exposing    (second)
 import Result
 import String
 import Dict exposing (Dict)
+import Task
 
 tConcat = String.concat
 
@@ -266,3 +267,7 @@ lFoldl : (a -> b -> b) -> b -> List a -> b
 lFoldl = List.foldl
 
 lRange = List.range
+
+newMsg : msg -> Cmd msg
+newMsg msg =
+    Task.perform identity (Task.succeed msg)

@@ -108,4 +108,5 @@ getNetName :: Net -> T.Text
 getNetName (HybridNet name _ _ _ _) = name
 
 getTransitionName :: NetTransition -> T.Text
-getTransitionName (NetTransition (name,_) _ _) = T.pack name
+getTransitionName (NetTransition _ (name,_) _ _) = T.pack name
+getTransitionName (ClientTransition (name,_) _ _) = T.pack name

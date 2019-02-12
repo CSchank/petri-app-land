@@ -44,8 +44,8 @@ createWrap ecMap def l inputType outputPrefix (n,args) =
 grouped = M.toList . M.fromListWith (\ a b -> a ++ b) . map (\(a,b) -> (a,[b]))
 
 
-createTransitionUnwrap :: Bool -> Language -> (HybridTransition,NetTransition) -> T.Text
-createTransitionUnwrap def l (transType,NetTransition (transName,_) connections mCmd) =
+createTransitionUnwrap :: Bool -> Language -> NetTransition -> T.Text
+createTransitionUnwrap def l (NetTransition transType (transName,_) connections mCmd) =
     let
         (.::.) = if l == Haskell then " :: " else " : "
         transTxt = T.pack transName

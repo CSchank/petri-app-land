@@ -37,7 +37,7 @@ generateNetDot
                 placeNodes =
                     map (\place -> T.concat["  ",getPlaceName place,"node [label=\"",getPlaceName place,"\"]"]) places
                 transitionNodes =
-                    map (\trans -> T.concat["  ",getTransitionName trans,"node [label=\"",getTransitionName trans,"\",shape=box]"]) $ map snd transitions
+                    map (\trans -> T.concat["  ",getTransitionName trans,"node [label=\"",getTransitionName trans,"\",shape=box]"]) transitions
             in
                 T.unlines $
                     placeNodes ++ transitionNodes
@@ -70,11 +70,13 @@ generateNetDot
                             ]
 
                 oneTrans :: NetTransition -> T.Text
-                oneTrans (NetTransition (transName,_) connections cmd) =
+                oneTrans (NetTransition _ (transName,_) connections cmd) =
                     T.unlines $ map (oneConnection $ T.pack transName) connections
+                oneTrans (ClientTransition {}) =
+                    T.unlines $ ["Not yet supported."]
 
                 allTransitions =
-                    T.unlines $ map oneTrans $ map snd transitions
+                    T.unlines $ map oneTrans transitions
             in
                 allTransitions
     in

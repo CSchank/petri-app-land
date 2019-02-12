@@ -59,6 +59,7 @@ data NetTransition
         (Maybe ServerCmd)              --whether to issue a command when this transition is fired
     | ClientTransition
         Constructor
+        T.Text                              -- the place at which this transition occurs
         (Maybe ClientCmd)
                       
 data TransitionOrigin =

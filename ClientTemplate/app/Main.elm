@@ -24,9 +24,10 @@ import Static.Version as V
 import Static.View
 import Static.Types
 import Static.Subs
-import Static.Types exposing(NetModel)
+import Static.Types exposing(NetModel,TransitionType(..))
 
 import Config exposing(serverUrl)
+import Utils.Utils exposing(newMsg)
 
 
 port cmdPort : Value -> Cmd msg
@@ -198,10 +199,19 @@ update msg model =
             in
                 { model | appModel = newAppModel } |> withNoCmd
         OutgoingTrans outgoingTrans ->
-            let
-                respTxt = encodeOutgoingTransition outgoingTrans
-            in
-                model |> wsSend respTxt
+            case Static.Update.transitionType outgoingTrans of
+                OutgoingToServer -> 
+                    let
+                        respTxt = encodeOutgoingTransition outgoingTrans
+                    in
+                        model |> wsSend respTxt
+                LocalOnly ->
+                    let
+                        cmd = case (Static.Update.outgoingToIncoming outgoingTrans) of 
+                                Just m -> newMsg m
+                                _ -> Cmd.none
+                    in
+                    model |> withCmd (Cmd.map IncomingMsg cmd)
 
 wsSend : String -> InternalModel -> (InternalModel, Cmd Msg)
 wsSend m model = 

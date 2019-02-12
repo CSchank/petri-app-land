@@ -101,11 +101,9 @@ validatePlace ecSet note (HybridPlace name serverState playerState clientState m
         else
             validations
 
-validateTransition :: S.Set String -> S.Set String -> String -> (HybridTransition,NetTransition) -> [String]
-validateTransition placeSet ecSet note (ht,trans) =
+validateTransition :: S.Set String -> S.Set String -> String -> NetTransition -> [String]
+validateTransition placeSet ecSet note (NetTransition _ constr@(transName,edts) fromtoLst mCmd) =
     let
-        NetTransition constr@(transName,edts) fromtoLst mCmd = trans
-
         fromTos :: [(String,String)]
         fromTos = 
             map (\(from,mTo) -> (T.unpack from,T.unpack $ fromMaybe "" $ fmap fst mTo)) fromtoLst
@@ -129,6 +127,12 @@ validateTransition placeSet ecSet note (ht,trans) =
         validateConstructor ecSet (note++", in transition `"++transName++"`") constr ++
         concatMap validateFromTo fromtoLst ++
         map (\tr -> note ++ ", in transition `"++transName++"`: duplicate transition "++show tr) duplicateFromTo
+validateTransition placeSet ecSet note (ClientTransition constr@(transName,edts) placeName mCmd) =
+        validateConstructor ecSet (note++", in transition `"++transName++"`") constr ++
+        if not $ validateType (T.unpack placeName) then
+            ["invalid name for Client Transition `"++transName++"`"]
+        else []
+
 
 
 validateNet :: S.Set String -> Net -> [String]

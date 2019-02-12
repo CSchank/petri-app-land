@@ -73,6 +73,7 @@ generateClient gsvg rootDir fp
             ,   generateType Elm False [] netMsgUnion
             ,   "-- a union type of all the nets and their outgoing transitions"
             ,   generateType Elm False [] netOutgoingMsgUnion
+            ,   "type TransitionType = OutgoingToServer | LocalOnly"
             ]
         decode :: T.Text
         decode = 
@@ -106,6 +107,16 @@ generateClient gsvg rootDir fp
                     ,   T.concat["                    newClientState = ",netName," ",newName]
                     ,   T.concat["                in (newClientState, Maybe.map (Cmd.map ",netName,"OTrans) mcmd)"]
                     ]
+                ttCase netName = 
+                    T.unlines 
+                    [
+                        T.concat["        ",netName,"OTrans tr -> ",netName,".transitionType tr"]
+                    ]
+                o2iCase netName = 
+                    T.unlines 
+                    [
+                        T.concat["        ",netName,"OTrans tr -> Maybe.map ",netName,"InMsg <| ",netName,".outgoingToIncoming tr"]
+                    ]
             in
             T.unlines
             [
@@ -119,6 +130,14 @@ generateClient gsvg rootDir fp
             ,   "        case (netInMsg,state) of"
             ,   T.unlines $ map updateCase netNames
             ,   if length netLst > 1 then "            _ -> (state, Nothing)" else ""
+            ,   "transitionType : NetOutgoingTransition -> TransitionType"
+            ,   "transitionType oTrans ="
+            ,   "    case oTrans of"
+            ,   T.unlines $ map ttCase netNames
+            ,   "outgoingToIncoming : NetOutgoingTransition -> Maybe NetIncomingMessage"
+            ,   "outgoingToIncoming oTrans ="
+            ,   "    case oTrans of"
+            ,   T.unlines $ map o2iCase netNames
             ]
         encode :: T.Text
         encode = 
