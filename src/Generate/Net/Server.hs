@@ -30,9 +30,10 @@ generate extraTypes fp net =
     case net of 
         (HybridNet name startingPlace places allTransitions plugins) ->
             let
-                transitions = filter (\t -> case t of
-                                            NetTransition {} -> True
-                                            _ -> False
+                transitions = mapMaybe (\t -> case t of
+                                            NetTransition origin (name,ets) transLst mCmd -> 
+                                                Just $ NetTransition origin (name,ets) (sort transLst) mCmd
+                                            _ -> Nothing
                                             ) allTransitions
                 inits = T.unlines 
                     [
