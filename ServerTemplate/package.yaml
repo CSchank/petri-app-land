@@ -38,6 +38,10 @@ dependencies:
 - acid-state
 - typerep-map
 - threads
+- bcrypt
+- unordered-containers
+- safecopy
+- mtl
 
 library:
   source-dirs: 
