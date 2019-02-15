@@ -120,6 +120,7 @@ generateServer gsvg rootDir fp
             ,   "import Static.ServerTypes"
             ,   "import Utils.Utils"
             ,   "import Data.Maybe (fromJust,mapMaybe,isJust)"
+            ,   "import qualified Data.IntMap.Strict as IM'"
             ,   ""
             ,   "update :: TopLevelData -> Maybe ClientID -> NetTransition -> ServerState -> (ServerState, [(ClientID,NetOutgoingMessage)], Maybe (Cmd NetTransition))"
             ,   "update tld mClientID netTrans state ="
@@ -139,7 +140,10 @@ generateServer gsvg rootDir fp
             ,   "            case netModel of"
             ,   T.unlines $ map disconnectCase netNames
             ,   "    in"
-            ,   "        state { serverState = TM.insert newNetState $ serverState state }"
+            ,   "        state"
+            ,   "           { serverState = TM.insert newNetState $ serverState state"
+            ,   "           , clients = IM'.delete clientID $ clients state"
+            ,   "           }"
             ]
         encode :: T.Text
         encode = 
