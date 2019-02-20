@@ -2,11 +2,7 @@
 
 module Types where
 
-import Data.Map as M
-import Data.String
 import qualified Data.Text as T
-import Data.Typeable (Typeable)
-
 
 -- paper 1 will stick to messages arriving in order (websockets)
 -- paper 2 will allow messages out of order (webrtc)
@@ -35,9 +31,9 @@ data ElmCustom = ElmCustom String [Constructor] -- name of the type
   deriving (Ord,Eq,Show)
 
 type ClientTransition   = Constructor
-type ClientCmd          = Constructor
+type ClientCmd          = T.Text
 type ServerTransition   = Constructor
-type ServerCmd          = Constructor
+type ServerCmd          = T.Text
 
 data HybridPlace =
     HybridPlace 
@@ -61,6 +57,10 @@ data NetTransition
         Constructor
         T.Text                              -- the place at which this transition occurs
         (Maybe ClientCmd)
+    | CmdTransition         -- a transition from a client which causes a command on the server
+        Constructor -- the message coming from the client
+        T.Text      -- the place at which this transition occurs
+        ServerCmd   -- the type of command this transition causes
                       
 data TransitionOrigin =
         OriginClientOnly      

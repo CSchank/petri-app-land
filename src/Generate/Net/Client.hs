@@ -21,15 +21,17 @@ import Generate.Standalone
 trans2constr :: NetTransition -> Constructor
 trans2constr trans = 
     case trans of
-        NetTransition _ constr _ _ -> constr
+        NetTransition tt constr _ _ -> constr
         ClientTransition constr _ _ -> constr
+        CmdTransition constr _ _    -> constr
 
 transName from msgN = T.concat [T.pack msgN,"from",from]
 
 netTrans2MConstr :: NetTransition -> Maybe Constructor
 netTrans2MConstr trans = 
     case trans of
-        NetTransition _ constr _ _ -> Just constr
+        NetTransition tt constr _ _ -> if tt == OriginClientOnly || tt == OriginEitherPossible then Just constr else Nothing
+        CmdTransition constr _ _-> Just constr
         ClientTransition {} -> Nothing
 
 
@@ -78,9 +80,10 @@ generate extraTypes fp net =
                 transFromPlace place = 
                         filter (\tr ->
                                 case tr of
-                                    NetTransition _ _ lstTrans _->
-                                        any (\(from,_) -> from == place) lstTrans
+                                    NetTransition tt _ lstTrans _->
+                                        tt /= OriginServerOnly && any (\(from,_) -> from == place) lstTrans
                                     ClientTransition _ pl _ -> pl == place
+                                    CmdTransition _ pl _ -> pl == place
                             ) transitions
                 perPlaceTypes (HybridPlace placeName _ _ _ _ _ _) = 
                     let
@@ -98,7 +101,10 @@ generate extraTypes fp net =
                 perPlaceWrappers (HybridPlace placeName _ _ _ _ _ _) = 
                     let
                         transitions = transFromPlace placeName
-                        transConstrs = map (\(n,ets) -> (T.unpack name++".Static.Types."++T.unpack placeName++"."++n,ets)) $ map trans2constr transitions
+                        transConstrs = 
+                            map (\(n,ets) -> 
+                                (T.unpack name++".Static.Types."++T.unpack placeName++"."++n,ets)) $ 
+                                map trans2constr transitions
                         wrappedTransConstrs = map (\(n,t) -> ("T"++n,t)) $ map trans2constr transitions
                         zippedTrans = zip transConstrs wrappedTransConstrs
                     in
@@ -116,13 +122,6 @@ generate extraTypes fp net =
                     ,   T.unlines $ map (\(tc,wtc) -> T.concat["        ",generatePattern tc," -> ",generatePattern wtc]) zippedTrans
                     ]
                 perPlaceViews (HybridPlace placeName _ _ _ _ _ _) = 
-                    let
-                        transitions = transFromPlace placeName
-                        transConstrs = map (\tr -> case tr of 
-                                                        NetTransition _ constr _ _ -> constr
-                                                        ClientTransition constr _ _ -> constr
-                                                        ) transitions
-                    in
                     T.unlines
                     [
                         T.concat["module ",name,".View.",placeName," exposing(..)"]
@@ -156,12 +155,22 @@ generate extraTypes fp net =
                                                                                         Nothing -> Nothing)
                                                                                             lstTrans
                                                         ClientTransition constr@(n, _) _ _ -> [(n,constr)] 
+                                                        CmdTransition constr@(n, _) _ _ -> [(n,constr)] 
                                                         ) transitions
                 incomingCM = map (\(_,(msgN,edts)) -> (msgN,edts)) incomingMsgs
                 incomingMsg = ElmCustom "IncomingMessage" $ map (\(n,t) -> ("M"++n,t)) incomingCM
 
                 transConstrs :: [Constructor]
                 transConstrs = map trans2constr transitions
+
+                outgoingFromClient t = 
+                    case t of 
+                        NetTransition OriginClientOnly _ _ _ -> True
+                        NetTransition OriginEitherPossible _ _ _ -> True
+                        ClientTransition {} -> True
+                        _ -> False
+
+                outgoingClientTransitions = filter outgoingFromClient transitions
 
                 generateNetTypes :: T.Text -> [HybridPlace] -> T.Text
                 generateNetTypes netName places = 
@@ -181,12 +190,16 @@ generate extraTypes fp net =
                             let
                                 
                             in
-                                T.unlines $ map (\(_,msg@(msgN,edts)) -> generateType Elm True [DOrd,DEq,DShow] $ ElmCustom msgN [msg]) incomingMsgs
-                                ++ [generateType Elm True [DOrd,DEq,DShow] incomingMsg]
+                                generateType Elm True [DOrd,DEq,DShow] incomingMsg
+
+                        individualMessages =
+                            fnub $
+                                map (\(_,msg@(msgN,edts)) -> ec msgN [msg]) incomingMsgs ++
+                                map (\(pl,etd) -> ec pl [(pl,etd)]) (map trans2constr outgoingClientTransitions)
                         
                         --allConnections = concat $ map (\(_, NetTransition (transName,transEt) connections mCmd) -> ((transName,transEt),connections)) transitions
-                        outgoingTransitions = ec "OutgoingTransition" $ map (\(n,t) -> ("T"++n,t)) $ map trans2constr transitions
-                        outgoingClientTransitions = mapMaybe netTrans2MConstr transitions
+
+                        outgoingTransitions = ec "OutgoingTransition" $ map (\(n,t) -> ("T"++n,t)) $ map trans2constr outgoingClientTransitions
                     in
                         T.unlines 
                             [
@@ -196,7 +209,7 @@ generate extraTypes fp net =
                             ,   generateType Elm False [] $ ec "NetState" $ map (\placeName -> constructor ("S"++T.unpack placeName) [edt (ElmType $ T.unpack placeName) "" ""]) placeNames
                             ,   "-- server transition types"
                             ,   generateType Elm False [] outgoingTransitions
-                            ,   T.unlines $ map (\(pl,etd) -> generateType Elm False [] $ ec pl [(pl,etd)]) outgoingClientTransitions
+                            ,   T.unlines $ map (generateType Elm False []) individualMessages 
                             ,   "-- outgoing server message types"
                             ,   clientMsgType
                             ]
@@ -259,6 +272,8 @@ generate extraTypes fp net =
                     (fnub $ map (\(from,_) -> from) connections,fnub $ mapMaybe (\(from,mTo) -> if isJust mTo then fmap fst mTo else Just from) connections)
                 fromsTos (ClientTransition _ place _) =
                     ([place],[place])
+                fromsTos _ =
+                    ([],[])
                 hiddenUpdate :: T.Text
                 hiddenUpdate = 
                     let
@@ -285,13 +300,19 @@ generate extraTypes fp net =
                                         ," <| update",T.pack n,place
                                         ," fsp (wrap",T.pack n," trans) st, Nothing)"
                                         ]
-                        ttCase :: NetTransition -> T.Text
-                        ttCase (NetTransition _ (name,ets) _ _) = 
-                            T.concat["        ",generatePattern ("T"++name,ets)," -> OutgoingToServer"]
+                        updateCase (CmdTransition {}) =
+                            ""
+                        ttCase :: NetTransition -> Maybe T.Text
+                        ttCase (NetTransition tt (name,ets) _ _) = 
+                            if tt == OriginClientOnly || tt == OriginEitherPossible then Just $ T.concat["        ",generatePattern ("T"++name,ets)," -> OutgoingToServer"] else Nothing
                         ttCase (ClientTransition (name,ets) _ _) =
-                            T.concat["        ",generatePattern ("T"++name,ets)," -> LocalOnly"]
+                            Just $ T.concat["        ",generatePattern ("T"++name,ets)," -> LocalOnly"]
+                        ttCase (CmdTransition (name,ets) _ _) =
+                            Just $ T.concat["        ",generatePattern ("T"++name,ets)," -> OutgoingToServer"]
                         o2i :: NetTransition -> Maybe T.Text
                         o2i (NetTransition _ (name,ets) _ _) = 
+                            Nothing
+                        o2i (CmdTransition (name,ets) _ _) = 
                             Nothing
                         o2i (ClientTransition (name,ets) _ _) =
                             Just $ T.concat["        ",generatePattern ("T"++name,ets)," -> Just ",generatePattern ("M"++name,ets)]
@@ -313,7 +334,7 @@ generate extraTypes fp net =
                     ,   "transitionType : OutgoingTransition -> TransitionType"
                     ,   "transitionType oTrans ="
                     ,   "    case oTrans of"
-                    ,   T.unlines $ map ttCase transitions
+                    ,   T.unlines $ mapMaybe ttCase transitions
                     ,   "outgoingToIncoming : OutgoingTransition -> Maybe IncomingMessage"
                     ,   "outgoingToIncoming oTrans ="
                     ,   "    case oTrans of"
@@ -351,26 +372,20 @@ generate extraTypes fp net =
                     ,   "--extra types encoders"
                     ,   T.unlines $ map (generateEncoder Elm) $ M.elems extraTypes
                     ]
-                outgoingClientTransitions = 
-                    mapMaybe (\tr -> case tr of 
-                                        NetTransition tt constr _ _ -> 
-                                                if tt == OriginEitherPossible || tt == OriginClientOnly then 
-                                                    Just constr else Nothing
-                                        ClientTransition constr _ _ -> Just constr
-                                        ) transitions
 
-                wOutgoingClientTransitions = map (\(n,t) -> ("T"++n,t)) outgoingClientTransitions
+                wOutgoingClientTransitions = map (\(n,t) -> ("T"++n,t)) $ map trans2constr outgoingClientTransitions
                 outgoingTransitions = ElmCustom "OutgoingTransition" wOutgoingClientTransitions
                 incomingClientTransitions = 
                     concat $ mapMaybe (\tr ->
                         case tr of 
                             NetTransition tt (name,ets) clientTransitions _ -> 
-                                if tt == OriginEitherPossible || tt == OriginClientOnly then 
-                                    Just $ mapMaybe (\(from,mTo) -> fmap snd mTo) clientTransitions 
-                                else Nothing
-                            ClientTransition constr place _ ->
+                                Just $ mapMaybe (\(from,mTo) -> fmap snd mTo) clientTransitions 
+                            ClientTransition constr _ _ ->
+                                Just [constr]
+                            CmdTransition constr _ _ ->
                                 Just [constr]) transitions
-                incomingTransitions = ElmCustom "IncomingMessage" $ map (\(n,et) -> ("M"++n,et)) incomingClientTransitions
+                incomingTransitions = 
+                    ElmCustom "IncomingMessage" $ map (\(n,et) -> ("M"++n,et)) incomingClientTransitions
                 decoder = T.unlines 
                     [
                         T.concat ["module ",name,".Static.Decode exposing(..)"]
@@ -389,7 +404,7 @@ generate extraTypes fp net =
                         ,   T.concat ["import ",name,".Static.Types exposing(..)\n"]
                         ,   "import Dict exposing (Dict)"
                         ,   T.unlines $ map (createWrap extraTypes (length places > 1) Elm "IncomingMessage" "M") incomingCM
-                        ,   T.unlines $ map (createUnwrap Elm "OutgoingTransition" "T") outgoingClientTransitions
+                        ,   T.unlines $ map (createUnwrap Elm "OutgoingTransition" "T") $ map trans2constr outgoingClientTransitions
                         ]
                 hiddenView = 
                     let

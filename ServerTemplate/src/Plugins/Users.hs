@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, TypeFamilies, OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell, TypeFamilies, OverloadedStrings, DeriveDataTypeable, TypeSynonymInstances #-}
 
 module Plugins.Users where
 
@@ -20,122 +20,231 @@ import qualified Data.Set as Set
 
 import Data.SafeCopy        (SafeCopy, base, deriveSafeCopy)
 
+import Data.Data            (Data, Typeable)
+import Data.IxSet           ( Indexable(..), IxSet(..), (@=), Proxy(..), getOne
+                            , ixFun, ixSet )
+import qualified Data.IxSet as IX
+
+import Data.Word (Word32)
+
+currentHashingScheme = slowerBcryptHashingPolicy
+    {
+        preferredHashCost = 10
+    }
 data Group =
       Administrator
     | Supervisor
     | User
     | Custom String
-    deriving (Eq,Show,Ord)
+    deriving (Eq,Show,Ord,Data)
 $(deriveSafeCopy 0 'base ''Group)
+
+newtype UserID = UserID Word32              deriving (Eq, Ord, Show, Data, Typeable)
+$(deriveSafeCopy 0 'base ''UserID)
+newtype Username = Username T.Text          deriving (Eq, Ord, Show, Data, Typeable)
+$(deriveSafeCopy 0 'base ''Username)
+newtype Password = Password ByteString      deriving (Eq, Ord, Show, Data, Typeable)
+$(deriveSafeCopy 0 'base ''Password)
+newtype Groups = Groups (Set.Set Group)     deriving (Eq, Ord, Show, Data, Typeable)
+$(deriveSafeCopy 0 'base ''Groups)
 
 data UserData = 
     UserData 
-        {
-            pwdHash :: ByteString
-        ,   groups :: Set.Set Group
+        {   userID :: UserID
+        ,   username :: Username
+        ,   pwdHash :: Password
+        ,   groups :: Groups
         }
+    deriving(Ord,Eq)
 $(deriveSafeCopy 0 'base ''UserData)
 
-newtype UserDict = UserDict (M'.Map T.Text UserData)
+instance Indexable UserData where
+    empty = ixSet
+        [
+            ixFun $ \ud -> [userID ud]
+        ,   ixFun $ \ud -> [username ud]
+        ,   ixFun $ \ud -> [pwdHash ud]
+        ,   ixFun $ \ud -> [groups ud]
+        ]
 
-$(deriveSafeCopy 0 'base ''UserDict)
+-- data to be stored in AcidState instance
+data UserDB = 
+    UserDB 
+        {
+            users :: IxSet UserData 
+        ,   nextUserID :: Word32
+        }
+$(deriveSafeCopy 0 'base ''UserDB)
 
 
+
+-- plugin instance
 data Users =
     Users 
     {
-        userDb :: AcidState UserDict
+        userDb :: AcidState UserDB
     }
 
 instance (Plugin Users) where
     initPlugin = do
         putStrLn "Loading users database...."
-        as <- openLocalState (UserDict M'.empty)
+        pwd <- fmap fromJust $ hashPasswordUsingPolicy currentHashingScheme (pack "Pass1")
+        let newUser = UserData
+                {
+                    userID = UserID 0
+                ,   username = Username "Chris"
+                ,   pwdHash = Password pwd
+                ,   groups = Groups Set.empty
+                }
+        let initialDB = UserDB
+                {
+                    users = IX.insert newUser IX.empty
+                ,   nextUserID = 1
+                }
+        as <- openLocalState initialDB
         return $ 
             Users
                 {
                     userDb = as
                 }
 
-lookupPasswordByName :: T.Text -> Query UserDict ByteString
+lookupPasswordByName :: T.Text -> Query UserDB (Maybe ByteString)
 lookupPasswordByName username = do
-    UserDict userDb <- ask
-    case M'.lookup username userDb of
-        Just b -> return $ pwdHash b
-        Nothing -> return ""
+    ut <- ask
+    let uDb = users ut
+    case IX.getOne $ IX.getEQ (Username username) uDb of
+        Just head -> do
+            let (Password pwh) = pwdHash head
+            return $ Just pwh
+        _ -> 
+            return Nothing
 
-addUser :: T.Text -> UserData -> Update UserDict Bool
+addUser :: T.Text -> UserData -> Update UserDB Bool
 addUser username dat = do
-    UserDict userDb <- get
-    case M'.lookup username userDb of
-        Just _ -> return False
-        Nothing -> do
-            put $ UserDict $ M'.insert username dat userDb
+    ut <- get
+    let uDb = users ut
+        newUserId = nextUserID ut
+    case IX.toList $ IX.getEQ (Username username) uDb of
+        [] -> do
+            put $ ut 
+                { 
+                    users = IX.insert (dat { userID = UserID newUserId }) uDb
+                ,   nextUserID = newUserId + 1
+                }
             return True
+        _ -> 
+            return False
 
-removeUser :: T.Text -> Update UserDict Bool
+removeUser :: T.Text -> Update UserDB Bool
 removeUser username = do
-    UserDict userDb <- get
-    case M'.lookup username userDb of
-        Just _ -> do
-            put $ UserDict $ M'.delete username userDb
+    ut <- get
+    let uDb = users ut
+    case IX.getOne $ IX.getEQ (Username username) uDb of
+        Just head -> do
+            put $ ut { 
+                        users = IX.deleteIx 
+                                (Username username) 
+                                uDb
+                        }
             return True
-        Nothing -> 
+        _ -> 
             return False
 
-addGroup :: T.Text -> Group -> Update UserDict Bool
+addGroup :: T.Text -> Group -> Update UserDB Bool
 addGroup username group = do
-    UserDict userDb <- get
-    case M'.lookup username userDb of
-        Just dat -> do
-            put $ UserDict $ M'.insert username (dat { groups = Set.insert group $ groups dat }) userDb
+    ut <- get
+    let uDb = users ut
+    case IX.getOne $ IX.getEQ (Username username) uDb of
+        Just head -> do
+            let (Groups userGroups) = groups head
+            put $ ut { 
+                        users = IX.updateIx 
+                                (Username username) 
+                                (head { groups = Groups $ Set.insert group $ userGroups })
+                                uDb
+                        }
             return True
-        Nothing -> 
+        _ -> 
             return False
 
-removeGroup :: T.Text -> Group -> Update UserDict Bool
+removeGroup :: T.Text -> Group -> Update UserDB Bool
 removeGroup username group = do
-    UserDict userDb <- get
-    case M'.lookup username userDb of
-        Just dat -> do
-            put $ UserDict $ M'.insert username (dat { groups = Set.delete group $ groups dat }) userDb
+    ut <- get
+    let uDb = users ut
+    case IX.getOne $ IX.getEQ (Username username) uDb of
+        Just head -> do
+            let (Groups userGroups) = groups head
+            put $ ut { 
+                        users = IX.updateIx 
+                                (Username username) 
+                                (head { groups = Groups $ Set.delete group $ userGroups })
+                                uDb
+                        }
             return True
-        Nothing -> 
+        _ -> 
             return False
 
 
-changePwd :: T.Text -> ByteString -> Update UserDict Bool
+changePwd :: T.Text -> ByteString -> Update UserDB Bool
 changePwd username newPwd = do
-    UserDict userDb <- get
-    case M'.lookup username userDb of
-        Just dat -> do
-            put $ UserDict $ M'.insert username (dat { pwdHash = newPwd }) userDb
+    ut <- get
+    let uDb = users ut
+    case IX.getOne $ IX.getEQ (Username username) uDb of
+        Just head -> do
+            put $ ut { 
+                        users = IX.updateIx 
+                                (Username username) 
+                                (head { pwdHash = Password newPwd }) 
+                                uDb
+                        }
             return True
-        Nothing -> 
+        _ -> 
             return False
 
 
-$(makeAcidic ''UserDict [ 'lookupPasswordByName
+updateUsernameByID :: Int -> T.Text -> Update UserDB Bool
+updateUsernameByID userID newUsername = do
+    ut <- get
+    let uDb = users ut
+    case IX.getOne $ IX.getEQ (UserID $ fromIntegral userID) uDb of
+        Just head -> do
+            put $ ut { 
+                        users = IX.updateIx 
+                                (UserID userID) 
+                                (head { username = Username newUsername }) 
+                                uDb
+                        }
+            return True
+        _ -> 
+            return False
+
+
+$(makeAcidic ''UserDB [ 'lookupPasswordByName
                         , 'addUser
                         , 'removeUser
                         , 'addGroup
                         , 'removeGroup
                         , 'changePwd
+                        , 'updateUsernameByID
                       ])
 
 validateUser :: String -> String -> (Bool -> msg) -> Cmd msg
 validateUser username password msgf = StateCmd $ \users -> do
     let uDb = userDb users
     pHash <- query' uDb (LookupPasswordByName $ T.pack username)
-    return $ msgf $ validatePassword pHash (pack password)
-
-currentHashingScheme = slowerBcryptHashingPolicy
+    case pHash of
+        Just h -> return $ msgf $ validatePassword h (pack password)
+        _ -> return $ msgf False
 
 insertUser :: String -> String -> [Group] -> (Bool -> msg) -> Cmd msg
 insertUser username password groups msgf = StateCmd $ \users -> do
     let uDb = userDb users
     newPwdHash <- fmap fromJust $ hashPasswordUsingPolicy currentHashingScheme (pack password)
-    let newUserData = UserData { groups = Set.fromList groups, pwdHash = newPwdHash }
+    let newUserData = UserData { 
+            username = Username $ T.pack username
+        ,   groups = Groups $ Set.fromList groups
+        ,   pwdHash = Password newPwdHash
+        }
     res <- update' uDb (AddUser (T.pack username) newUserData)
     return $ msgf res
 

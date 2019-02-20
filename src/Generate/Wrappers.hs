@@ -89,3 +89,4 @@ createTransitionUnwrap def l (NetTransition transType (transName,_) connections 
             ]
     in
         T.unlines $ map genFunctions (grouped connections)
+createTransitionUnwrap _ _ _ = ""

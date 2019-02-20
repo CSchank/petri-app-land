@@ -61,6 +61,8 @@ data NetMsg netMsg =
 -}
 data Cmd msg =
       Cmd (IO msg)
+    | CmdBatch [Cmd msg]
+    | forall a b. CmdFold (a -> b -> a) a [Cmd b] (a -> IO msg)        --fold over many commands and combine their results
     | forall state. Plugin state => StateCmd (state -> IO msg)
 
 class (Typeable state) => Plugin state where

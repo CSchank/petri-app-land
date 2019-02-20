@@ -99,6 +99,10 @@ generateEncoder l (ElmCustom name edts) =
         encodeEt indt (ElmBool, n, _) =
             indtTxts indt $ [T.concat[T.pack n,"Txt = if ",T.pack n," then \"T\" else \"F\""]
                             ]
+        encodeEt indt (ElmWildcardType _, _, _) =
+            error "Wildcard cannot be serialized."
+        encodeEt indt (ElmResult _ _, _, _) =
+            error "ElmResult serialization is not yet supported."
         cases = map (\(constrName,edt) -> T.concat ["        ",T.pack constrName,T.concat $ map (\(et,name,desc) -> T.pack $ " " ++ name) edt," -> "
                                                     ,if length edt > 0 then T.concat ["\n            let\n"
                                                     ,T.unlines $ concat $ map (encodeEt 4) edt
@@ -224,6 +228,10 @@ generateDecoder l (ElmCustom name edts) =
             indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
                             ,T.concat["    decodeBool l",T.pack $ show indt]
                             ]
+        decodeEt indt (ElmWildcardType _, _, _) =
+            error "Wildcard cannot be serialized."
+        decodeEt indt (ElmResult _ _, _, _) =
+            error "ElmResult serialization is not yet supported."
         {-decodeEt indt (ElmMaybe etd, n, _) =
             indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
                             ,T.concat["            case l",T.pack $ show indt," of"]

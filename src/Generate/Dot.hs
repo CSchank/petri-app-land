@@ -74,6 +74,8 @@ generateNetDot
                     T.unlines $ map (oneConnection $ T.pack transName) connections
                 oneTrans (ClientTransition {}) =
                     T.unlines $ ["Not yet supported."]
+                oneTrans (CmdTransition {}) =
+                    T.unlines $ ["Not yet supported."]
 
                 allTransitions =
                     T.unlines $ map oneTrans transitions

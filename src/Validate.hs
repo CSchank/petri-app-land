@@ -119,19 +119,29 @@ validateTransition placeSet ecSet note (NetTransition _ constr@(transName,edts) 
             else []) ++
                 (case mTo of
                     Just (to,constr) ->
-                        if not (T.unpack to `S.member` placeSet) then
+                        (if not (T.unpack to `S.member` placeSet) then
                             [note ++", in to transition: place `"++T.unpack to++"` does not exist"]
-                        else []
+                        else [])
+                        ++ validateConstructor ecSet (note++", in transition `"++transName++"`") constr
                     Nothing -> [])
+
     in
         validateConstructor ecSet (note++", in transition `"++transName++"`") constr ++
         concatMap validateFromTo fromtoLst ++
         map (\tr -> note ++ ", in transition `"++transName++"`: duplicate transition "++show tr) duplicateFromTo
+
 validateTransition placeSet ecSet note (ClientTransition constr@(transName,edts) placeName mCmd) =
         validateConstructor ecSet (note++", in transition `"++transName++"`") constr ++
         if not $ validateType (T.unpack placeName) then
             ["invalid name for Client Transition `"++transName++"`"]
         else []
+
+validateTransition placeSet ecSet note (CmdTransition constr@(transName,edts) placeName cmd) =
+        validateConstructor ecSet (note++", in cmd transition `"++transName++"`") constr ++
+        if not $ validateType (T.unpack placeName) then
+            ["invalid name for Cmd Transition `"++transName++"`"]
+        else []
+--TODO: check if commands exist
 
 
 

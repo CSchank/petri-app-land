@@ -13,6 +13,8 @@ import Static.Dict
 import qualified Data.TMap as TM
 import Data.Maybe (fromJust,isJust)
 import qualified Data.IntMap.Strict as IM'
+import Control.Concurrent (forkIO)
+--import Control.Concurrent.Async
 
 
 (|>) :: a -> (a -> b) -> b
@@ -384,17 +386,40 @@ cmdMap :: (a -> b) -> Cmd a -> Cmd b
 cmdMap f ca =
     case ca of 
         Cmd msg -> Cmd (fmap f msg)
+        CmdBatch cmds -> CmdBatch $ map (cmdMap f) cmds
         StateCmd msg -> StateCmd (fmap f . msg)
+
+evalCmd :: NetState player -> Cmd t -> IO [t]
+evalCmd ns cmd = do
+    case cmd of
+        Cmd msg -> sequence [msg]
+        CmdBatch cmds -> do
+            results <- mapM (evalCmd ns) cmds
+            return $ concat results
+        CmdFold fn a cmdBs toMsg -> do
+            evalCmds <- mapM (evalCmd ns) cmdBs
+            sequence [toMsg $ foldl fn a (concat evalCmds)]
+        StateCmd toMsg -> do
+            sequence [toMsg ((safeFromJust "plugin not installed!") $ TM.lookup $ pluginStates ns)]
 
 processCmd :: Cmd NetTransition -> TQueue CentralMessage -> NetState player -> IO ()
 processCmd cmd centralMsgQ ns = do
-    case cmd of
+    results <- evalCmd ns cmd
+    mapM_ (atomically . writeTQueue centralMsgQ . ReceivedMessage Nothing) results
+    {-case cmd of
         Cmd msg -> do
-            result <- msg
-            atomically $ writeTQueue centralMsgQ $ ReceivedMessage Nothing result
+            result <- evalCmd ns cmd
+            atomically $ writeTQueue centralMsgQ $ ReceivedMessage Nothing (head result)
         StateCmd toMsg -> do
-            result <- toMsg ((safeFromJust "processCmd") $ TM.lookup $ pluginStates ns)
-            atomically $ writeTQueue centralMsgQ $ ReceivedMessage Nothing result
+            result <- evalCmd ns cmd
+            atomically $ writeTQueue centralMsgQ $ ReceivedMessage Nothing (head result)
+        CmdBatch cmds ->
+            mapM_ (\c -> forkIO $ processCmd c centralMsgQ ns) cmds
+        CmdFold fn a cmdBs toMsg -> do
+            evalCmds <- sequence $ map (evalCmd ns) cmdBs
+            result <- toMsg $ foldl fn a (concat evalCmds)
+            atomically $ writeTQueue centralMsgQ $ ReceivedMessage Nothing result-}
+
 
 
 safeFromJust msg j = 
