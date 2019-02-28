@@ -74,6 +74,7 @@ generate extraTypes fp net =
                     ,   "import Dict exposing(Dict)"
                     , ""
                     , "-- the types of all places in the net"
+                    , "type Dummy = Dummy"
                     , generateNetTypes name places -- the initial places
                     ]
                 transFromPlace :: T.Text -> [NetTransition]
@@ -95,7 +96,7 @@ generate extraTypes fp net =
                         T.concat["module ",name,".Static.Types.",placeName," exposing(..)"]
                     ,   T.concat["import ",name,".Static.Types exposing(..)"]
                     ,   T.concat["import ",name,".Static.ExtraTypes exposing(..)"]
-                    ,   ""
+                    ,   if length transConstrs == 0 then "x = 0" else ""
                     ,   generateType Elm False [] $ ec "Msg" transConstrs
                     ]
                 perPlaceWrappers (HybridPlace placeName _ _ _ _ _ _) = 
@@ -168,6 +169,7 @@ generate extraTypes fp net =
                         NetTransition OriginClientOnly _ _ _ -> True
                         NetTransition OriginEitherPossible _ _ _ -> True
                         ClientTransition {} -> True
+                        CmdTransition _ _ _ -> True
                         _ -> False
 
                 outgoingClientTransitions = filter outgoingFromClient transitions

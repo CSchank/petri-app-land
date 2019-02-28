@@ -19,10 +19,12 @@ data ElmType = ElmIntRange Int Int -- upper and lower bounds (used for optimizin
              | ElmList ElmDocType
              | ElmDict ElmDocType ElmDocType
              | ElmType String --the type referenced must be included in the map
+             | ElmExisting String {-type name-} String {-module to find this type-} --an existing type from another package; this cannot be serialized
              | ElmWildcardType String -- a type parameter
              | ElmMaybe ElmDocType
              | ElmBool
              | ElmResult ElmDocType ElmDocType
+             | ElmEmpty
   deriving (Ord,Eq,Show)
 
 type Constructor = (String,[ElmDocType]) -- (name, arguments)
@@ -44,6 +46,7 @@ data HybridPlace =
         (Maybe T.Text)  --Maybe the name of a subnet
         (Maybe T.Text, Maybe T.Text) --initial commands
         (Maybe T.Text)  --client-side subscription
+    deriving(Eq,Ord)
 
 data NetTransition
     = NetTransition
@@ -61,12 +64,13 @@ data NetTransition
         Constructor -- the message coming from the client
         T.Text      -- the place at which this transition occurs
         ServerCmd   -- the type of command this transition causes
+    deriving (Eq,Ord)
                       
 data TransitionOrigin =
         OriginClientOnly      
     |   OriginEitherPossible  -- clientId is Maybe, with Nothing in case it comes from server
     |   OriginServerOnly
-    deriving (Eq)
+    deriving (Eq,Ord)
 
 -- a net describing a collections of places and transitions
 data Net = 

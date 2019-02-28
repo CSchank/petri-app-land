@@ -101,21 +101,39 @@ generateEncoder l (ElmCustom name edts) =
                             ]
         encodeEt indt (ElmWildcardType _, _, _) =
             error "Wildcard cannot be serialized."
-        encodeEt indt (ElmResult _ _, _, _) =
-            error "ElmResult serialization is not yet supported."
-        cases = map (\(constrName,edt) -> T.concat ["        ",T.pack constrName,T.concat $ map (\(et,name,desc) -> T.pack $ " " ++ name) edt," -> "
-                                                    ,if length edt > 0 then T.concat ["\n            let\n"
-                                                    ,T.unlines $ concat $ map (encodeEt 4) edt
-                                                    ,"            in\n"] else ""
-                                                    ,"                tConcat [\"",T.pack constrName,elmDelim
-                                                    ,if length edt > 0 then "\", " else "\""
-                                                    ,T.intercalate (T.concat[",\"",elmDelim,"\","]) $ 
-                                                            map (\(et,name,desc) -> case et of 
-                                                                                        ElmDict _ _ -> T.pack $ name ++ "AsListTxt"
-                                                                                        _           -> T.pack $ name ++ "Txt"
-                                                            
-                                                                ) edt, "]"
-                                                    ]) edts
+        encodeEt indt (ElmResult edt0@(et0,etn0,etd0) edt1@(et1,etn1,etd1), n, _) =
+            indtTxts indt $ [T.concat[T.pack n, "Txt ="]
+                            ,T.concat["    case ", T.pack n, " of"]
+                            ,T.concat["        Result.Err ",T.pack etn0," ->"]
+                            ,         "            let"]++
+                            (encodeEt indt edt0)++
+                            [T.concat["            in tConcat [\"Err\",\"",elmDelim,"\",",T.pack etn0,"Txt]"]
+                            ,T.concat["        Result.Ok ",T.pack etn1," ->"]
+                            ,         "            let"]++
+                            (encodeEt indt edt1) ++
+                            [T.concat["            in tConcat [\"Ok\",\"",elmDelim,"\",",T.pack etn1,"Txt]"]
+                            ]
+        encodeEt indt (ElmExisting _ _, _, _) =
+            error "ElmExisting serialization not supported. They should only be used for place states and client- and server-only messages."
+        encodeEt indt (ElmEmpty, _, _) = 
+            error "ElmEmpty serialization not supported. They should only be used for place states and client- and server-only messages."
+
+        cases = map (\(constrName,edt) -> 
+                        T.concat ["        ",T.pack constrName,T.concat $ map (\(et,name,desc) -> T.pack $ " " ++ name) edt," -> "
+                                ,if length edt > 0 then 
+                                    T.concat ["\n            let\n"
+                                            ,T.unlines $ concat $ map (encodeEt 4) edt
+                                            ,"            in"] 
+                                 else ""
+                                ,"\n                tConcat [\"",T.pack constrName
+                                ,if length edt > 0 then T.concat[elmDelim,"\", "] else "\""
+                                ,T.intercalate (T.concat[",\"",elmDelim,"\","]) $ 
+                                        map (\(et,name,desc) -> case et of 
+                                                                    ElmDict _ _ -> T.pack $ name ++ "AsListTxt"
+                                                                    _           -> T.pack $ name ++ "Txt"
+                                        
+                                            ) edt, "]"
+                                ]) edts
         fullTxt = T.unlines 
                     [T.concat["encode",T.pack name .::. T.pack name,if l == Haskell then " -> T.Text" else " -> String"]
                     ,T.concat["encode",T.pack name," ",T.toLower $ T.pack name," = "]
@@ -145,13 +163,13 @@ generateDecoder l (ElmCustom name edts) =
         decodeEt indt (ElmIntRange low high,n,_) = 
             indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
                             ,T.concat["        (case l",T.pack $ show indt," of"]
-                            ,T.concat["            (",T.pack n,"Txt " .:. " ll",T.pack $ show indt,") -> ","(decodeInt (",T.pack $ show low,") (",T.pack $ show high,") ",T.pack n,"Txt |> randThen Ok,ll",T.pack $ show indt,")"]
+                            ,T.concat["            (",T.pack n,"Txt " .:. " ll",T.pack $ show indt,") -> ","(decodeInt (",T.pack $ show low,") (",T.pack $ show high,") ",T.pack n,"Txt |> Result.andThen Ok,ll",T.pack $ show indt,")"]
                             ,T.concat["            [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[]))"]
                             ]
         decodeEt indt (ElmFloatRange low high precision,n,_) = 
             indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
                             ,T.concat["        (case l",T.pack $ show indt," of"]
-                            ,T.concat["            (",T.pack n,"Txt ".:. " ll",T.pack $ show indt,") -> ","(decodeInt (",T.pack $ show $ round (low*10^precision),") (",T.pack $ show $ round (high*10^precision),") ",T.pack n,"Txt |> randThen (\\",T.pack n,"Res -> Ok <| toFloat ",T.pack n,"Res / (",T.pack $ show (10^precision),")),ll",T.pack $ show indt,")"]
+                            ,T.concat["            (",T.pack n,"Txt ".:. " ll",T.pack $ show indt,") -> ","(decodeInt (",T.pack $ show $ round (low*10^precision),") (",T.pack $ show $ round (high*10^precision),") ",T.pack n,"Txt |> Result.andThen (\\",T.pack n,"Res -> Ok <| toFloat ",T.pack n,"Res / (",T.pack $ show (10^precision),")),ll",T.pack $ show indt,")"]
                             ,T.concat["            [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[]))"]
                             ]
         decodeEt indt (ElmString, n, _) =
@@ -177,7 +195,7 @@ generateDecoder l (ElmCustom name edts) =
                             ,T.concat["                     (Err \"\",lf",T.pack $ show indt,") |>"]
                             ,T.unlines $ decodeEt (indt+5) (et1,n1,d1)
                             ,T.concat["                [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[])"]
-                            ,T.concat["    in (rMap2 (\\rff",T.pack $ show indt," rss",T.pack $ show indt," -> (rff",T.pack $ show indt,",rss",T.pack $ show indt,")) ", T.pack n0," ",T.pack n1,",ls",T.pack $ show indt,")"]
+                            ,T.concat["    in (Result.map2 (\\rff",T.pack $ show indt," rss",T.pack $ show indt," -> (rff",T.pack $ show indt,",rss",T.pack $ show indt,")) ", T.pack n0," ",T.pack n1,",ls",T.pack $ show indt,")"]
                             ]
         decodeEt indt (ElmTriple (et0,n0,d0) (et1,n1,d1) (et2,n2,d2), n, _) =
             indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
@@ -203,7 +221,7 @@ generateDecoder l (ElmCustom name edts) =
                             ,T.concat["                     (\"\",ls",T.pack $ show indt,") |>"]
                             ,T.unlines $ decodeEt (indt+5) (et2,n2,d2)
                             ,T.concat["                [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[])"]
-                            ,T.concat["    in (rMap3 (\\rff",T.pack $ show indt," rss",T.pack $ show indt," rtt",T.pack $ show indt," -> (rff",T.pack $ show indt,",rss",T.pack $ show indt,",rtt",T.pack $ show indt,")) ", T.pack n0," ",T.pack n1," ",T.pack n2,",lt",T.pack $ show indt,")"]
+                            ,T.concat["    in (Result.map3 (\\rff",T.pack $ show indt," rss",T.pack $ show indt," rtt",T.pack $ show indt," -> (rff",T.pack $ show indt,",rss",T.pack $ show indt,",rtt",T.pack $ show indt,")) ", T.pack n0," ",T.pack n1," ",T.pack n2,",lt",T.pack $ show indt,")"]
                             ]
         decodeEt indt (ElmList etd, n, _) =
             indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
@@ -230,8 +248,21 @@ generateDecoder l (ElmCustom name edts) =
                             ]
         decodeEt indt (ElmWildcardType _, _, _) =
             error "Wildcard cannot be serialized."
-        decodeEt indt (ElmResult _ _, _, _) =
-            error "ElmResult serialization is not yet supported."
+        decodeEt indt (ElmResult edt0 edt1, n, _) =
+            indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
+                            ,"    let"
+                            ,T.concat ["        decodeErr",T.pack $ show indt," ="]]++
+                            (decodeEt (indt+1) edt0) ++
+                            [T.concat ["        decodeOk",T.pack $ show indt," ="]]++
+                            (decodeEt (indt+1) edt1) ++
+                            ["    in"
+                            ,T.concat["        decodeResult decodeErr",T.pack $ show indt," decodeOk",T.pack $ show indt," l",T.pack $ show indt]
+                            ]
+        decodeEt indt (ElmExisting _ _, _, _) =
+            error "ElmExisting serialization not supported. They should only be used for place states and client- and server-only messages."
+        decodeEt indt (ElmEmpty, _, _) = 
+            error "ElmEmpty serialization not supported. They should only be used for place states and client- and server-only messages."
+
         {-decodeEt indt (ElmMaybe etd, n, _) =
             indtTxts indt $ [T.concat["(\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
                             ,T.concat["            case l",T.pack $ show indt," of"]
@@ -240,16 +271,21 @@ generateDecoder l (ElmCustom name edts) =
                             ,                             T.unlines $ decodeEt (indt+5) etd,")"
                             ,T.concat["                [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[]))"]
                             ]-}
-        cases = map (\(constrName,edt) -> T.concat [ T.pack "        (\"",T.pack constrName, T.pack "\"", " " .:. " rest) ->"
-                                                   ,"\n            (Err \"\",rest) |> \n"
-                                                   ,T.unlines $ concat $ map (\(n,et) -> (decodeEt (4+n) et) ++ indtTxts (4+n) [" |>"]) $ zip [0..] edt
-                                                   ,indtTxt (5 + length edt) $ T.concat ["(\\(r"
-                                                                                        ,T.pack $ show $ length edt + 3,",l",T.pack $ show $ length edt + 4,") -> ("
-                                                                                        ,if length edt > 0 then T.concat ["rMap",T.pack $ show $ length edt] else "Ok <|"," "
-                                                                                        ,T.pack constrName," "
-                                                                                        ,T.intercalate " " $ map (\n -> T.pack $ "r" ++ show (n+4)) [0..length edt-1]
-                                                                                        ,",l",T.pack $ show $ length edt + 4,"))"]
-                                                   ]) edts
+        cases = map (\(constrName,edt) -> 
+                        T.concat [ T.pack "        (\"",T.pack constrName, T.pack "\"", " " .:. " rest) ->"
+                                ,"\n            (Err \"\",rest) |> \n"
+                                ,T.unlines $ concatMap (\(n,et) -> (decodeEt (4+n) et) ++ indtTxts (4+n) [" |>"]) $ zip [0..] edt
+                                ,indtTxt (5 + length edt) $ T.concat ["(\\(r"
+                                                                    ,T.pack $ show $ length edt + 3,",l",T.pack $ show $ length edt + 4,") -> ("
+                                                                    ,if length edt > 0 && l == Haskell then 
+                                                                        T.concat ["Result.map",if length edt > 1 then T.pack $ show $ length edt else ""] 
+                                                                        else if length edt > 0 && l == Elm then
+                                                                        T.concat ["rMap",if length edt > 1 then T.pack $ show $ length edt else ""] 
+                                                                        else "Ok <|"," "
+                                                                    ,T.pack constrName," "
+                                                                    ,T.intercalate " " $ map (\n -> T.pack $ "r" ++ show (n+4)) [0..length edt-1]
+                                                                    ,",l",T.pack $ show $ length edt + 4,"))"]
+                                ]) edts
     in
         T.unlines [typeSig
                   ,T.concat["decode",T.pack name," (lastRes,",T.toLower $ T.pack name,"Txts) = "]

@@ -19,25 +19,25 @@ generate outputDirectory rootDir clientServerApp = do
     unless exists $ do
         setSGR [SetColor Foreground Vivid Red]
         putStrLn $ "Error: cannot find client template directory at `" ++ templateDir ++ "`. Please update rootDir to the proper directory."
-        setSGR [SetColor Foreground Vivid White]
+        setSGR [Reset]
         exitFailure
     let templateDir = (rootDir </> "ServerTemplate/")
     unless exists $ do
         setSGR [SetColor Foreground Vivid Red]
         putStrLn $ "Error: cannot find server template directory at `" ++ templateDir ++ "`. Please update rootDir to the proper directory."
-        setSGR [SetColor Foreground Vivid White]
+        setSGR [Reset]
         exitFailure
 
     when (length errors > 0) $ do
         setSGR [SetColor Foreground Vivid Red]
         putStrLn $ show (length errors) ++ " error"++if length errors > 1 then "s" else ""++" detected in spec:"
-        setSGR [SetColor Foreground Vivid White]
+        setSGR [Reset]
         mapM_ putStrLn $ map (\(n,e) -> "["++show n ++"]: " ++ e) $ zip [1..] errors
         exitFailure
     
     setSGR [SetColor Foreground Vivid Green]
     putStrLn "No errors detected in spec!"
-    setSGR [SetColor Foreground Vivid White]
+    setSGR [Reset]
     generateServer 
             True              --True: GraphicSVG, False: Elm Html
             rootDir             --True: regenerate only static files, False: regenerate static files and user files if they don't exist

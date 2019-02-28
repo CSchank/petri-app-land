@@ -111,3 +111,18 @@ getTransitionName :: NetTransition -> T.Text
 getTransitionName (NetTransition _ (name,_) _ _) = T.pack name
 getTransitionName (ClientTransition (name,_) _ _) = T.pack name
 getTransitionName (CmdTransition (name,_) _ _) = T.pack name
+
+findImports :: Language -> ElmDocType -> [T.Text]
+findImports l (ElmPair edt0 edt1, _, _)          = findImports l edt0 ++ findImports l edt1
+findImports l (ElmTriple edt0 edt1 edt2, _, _)   = findImports l edt0 ++ findImports l edt1 ++ findImports l edt2
+findImports l (ElmList edt, _, _)                = if l == Haskell then ["import Static.List (List)"] else [] ++ findImports l edt
+findImports l (ElmDict edt0 edt1, _, _)          = 
+    if l == Haskell then ["import Static.Dict (Dict)"] else ["import Dict exposing (Dict)"] 
+        ++ findImports l edt0 ++ findImports l edt1
+findImports l (ElmExisting name imp, _, _)       = 
+    if l == Haskell then [T.concat ["import qualified ",T.pack imp, " (",T.pack name,")"]]
+    else [T.concat ["import ",T.pack imp]]
+findImports l (ElmResult edt0 edt1, _, _)       = 
+    (if l == Haskell then ["import Static.Result (Result(..))"] else [])
+        ++ findImports l edt0 ++ findImports l edt1
+findImports _ _ = []

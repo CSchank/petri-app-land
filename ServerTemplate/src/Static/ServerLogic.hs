@@ -27,8 +27,10 @@ import Static.Encode
 import Static.Decode
 import Static.Init
 import Static.Plugins
-import Utils.Utils (Result(..),safeFromJust)
+import Utils.Utils (safeFromJust)
 import Static.Update (update, clientConnect, disconnect)
+
+import Static.Result (Result(..))
 
 newCentralMessageChan :: STM (TQueue CentralMessage)
 newCentralMessageChan =
@@ -116,8 +118,6 @@ processCentralMessage centralMessageChan state (ReceivedMessage mClientID incomi
             case IM'.lookup clientID connectedClients of
                 Just (Client decodeChannel chan netID) -> atomically $ writeTQueue chan $ SendMessage (encodeOutgoingMessage cm)
                 Nothing -> Prelude.putStrLn $ "Unable to send message to client " ++ show mClientID ++ " because that client doesn't exist or is logged out."    
-        
-
 
     in do
     t <- Time.getPOSIXTime
@@ -128,7 +128,6 @@ processCentralMessage centralMessageChan state (ReceivedMessage mClientID incomi
         (nextState, outgoingMsgs, mCmd) = update tld mClientID incomingMsg state
 
     sendMessages outgoingMsgs
-
     processCmd centralMessageChan mCmd incomingMsg nextState
 
     return nextState

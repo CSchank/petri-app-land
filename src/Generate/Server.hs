@@ -88,12 +88,14 @@ generateServer gsvg rootDir fp
             ,   "import Static.Types"
             ,   "import qualified Data.Text as T"
             ,   "import Utils.Utils"
+            ,   "import Static.Result (Result(..))"
+            ,   "import qualified Static.Result as Result"
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Decode"]) netNames
             ,   ""
             ,   "decodeIncomingMessage :: T.Text -> NetModel -> Result T.Text NetTransition"
             ,   "decodeIncomingMessage txt clientNet ="
             ,   "    case clientNet of"
-            ,   T.concat $ map (\netName -> T.concat["        ",netName," -> rMap ",netName,"Trans $ fst $ ",netName,".Static.Decode.decodeTransition (Err \"\",T.splitOn \"\\0\" txt)"]) netNames
+            ,   T.concat $ map (\netName -> T.concat["        ",netName," -> Result.map ",netName,"Trans $ fst $ ",netName,".Static.Decode.decodeTransition (Err \"\",T.splitOn \"\\0\" txt)"]) netNames
             ]
         update :: T.Text
         update = 
@@ -104,7 +106,7 @@ generateServer gsvg rootDir fp
                         T.concat["        ",netName,"Trans msg ->"]
                     ,   "            let"
                     ,   T.concat["                (newNetState, clientMessages, mCmd) = ",netName,".update tld mClientID msg (safeFromJust \"update case\" $ TM.lookup $ serverState state)"]
-                    ,   T.concat["                cmd = fmap (\\m -> cmdMap ",netName,"Trans m) mCmd"]
+                    ,   T.concat["                cmd = fmap (\\m -> Cmd.map ",netName,"Trans m) mCmd"]
                     ,   T.concat["                cMsgs = map (\\(cId,m) -> (cId,",netName,"OMsg m)) clientMessages"]
                     ,   T.concat["                newServerState = state { serverState = TM.insert newNetState (serverState state) }"]
                     ,   "            in (newServerState, cMsgs, cmd)"
@@ -121,8 +123,9 @@ generateServer gsvg rootDir fp
             ,   "import Utils.Utils"
             ,   "import Data.Maybe (fromJust,mapMaybe,isJust)"
             ,   "import qualified Data.IntMap.Strict as IM'"
+            ,   "import qualified Static.Cmd as Cmd"
             ,   ""
-            ,   "update :: TopLevelData -> Maybe ClientID -> NetTransition -> ServerState -> (ServerState, [(ClientID,NetOutgoingMessage)], Maybe (Cmd NetTransition))"
+            ,   "update :: TopLevelData -> Maybe ClientID -> NetTransition -> ServerState -> (ServerState, [(ClientID,NetOutgoingMessage)], Maybe (Cmd.Cmd NetTransition))"
             ,   "update tld mClientID netTrans state ="
             ,   "    case netTrans of"
             ,   T.unlines $ map updateCase netNames
@@ -170,7 +173,7 @@ generateServer gsvg rootDir fp
                     T.unlines
                     [
                         T.concat ["                ",netName,"Trans {} ->"]
-                    ,   T.concat ["                      Utils.processCmd cmd centralMessageQueue (safeFromJust \"plugins\" $ TM.lookup $ serverState state :: NetState ",netName,".Player)"]
+                    ,   T.concat ["                      Cmd.process cmd centralMessageQueue (safeFromJust \"plugins\" $ TM.lookup $ serverState state :: NetState ",netName,".Player)"]
                     ] 
             in
             T.unlines
@@ -183,8 +186,9 @@ generateServer gsvg rootDir fp
             ,   "import Control.Concurrent.STM (TQueue, atomically, writeTQueue)"
             ,   "import Data.TMap as TM (TMap,lookup)"
             ,   "import Utils.Utils as Utils"
+            ,   "import qualified Static.Cmd as Cmd"
             ,   ""
-            ,   "processCmd :: TQueue CentralMessage -> Maybe (Cmd NetTransition) -> NetTransition -> ServerState -> IO ()"
+            ,   "processCmd :: TQueue CentralMessage -> Maybe (Cmd.Cmd NetTransition) -> NetTransition -> ServerState -> IO ()"
             ,   "processCmd centralMessageQueue mCmd nTrans state ="
             ,   "    case mCmd of"
             ,   "        Just cmd ->"

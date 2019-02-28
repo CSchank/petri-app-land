@@ -1,6 +1,7 @@
 module Plugins.Incrementer where
 import Control.Concurrent.STM (STM, TQueue, TVar, newTVar, readTVar, writeTVar, atomically, newTQueue, readTQueue, writeTQueue)
 import Static.ServerTypes
+import Static.Cmd as Cmd (Cmd(..))
 
 
 data Incrementer = Incrementer (TVar Int) --anything you need the runtime to keep track of

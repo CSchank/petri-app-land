@@ -21,4 +21,4 @@ clientID = edt (ElmIntRange 0 999999) "clientID" "id assigned when logging in"--
 
 natural :: ElmType
 natural =
-    ElmIntRange 0 (2^64)
+    ElmIntRange 0 (2^32)

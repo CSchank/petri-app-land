@@ -65,6 +65,16 @@ validateEt ecSet note ElmBool = []
 validateEt ecSet note (ElmResult edt0 edt1) =
        validateEdt ecSet (note ++ ", in Error result") edt0
     ++ validateEdt ecSet (note ++ ", in Ok result") edt1
+validateEt ecSet note ElmEmpty = []
+validateEt ecSet note (ElmExisting str imp) = 
+    (if not $ validateType str then
+        [note++", in ElmExisting type `"++str++"`: invalid name for type"]
+    else 
+        []) ++
+    if imp == "" then
+        [note++", in ElmExisting type `"++str++"`: import must be non-empty and valid"]
+    else
+        []
 
 validateConstructor :: S.Set String -> String -> Constructor -> [String]
 validateConstructor ecSet note ("",edts) = 
@@ -149,12 +159,23 @@ validateNet :: S.Set String -> Net -> [String]
 validateNet ecSet (HybridNet name startingPlace places transitions subnets) =
     let
         placeSet = S.fromList $ map (T.unpack . getPlaceName) places
+        duplicateTransitions = fnub $ transitions \\ fnub transitions
+        duplicatePlaces = fnub $ places \\ fnub places
         validations =
             if not (T.unpack startingPlace `S.member` placeSet) then
                 ["in Net `" ++ T.unpack name ++ "`: start place `"++ T.unpack startingPlace ++"` not in place list"]
             else [] ++
             concatMap (validatePlace ecSet ("in Net `"++T.unpack name ++"`")) places ++
-            concatMap (validateTransition placeSet ecSet ("in Net `"++T.unpack name ++"`")) transitions
+            concatMap (validateTransition placeSet ecSet ("in Net `"++T.unpack name ++"`")) transitions ++
+            if length duplicateTransitions > 0 then
+                map (\tr -> "in Net `"++T.unpack name ++"`, transition "++T.unpack (getTransitionName tr)++" appears " ++ show (length (filter (==tr) transitions)) ++ " times.") duplicateTransitions
+            else
+                []++
+            if length duplicatePlaces > 0 then
+                map (\pl -> "in Net `"++T.unpack name ++"`, place "++T.unpack (getPlaceName pl)++" appears " ++ show (length (filter (==pl) places)) ++ " times.") duplicatePlaces
+            else
+                []
+
     in
         if not $ validateType $ T.unpack name then
             ["in Net `"++T.unpack name++"`: invalid name for Net"] ++ validations

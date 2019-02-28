@@ -59,11 +59,6 @@ data NetMsg netMsg =
     | ReceiveServerMessage netMsg
     -- | MoveClient ClientID NetID -- move a client to another net, gotta think this through a bit better
 -}
-data Cmd msg =
-      Cmd (IO msg)
-    | CmdBatch [Cmd msg]
-    | forall a b. CmdFold (a -> b -> a) a [Cmd b] (a -> IO msg)        --fold over many commands and combine their results
-    | forall state. Plugin state => StateCmd (state -> IO msg)
 
 class (Typeable state) => Plugin state where
     initPlugin :: IO state --initialize the plugin and return its singleton state

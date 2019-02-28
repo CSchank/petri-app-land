@@ -4,6 +4,8 @@ import Static.ServerTypes
 import Utils.Utils
 import System.IO.Error
 import Control.Exception
+import Static.Result (Result(..))
+import Static.Cmd (Cmd(..))
 
 data Error =
       DoesNotExist
