@@ -149,7 +149,7 @@ processCentralMessage centralMessageChan state (UserConnectionLost clientID) =
                            , currentTime = round $ t * 1000
                            }
 
-    return $ disconnect tld clientID netModel state
+    disconnect tld clientID netModel state
 {-
 --get current state of central thread
 processCentralMessage centralMessageChan state (GetCurrentState queue) = do

@@ -335,6 +335,8 @@ generate extraTypes fp net =
                     ,   "import Data.Maybe (fromJust, isJust, mapMaybe)"
                     ,   "import Utils.Utils"
                     ,   "import Static.Cmd (Cmd)"
+                    ,   "import Plugins.Users (processLogout)"
+                    ,   "import Static.Task (evalTask)"
                     ,   ""
                     ,   "-- player processing functions"
                     ,   T.unlines $ map processTransPlayer transitions
@@ -349,7 +351,7 @@ generate extraTypes fp net =
                     ,   T.concat["        state { placeStates = TM.insert ",uncapitalize startingPlace," $ placeStates state, playerStates = IM'.insert clientID (unwrap",startingPlace,"Player ",uncapitalize startingPlace,"Player) (playerStates state) }"]
                     ,   ""
                     ,   "-- process player disconnects"
-                    ,   "disconnect :: FromSuperPlace -> ClientID -> NetState Player -> NetState Player"
+                    ,   "disconnect :: FromSuperPlace -> ClientID -> NetState Player -> IO (NetState Player)"
                     ,   "disconnect fsp clientID state ="
                     ,   "    let"
                     ,   "        player = safeFromJust \"disconnect\" $ IM'.lookup clientID $ players"
@@ -358,8 +360,10 @@ generate extraTypes fp net =
                     ,   "        newPlaces = case player of"
                     ,   T.unlines $ map disconnectCase placeNames
                     ,   "        newPlayers = IM'.delete clientID players"
-                    ,   "    in"
-                    ,   "        state { playerStates = newPlayers, placeStates = newPlaces }"
+                    ,   "        task = processLogout clientID"
+                    ,   "    in do"
+                    ,   "        evalTask (pluginStates state) task -- back door into the users plugin..."
+                    ,   "        return $ state { playerStates = newPlayers, placeStates = newPlaces }"
                     ,   ""
                     ,   T.concat ["update :: TopLevelData -> Maybe ClientID -> Transition -> NetState Player -> (NetState Player,[(ClientID,ClientMessage)],Maybe (Cmd.Cmd Transition))"]
                     ,   T.concat ["update tld mClientID trans state ="]

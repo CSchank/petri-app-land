@@ -358,12 +358,23 @@ processLogin clientID username password =
                                 StateTask $ \users -> do 
                                     atomically $
                                         modifyTVar (sessions users)
-                                            (IM.insert clientID (fromIntegral userID))
+                                            (IM.insert clientID (fromIntegral userID))                            
+                                    clients <- atomically $ readTVar $ sessions users
+                                    putStrLn $ "Logged in user... " ++ show clients
                                     return $ Ok True
                             )
                 else
                     succeed False
             )
+
+processLogout :: ClientID -> Task Error Bool
+processLogout clientID = StateTask $ \users -> do 
+    atomically $
+        modifyTVar (sessions users)
+            (IM.delete clientID)
+    clients <- atomically $ readTVar $ sessions users
+    putStrLn $ "Logged out user... " ++ show clients
+    return $ Ok True
 
 lookupUserBySession :: ClientID -> Task Error Word32
 lookupUserBySession clientID = StateTask $ \users -> do
@@ -371,3 +382,4 @@ lookupUserBySession clientID = StateTask $ \users -> do
     case IM.lookup clientID sess of
         Just uId -> return $ Ok $ fromIntegral uId
         Nothing -> return $ Err UserNotFound
+

@@ -146,8 +146,3 @@ mapSnd f l =
 insertList :: [(IM'.Key, a)] -> IM'.IntMap a -> IM'.IntMap a
 insertList l im =
     foldl (\m (i,a) -> IM'.insert i a m) im l
-{-
-processCmd :: Cmd a -> IO ()
-processCmd cmd =
-    case cmd of
--}
