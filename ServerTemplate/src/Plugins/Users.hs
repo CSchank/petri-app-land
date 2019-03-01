@@ -14,7 +14,7 @@ import Data.Map.Strict as M'
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 (pack)
 import qualified Data.Text as T
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust,catMaybes)
 
 import qualified Data.Set as Set
 
@@ -25,7 +25,7 @@ import Data.IxSet           ( Indexable(..), IxSet(..), (@=), Proxy(..), getOne
                             , ixFun, ixSet )
 import qualified Data.IxSet as IX
 
-import Data.Word (Word32)
+import Data.Word (Word16,Word32)
 
 import Static.Task as Task
 import Plugins.Users.Types
@@ -53,7 +53,7 @@ instance (Plugin Plugins.Users.Users) where
                     userID = UserID 0
                 ,   username = Username "Chris"
                 ,   pwdHash = Password pwd
-                ,   groups = Groups $ Set.fromList [Administrator]
+                ,   groups = Groups $ Set.fromList [0,1,2]
                 }
         let newUser1 = UserData
                 {
@@ -65,10 +65,13 @@ instance (Plugin Plugins.Users.Users) where
         let initialDB = UserDB
                 {
                     users = IX.insert newUser $ IX.insert newUser1 IX.empty
+                ,   groupData = IX.fromList $
+                        Prelude.map (\(a,b) -> GroupData a b) $
+                            zip [0..] [Administrator, Supervisor, User, Custom "Guidance Counselor"]
                 ,   nextUserID = 2
                 }
         as <- openLocalState initialDB
-        newTv <- atomically $ newTVar (IM.empty)
+        newTv <- atomically $ newTVar IM.empty
         return $ 
             Users
                 {
@@ -95,7 +98,8 @@ lookupGroupsByID userID = do
     case IX.getOne $ IX.getEQ (UserID userID) uDb of
         Just head -> do
             let (Groups gr) = groups head
-            return $ Ok gr
+            grs <- mapM getGroupById $ Set.toList gr
+            return $ Ok $ Set.fromList $ catMaybes grs
         _ -> 
             return $ Err UserNotFound
 
@@ -126,23 +130,23 @@ addUser username dat = do
         _ -> 
             return $ Err $ UserNotFound
 
-removeUser :: T.Text -> Update UserDB (Result Error ())
-removeUser username = do
+removeUser :: Word32 -> Update UserDB (Result Error ())
+removeUser userId = do
     ut <- get
     let uDb = users ut
-    case IX.getOne $ IX.getEQ (Username username) uDb of
+    case IX.getOne $ IX.getEQ (UserID userId) uDb of
         Just head -> do
             put $ ut { 
                         users = IX.deleteIx 
-                                (Username username) 
+                                (UserID userId) 
                                 uDb
                         }
             return $ Ok ()
         _ -> 
             return $ Err UserNotFound
 
-addGroup :: T.Text -> Group -> Update UserDB (Result Error ())
-addGroup username group = do
+addGroup :: T.Text -> Word16 -> Update UserDB (Result Error ())
+addGroup username groupId= do
     ut <- get
     let uDb = users ut
     case IX.getOne $ IX.getEQ (Username username) uDb of
@@ -151,15 +155,15 @@ addGroup username group = do
             put $ ut { 
                         users = IX.updateIx 
                                 (Username username) 
-                                (head { groups = Groups $ Set.insert group $ userGroups })
+                                (head { groups = Groups $ Set.insert groupId $ userGroups })
                                 uDb
                         }
             return $ Ok ()
         _ -> 
             return $ Err UserNotFound
 
-removeGroup :: T.Text -> Group -> Update UserDB (Result Error ())
-removeGroup username group = do
+removeGroup :: T.Text -> Word16 -> Update UserDB (Result Error ())
+removeGroup username groupId = do
     ut <- get
     let uDb = users ut
     case IX.getOne $ IX.getEQ (Username username) uDb of
@@ -168,7 +172,7 @@ removeGroup username group = do
             put $ ut { 
                         users = IX.updateIx 
                                 (Username username) 
-                                (head { groups = Groups $ Set.delete group $ userGroups })
+                                (head { groups = Groups $ Set.delete groupId $ userGroups })
                                 uDb
                         }
             return $ Ok ()
@@ -227,8 +231,8 @@ changePwdByID userID newPwd = do
             return $ Err UserNotFound
 
 
-changeGroupsByID :: Word32 -> [Group] -> Update UserDB (Result Error ())
-changeGroupsByID userID groups = do
+changeGroupsByID :: Word32 -> [Word16] -> Update UserDB (Result Error ())
+changeGroupsByID userID groupIDs = do
     ut <- get
     let uDb = users ut
     case IX.getOne $ IX.getEQ (UserID userID) uDb of
@@ -236,7 +240,7 @@ changeGroupsByID userID groups = do
             put $ ut { 
                 users = IX.updateIx 
                         (UserID userID) 
-                        (head { groups = Groups $ Set.fromList groups }) 
+                        (head { groups = Groups $ Set.fromList groupIDs }) 
                         uDb
                 }
             return $ Ok ()
@@ -247,6 +251,28 @@ listUsers :: Query UserDB [UserData]
 listUsers = do
     ut <- ask
     return $ IX.toList $ users ut
+
+getGroupById :: Word16 -> Query UserDB (Maybe Group)
+getGroupById groupId = do
+    ut <- ask
+    let gDb = groupData ut
+    case IX.getOne $ IX.getEQ groupId gDb of
+        Just head -> do
+            return $ Just $ group head
+        _ -> 
+            return Nothing
+    return $ fmap group $ IX.getOne $ IX.getEQ groupId gDb
+
+getGroupIDByName :: Group -> Query UserDB (Maybe Word16)
+getGroupIDByName group = do
+    ut <- ask
+    let gDb = groupData ut
+    return $ fmap groupID $ IX.getOne $ IX.getEQ group gDb
+
+listGroups :: Query UserDB [GroupData]
+listGroups = do
+    ut <- ask
+    return $ IX.toList $ groupData ut
 
 
 $(makeAcidic ''UserDB [   'lookupPasswordByName
@@ -261,6 +287,9 @@ $(makeAcidic ''UserDB [   'lookupPasswordByName
                         , 'changePwdByID
                         , 'changeGroupsByID
                         , 'listUsers
+                        , 'getGroupById
+                        , 'getGroupIDByName
+                        , 'listGroups
                       ])
 
 validateUser :: String -> String -> Task Error Bool
@@ -279,35 +308,48 @@ findUserID username = StateTask $ \users -> do
         Ok uId -> return $ Ok (fromIntegral uId)
         Err err -> return $ Err err
 
-insertUser :: String -> String -> [Group] -> Task Error Word32
-insertUser username password groups = StateTask $ \users -> do
+insertUser :: String -> String -> [Word16] -> Task Error Word32
+insertUser username password groupIDs = StateTask $ \users -> do
     let uDb = userDb users
     newPwdHash <- fmap fromJust $ hashPasswordUsingPolicy currentHashingScheme (pack password)
-    let newUserData = UserData { 
-            username = Username $ T.pack username
-        ,   groups = Groups $ Set.fromList groups
-        ,   pwdHash = Password newPwdHash
-        }
+    --groupIDs <- fmap catMaybes $ mapM (query' uDb . GetGroupIDByName) groups
+    let newUserData = UserData 
+            {   
+                userID = UserID $ (-1)
+            ,   username = Username $ T.pack username
+            ,   groups = Groups $ Set.fromList groupIDs
+            ,   pwdHash = Password newPwdHash
+            }
     res <- update' uDb (AddUser (T.pack username) newUserData)
     return res
 
-deleteUser :: String -> Task Error ()
-deleteUser username = StateTask $ \users -> do
+deleteUser :: Word32 -> Task Error ()
+deleteUser userId = StateTask $ \users -> do
     let uDb = userDb users
-    res <- update' uDb (RemoveUser $ T.pack username)
+    res <- update' uDb (RemoveUser $ userId)
     return res
 
-assignGroup :: String -> Group -> Task Error ()
-assignGroup username group = StateTask $ \users -> do
+assignGroupByID :: String -> Word16 -> Task Error ()
+assignGroupByID username groupID = StateTask $ \users -> do
     let uDb = userDb users
-    res <- update' uDb (AddGroup (T.pack username) group)
-    return res
+    mgroup <- query' uDb (GetGroupById groupID)
+    case mgroup of
+        Just group -> do
+            res <- update' uDb (AddGroup (T.pack username) groupID)
+            return res
+        Nothing ->
+            return $ Err UserNotFound -- FIXME : GroupNotFound
 
-revokeGroup :: String -> Group -> Task Error ()
-revokeGroup username group = StateTask $ \users -> do
+revokeGroupByID :: String -> Word16 -> Task Error ()
+revokeGroupByID username groupID = StateTask $ \users -> do
     let uDb = userDb users
-    res <- update' uDb (RemoveGroup (T.pack username) group)
-    return res
+    mgroup <- query' uDb (GetGroupById groupID)
+    case mgroup of
+        Just _ -> do
+            res <- update' uDb (RemoveGroup (T.pack username) groupID)
+            return res
+        Nothing ->
+            return $ Err UserNotFound -- FIXME : GroupNotFound
 
 updatePwd :: String -> String -> Task Error ()
 updatePwd username password = StateTask $ \users -> do
@@ -328,10 +370,10 @@ updatePwdByID userID password = StateTask $ \users -> do
     res <- update' uDb (ChangePwdByID userID newPwdHash)
     return res
 
-updateGroupsByID :: Word32 -> [Group] -> Task Error ()
-updateGroupsByID userID groups = StateTask $ \users -> do
+updateGroupsByID :: Word32 -> [Word16] -> Task Error ()
+updateGroupsByID userID groupIDs = StateTask $ \users -> do
     let uDb = userDb users
-    res <- update' uDb (ChangeGroupsByID userID groups)
+    res <- update' uDb (ChangeGroupsByID userID groupIDs) -- FIXME: check if groups exist
     return res
 
 validateUserGroup :: Group -> Word32 -> Task Error Bool
