@@ -287,9 +287,9 @@ $(makeAcidic ''UserDB [   'lookupPasswordByName
                         , 'changePwdByID
                         , 'changeGroupsByID
                         , 'listUsers
+                        , 'listGroups
                         , 'getGroupById
                         , 'getGroupIDByName
-                        , 'listGroups
                       ])
 
 validateUser :: String -> String -> Task Error Bool
@@ -386,6 +386,12 @@ listAllUsers :: Task a [UserData]
 listAllUsers = StateTask $ \users -> do
     let uDb = userDb users
     res <- query' uDb ListUsers 
+    return $ Ok res
+
+listAllGroups :: Task a [GroupData]
+listAllGroups = StateTask $ \users -> do
+    let uDb = userDb users
+    res <- query' uDb ListGroups
     return $ Ok res
 
 processLogin :: ClientID -> String -> String -> Task Error Bool
