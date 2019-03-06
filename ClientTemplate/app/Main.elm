@@ -16,6 +16,7 @@ import Url
 import Task
 
 import Html exposing(Html)
+import Html.Events exposing(onClick)
 import Static.Init as Init
 import Static.Update
 import Static.Encode exposing(encodeOutgoingTransition)
@@ -28,6 +29,9 @@ import Static.Types exposing(NetModel,TransitionType(..))
 
 import Config exposing(serverUrl)
 import Utils.Utils exposing(newMsg)
+
+import Bootstrap.Modal as Modal
+
 
 
 port cmdPort : Value -> Cmd msg
@@ -54,7 +58,9 @@ type alias FunnelState =
 -- MODEL
 
 type State =
-    Connected | NotConnected | ConnectionClosed
+      Connected 
+    | NotConnected 
+    | ConnectionClosed
 
 
 defaultUrl : String
@@ -63,7 +69,8 @@ defaultUrl =
 
 
 type alias InternalModel =
-    { appState : State
+    { connectionState : State
+    , alert : Maybe (String)
     , log : List String
     , url : String
     , wasLoaded : Bool
@@ -92,7 +99,8 @@ initialFunnelState =
 
 init : D.Value -> Url.Url -> Nav.Key -> ( InternalModel, Cmd Msg )
 init _ url key =
-    { appState = NotConnected
+    { connectionState = NotConnected
+    , alert = Nothing
     , log = []
     , url = defaultUrl
     , wasLoaded = False
@@ -263,9 +271,25 @@ socketHandler response state mdl =
     in
     case response of
         WebSocket.MessageReceivedResponse { message } ->
-            case message of 
+            case Debug.log "message" message of 
                 "resetfadsfjewi" -> 
                     { model | appModel = Tuple.first Init.init } |> withNoCmd
+                "s" -> --server is asking for version
+                    model |> wsSend V.version
+                    {-case model.connectionState of
+                        NotConnected ->
+                            { model | appModel = Tuple.first Init.init, connectionState = WaitingForVersionVerification } 
+                                |> wsSend V.version
+                        ConnectionClosed ->
+                            { model | appModel = Tuple.first Init.init, connectionState = WaitingForVersionVerification } 
+                                |> wsSend V.version
+                        Connected -> 
+                            model |> withNoCmd
+                        WaitingForVersionVerification ->
+                            model |> withNoCmd-}
+                "v" -> --correct version
+                    { model | appModel = Tuple.first Init.init, connectionState = Connected }
+                        |> withNoCmd
                 _ ->
                     let
                         rincomingMsg = decodeIncomingMessage message model.appModel
@@ -280,19 +304,16 @@ socketHandler response state mdl =
                    
 
         WebSocket.ConnectedResponse _ ->
-            { model | log = "Connected" :: model.log, appState = Connected }
-                |> (if model.appState == NotConnected then 
-                        wsSend V.version
-                    else
-                        withNoCmd
-                   )
+            { model | log = "Connected" :: model.log }
+                |> withNoCmd
+                
 
         WebSocket.ClosedResponse { code, wasClean, expected } ->
             { model
                 | log =
                     ("Closed, " ++ closedString code wasClean expected)
                         :: model.log
-                , appState = ConnectionClosed
+                , connectionState = ConnectionClosed
             }
                 |> withNoCmd
 
@@ -326,9 +347,22 @@ closedString code wasClean expected =
 view : InternalModel -> B.Document Msg
 view model =
     { title = Static.View.title model.appModel
-    , body = case model.appState of 
-                --NotConnected ->         collage 500 500 [text "Connecting to server...." |> fixedwidth |> centered |> size 24 |> filled black]        
-                --ConnectionClosed ->     collage 500 500 [text "Lost connection. Reconnecting...." |> fixedwidth |> centered |> size 24 |> filled black]        
+    , body = case model.connectionState of 
+                NotConnected ->         [Html.text "Connecting to server....", Html.button [onClick WSConnect] [Html.text "Attempt Reconnection"]]        
+                ConnectionClosed ->     [Html.text "Lost connection. Reconnecting....", Html.button [onClick WSConnect] [Html.text "Attempt Reconnection"]]        
                 _ -> [Html.map OutgoingTrans <| Static.View.view model.appModel]
              --   , text <| "Log: " ++ Debug.toString model.log   
     }
+
+alert model = 
+    case model.alert of
+        Just alert ->
+            Modal.config CloseEditUser
+                |> Modal.h4 [] [ text "Well, this is embarassing.... :(" ]
+                |> Modal.body []
+                    [ 
+                        text alert
+                    ]
+                |> Modal.view Modal.shown
+        Nothing ->
+            div [] []

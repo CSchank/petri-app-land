@@ -36,6 +36,7 @@ wsApp centralMessageChan pendingConn =
         loop :: WS.Connection -> TQueue OutgoingClientThreadMessage -> IO ()
         loop conn clientMessageChan = do
                   -- wait for login message
+                  WS.sendTextData conn ("s" :: T.Text) -- ask the client to send the version
                   Prelude.putStrLn "Waiting for version string from client..."
                   rawMsg <- WS.receiveData conn
                   Tio.putStrLn $ T.concat ["Got login message:", rawMsg]
