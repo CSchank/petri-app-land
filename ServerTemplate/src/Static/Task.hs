@@ -13,6 +13,7 @@ import Static.Result as Result (Result(..))
 
 data Task err ok = 
       Task (IO (Result err ok))
+    | forall x. TaskOnError (x -> Task err ok) (Task x ok)
     | forall state. Plugin state => StateTask (state -> IO (Result err ok))
     | forall a. TaskAndThen (a -> Task err ok) (Task err a)
 
@@ -20,6 +21,13 @@ data Never
 
 evalTask :: TM.TMap -> Task err ok -> IO (Result err ok)
 evalTask ps (Task t) = t
+evalTask ps (TaskOnError xToTOk tOk) = do
+    tR <- evalTask ps tOk
+    case tR of
+        Ok a ->
+            return $ Ok a
+        Err x ->
+            evalTask ps (xToTOk x)
 evalTask ps (StateTask toMsg) = 
     toMsg (fromJust $ TM.lookup ps)
 evalTask ps (TaskAndThen aToTb ta) = do
@@ -84,6 +92,15 @@ map5 f taskA taskB taskC taskD taskE =
         |> andThen (\c -> taskD
         |> andThen (\d -> taskE
         |> andThen (\e -> succeed (f a b c d e))))))
+
+onError :: (x -> Task y a) -> Task x a -> Task y a
+onError =
+    TaskOnError
+
+mapError :: (x -> y) -> Task x a -> Task y a
+mapError xToy tX =
+    tX
+        |> onError (Static.Task.fail . xToy)
 
 sequence :: [Task x a] -> Task x [a]
 sequence tasks =
