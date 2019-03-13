@@ -146,8 +146,8 @@ generateEncoder l (ElmCustom name edts) =
 generateDecoder :: Language -> ElmCustom -> T.Text
 generateDecoder l (ElmCustom name edts) =
     let
-        typeSig = if l == Haskell then T.concat["decode",T.pack name, " " .::. " (Result T.Text ",T.pack name,", [T.Text]) -> (Result T.Text ",T.pack name,", [T.Text])"]
-                  else      T.concat["decode",T.pack name, " " .::. " (Result String ",T.pack name,", List String) -> (Result String ",T.pack name,", List String)"]
+        typeSig = if l == Haskell then T.concat["decode",T.pack name, " " .::. " (Result T.Text a, [T.Text]) -> (Result T.Text ",T.pack name,", [T.Text])"]
+                  else      T.concat["decode",T.pack name, " " .::. " (Result String a, List String) -> (Result String ",T.pack name,", List String)"]
 
 
         indtTxts indt txts = map (indtTxt indt) txts
@@ -288,7 +288,7 @@ generateDecoder l (ElmCustom name edts) =
                                 ]) edts
     in
         T.unlines [typeSig
-                  ,T.concat["decode",T.pack name," (lastRes,",T.toLower $ T.pack name,"Txts) = "]
+                  ,T.concat["decode",T.pack name," (_,",T.toLower $ T.pack name,"Txts) = "]
                   ,T.concat["    case ",T.toLower $ T.pack name, "Txts of"]
                   ,T.unlines cases
                   ,T.concat["        _ -> (Err <| tConcat [\"Incorrect input, could not decode value of type ",T.pack name," from string \\\"\", tConcat ", T.toLower $ T.pack name,"Txts, \"\\\"\"],[])"]
