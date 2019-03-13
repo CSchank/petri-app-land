@@ -58,10 +58,12 @@ generateHelper l netName (sn,edts) getOnly =
                 ,   T.concat ["        ",generatePattern (sn,newValue)]
                 ]
 
+        imports = fnub $ concatMap (findImports l) edts
+
     in
         T.unlines 
             ([
-                if l == Haskell then T.concat ["module ",netName,".Static.Helpers.",snTxt," where\n\nimport Static.Dict"]
+                if l == Haskell then T.concat ["module ",netName,".Static.Helpers.",snTxt," where"]
                 else      T.concat ["module ",netName,".Static.Helpers.",snTxt,if getOnly then "Model" else ""," exposing (..)\nimport Dict exposing (Dict)"]
             ,   if getOnly then 
                     T.concat ["import Static.Types.",snTxt," exposing(Model(..))"] 
@@ -69,6 +71,7 @@ generateHelper l netName (sn,edts) getOnly =
             ,   if l == Elm then T.concat["import ",netName,".Static.ExtraTypes exposing(..)"] else ""
             ,   T.concat ["import ",netName,".Static.Types",if not $ l == Haskell then " exposing(..)" else ""]
             ,   T.concat ["import ",netName,".Static.Types"]
+            ,   T.unlines imports
             ,   if l == Haskell then "import Static.List" else ""
             ,   T.unlines $ map generateGetter edts
             ,   if length edts == 0 then "x = Nothing" else ""

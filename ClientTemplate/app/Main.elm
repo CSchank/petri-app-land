@@ -19,13 +19,13 @@ import Html exposing(Html)
 import Html.Events exposing(onClick)
 import Static.Init as Init
 import Static.Update
-import Static.Encode exposing(encodeOutgoingTransition)
+import Static.Encode exposing(encodeTransition)
 import Static.Decode exposing(decodeIncomingMessage)
 import Static.Version as V
 import Static.View
 import Static.Types
 import Static.Subs
-import Static.Types exposing(NetModel,TransitionType(..))
+import Static.Types exposing(NetModel)
 
 import Config exposing(serverUrl)
 import Utils.Utils exposing(newMsg)
@@ -154,7 +154,7 @@ type Msg
     | WSProcess Value
     | NewUrlRequest B.UrlRequest
     | NewUrlChange Url.Url
-    | OutgoingTrans Static.Types.NetOutgoingTransition
+    | OutgoingTrans Static.Types.NetTransition
     | IncomingMsg Static.Types.NetIncomingMessage
 
 
@@ -206,7 +206,16 @@ update msg model =
                 (newAppModel, mCmd) = Static.Update.update () incomingMsg model.appModel 
             in
                 { model | appModel = newAppModel } |> withNoCmd
-        OutgoingTrans outgoingTrans ->
+        OutgoingTrans trans ->
+            let
+                respTxt = encodeTransition trans
+                newTrans = Static.Update.outgoingToIncoming trans
+            in
+                case (respTxt,newTrans) of
+                    (Just str, Nothing) -> model |> wsSend str
+                    (Nothing, Just nt) -> model |> withCmd (Cmd.map IncomingMsg <| newMsg nt)
+                    _ -> model |> withNoCmd
+        {-OutgoingTrans outgoingTrans ->
             case Static.Update.transitionType outgoingTrans of
                 OutgoingToServer -> 
                     let
@@ -219,7 +228,7 @@ update msg model =
                                 Just m -> newMsg m
                                 _ -> Cmd.none
                     in
-                    model |> withCmd (Cmd.map IncomingMsg cmd)
+                    model |> withCmd (Cmd.map IncomingMsg cmd)-}
 
 wsSend : String -> InternalModel -> (InternalModel, Cmd Msg)
 wsSend m model = 
@@ -353,16 +362,16 @@ view model =
                 _ -> [Html.map OutgoingTrans <| Static.View.view model.appModel]
              --   , text <| "Log: " ++ Debug.toString model.log   
     }
-
+{-
 alert model = 
     case model.alert of
-        Just alert ->
+        Just al ->
             Modal.config CloseEditUser
-                |> Modal.h4 [] [ text "Well, this is embarassing.... :(" ]
+                |> Modal.h4 [] [ Html.text "Well, this is embarassing.... :(" ]
                 |> Modal.body []
                     [ 
-                        text alert
+                        Html.text al
                     ]
                 |> Modal.view Modal.shown
         Nothing ->
-            div [] []
+            Html.div [] []-}

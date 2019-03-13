@@ -3,6 +3,7 @@
 module Types where
 
 import qualified Data.Text as T
+import qualified Data.Map.Strict as M'
 
 -- paper 1 will stick to messages arriving in order (websockets)
 -- paper 2 will allow messages out of order (webrtc)
@@ -20,6 +21,7 @@ data ElmType = ElmIntRange Int Int -- upper and lower bounds (used for optimizin
              | ElmDict ElmDocType ElmDocType
              | ElmType String --the type referenced must be included in the map
              | ElmExisting String {-type name-} String {-module to find this type-} --an existing type from another package; this cannot be serialized
+             | ElmExistingWParams String {-type name-} [(String, String)] {-type params, module-} String {-module to find this type-} --an existing type from another package; this cannot be serialized
              | ElmWildcardType String -- a type parameter
              | ElmMaybe ElmDocType
              | ElmBool
@@ -45,7 +47,6 @@ data HybridPlace =
         [ElmDocType]    --client place state
         (Maybe T.Text)  --Maybe the name of a subnet
         (Maybe T.Text, Maybe T.Text) --initial commands
-        (Maybe T.Text)  --client-side subscription
     deriving(Eq,Ord)
 
 data NetTransition
@@ -92,7 +93,7 @@ type ClientServerApp =
 
 data Plugin = 
       Plugin String {-name-}
-    | PluginGen String {-name-} (IO [(FilePath,T.Text)]) {-function to generate the plugin-}
+    | PluginGen String {-name-} (M'.Map String ElmCustom -> Net -> IO [(FilePath,T.Text)]) {-function to generate the plugin-}
 
 data Language =
     Elm | Haskell

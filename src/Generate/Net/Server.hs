@@ -46,14 +46,14 @@ generate extraTypes fp net =
                     , "-- the initial states of each place in this net"
                     , T.unlines $ map (generateNetInit extraTypes) places -- the initial places
                     ]
-                placeStates = map (\(HybridPlace name placeState _ _ _ _ _) -> (T.unpack name,placeState)) places
+                placeStates = map (\(HybridPlace name placeState _ _ _ _) -> (T.unpack name,placeState)) places
                 placeStateMap = M.fromList $ map (\(a,b) -> (a,(a,b))) placeStates
-                placePlayerStates = map (\(HybridPlace name _ playerPlaceState _ _ _ _) -> (T.unpack $ T.concat[name,"Player"],playerPlaceState)) places
+                placePlayerStates = map (\(HybridPlace name _ playerPlaceState _ _ _) -> (T.unpack $ T.concat[name,"Player"],playerPlaceState)) places
                 placePlayerMap = M.fromList $ map (\(a,b) -> (a,(a,b))) placePlayerStates
-                placeNames = map (\(HybridPlace name _ _ _ _ _ _) -> name) places
+                placeNames = map (\(HybridPlace name _ _ _ _ _) -> name) places
                 -- the functions that the user changes
                 generateNetInit :: M.Map String ElmCustom -> HybridPlace -> T.Text
-                generateNetInit extraTypes (HybridPlace name serverPlaceState playerPlaceState _ mSubnet (mCmd,_) _) = 
+                generateNetInit extraTypes (HybridPlace name serverPlaceState playerPlaceState _ mSubnet (mCmd,_)) = 
                     let
                         fnName = T.concat ["init",name]
                         typ = case mCmd of
@@ -78,8 +78,11 @@ generate extraTypes fp net =
                     in
                     T.unlines 
                     [
-                    T.concat ["module ", name, ".Static.Types where"]
+                      "{-# LANGUAGE DeriveDataTypeable #-}"
+                    , T.concat ["module ", name, ".Static.Types where"]
                     , "import Data.Typeable (Typeable)"
+                    , "import Data.Data (Data)"
+                    , "import Data.SafeCopy (SafeCopy)"
                     , T.unlines $ imports
                     , ""
                     , generateNetTypes name places
@@ -136,10 +139,10 @@ generate extraTypes fp net =
                     let
                         placeModel = 
                             generateType Haskell False [DOrd,DEq,DShow] $ 
-                                ElmCustom (T.unpack netName) $ map (\(HybridPlace n m _ _ _ _ _) -> (T.unpack n++"Player",[edt (ElmType $ T.unpack n) "" ""])) places
+                                ElmCustom (T.unpack netName) $ map (\(HybridPlace n m _ _ _ _) -> (T.unpack n++"Player",[edt (ElmType $ T.unpack n) "" ""])) places
                         placeTypes = T.unlines $ map generatePlaceType places
                         generatePlaceType :: HybridPlace -> T.Text
-                        generatePlaceType (HybridPlace name serverPlaceState playerPlaceState _ _ _ _) =
+                        generatePlaceType (HybridPlace name serverPlaceState playerPlaceState _ _ _) =
                             T.unlines
                                 [
                                     generateType Haskell True [DOrd,DEq,DShow,DTypeable] $ ElmCustom (T.unpack name) [(T.unpack name, serverPlaceState)],""
@@ -384,10 +387,10 @@ generate extraTypes fp net =
                     ]
             
                 placeMap :: M.Map T.Text HybridPlace
-                placeMap = M.fromList $ map (\(pl@(HybridPlace n _ _ _ _ _ _)) -> (n,pl)) places
+                placeMap = M.fromList $ map (\(pl@(HybridPlace n _ _ _ _ _)) -> (n,pl)) places
 
                 getPlace :: T.Text -> HybridPlace
-                getPlace name = M.findWithDefault (HybridPlace "" [] [] [] Nothing (Nothing,Nothing) Nothing) name placeMap
+                getPlace name = M.findWithDefault (HybridPlace "" [] [] [] Nothing (Nothing,Nothing)) name placeMap
 
                 generateTrans :: NetTransition -> T.Text
                 generateTrans (NetTransition transType (msgN,msg) connections mCmd) =
@@ -490,7 +493,7 @@ generate extraTypes fp net =
                     ,   "    return $ NetState"
                     ,   "        {"
                     ,   "          playerStates = IM'.empty"
-                    ,   T.concat["        , placeStates = ",T.concat $ map (\(HybridPlace name _ _ _ _ (mCmd,_) _) -> T.concat["TM.insert",if isJust mCmd then T.concat[" (fst init",name] else T.concat[" init",name]," $ "]) places,"TM.empty"]
+                    ,   T.concat["        , placeStates = ",T.concat $ map (\(HybridPlace name _ _ _ _ (mCmd,_)) -> T.concat["TM.insert",if isJust mCmd then T.concat[" (fst init",name] else T.concat[" init",name]," $ "]) places,"TM.empty"]
                     ,   T.concat["        , pluginStates = ip"]
                     ,   "        }"
                     ]
@@ -560,11 +563,11 @@ generate extraTypes fp net =
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Templates" </> "init" <.> "txt") inits
                 writeIfNotExists (fp </> "server" </> "src" </> T.unpack name </> "Update" <.> "hs") update
                 createDirectoryIfMissing True $ fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers"
-                mapM_ (\(HybridPlace pName edts _ _ _ _ _)  -> writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Haskell name (T.unpack pName,edts) False]) places
-                mapM_ (\(HybridPlace pName _ pEdts _ _ _ _) -> writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName ++ "Player" <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Haskell name (T.unpack pName ++ "Player",pEdts) False]) places
+                mapM_ (\(HybridPlace pName edts _ _ _ _)  -> writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Haskell name (T.unpack pName,edts) False]) places
+                mapM_ (\(HybridPlace pName _ pEdts _ _ _) -> writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName ++ "Player" <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Haskell name (T.unpack pName ++ "Player",pEdts) False]) places
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Encode" <.> "hs") encoder
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Decode" <.> "hs") decoder
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Wrappers" <.> "hs") wrappers
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Update" <.> "hs") hiddenUpdate
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "FromSuperPlace" <.> "hs") fromSuperPlace
-                generatePlugins (fp </> "server" </> "src" </> T.unpack name) name plugins
+                generatePlugins (fp </> "server" </> "src") extraTypes net plugins

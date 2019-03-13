@@ -51,7 +51,7 @@ generateClient gsvg rootDir fp
             ,   "import Static.Types exposing(..)"
             ,   T.concat ["import ",startNet,".Static.Init"]
             ,   ""
-            ,   "init : (NetModel, Cmd NetOutgoingTransition)"
+            ,   "init : (NetModel, Cmd NetTransition)"
             ,   T.concat["init = (",startNet," ",startNet,".Static.Init.init, Cmd.none)"]
             ]
         types :: T.Text
@@ -59,7 +59,7 @@ generateClient gsvg rootDir fp
             let
                 netUnion    = ec "NetModel" $ map (\nname -> constructor (T.unpack nname) [edt (ElmType (T.unpack nname++".Static.Types.NetState")) "" ""]) netNames
                 netMsgUnion = ec "NetIncomingMessage" $ map (\nname -> constructor (T.unpack nname ++ "InMsg") [edt (ElmType $ T.unpack nname ++ ".Static.Types.IncomingMessage") "" ""]) netNames
-                netOutgoingMsgUnion = ec "NetOutgoingTransition" $ map (\nname -> constructor (T.unpack nname ++ "OTrans") [edt (ElmType $ T.unpack nname ++ ".Static.Types.OutgoingTransition") "" ""]) netNames
+                netOutgoingMsgUnion = ec "NetTransition" $ map (\nname -> constructor (T.unpack nname ++ "Trans") [edt (ElmType $ T.unpack nname ++ ".Static.Types.Transition") "" ""]) netNames
             in
             T.unlines 
             [
@@ -73,7 +73,6 @@ generateClient gsvg rootDir fp
             ,   generateType Elm False [] netMsgUnion
             ,   "-- a union type of all the nets and their outgoing transitions"
             ,   generateType Elm False [] netOutgoingMsgUnion
-            ,   "type TransitionType = OutgoingToServer | LocalOnly"
             ]
         decode :: T.Text
         decode = 
@@ -105,17 +104,17 @@ generateClient gsvg rootDir fp
                     ,            "                let"
                     ,   T.concat["                    (",newName,", mcmd) = ",netName,".update tld msg m"]
                     ,   T.concat["                    newClientState = ",netName," ",newName]
-                    ,   T.concat["                in (newClientState, Maybe.map (Cmd.map ",netName,"OTrans) mcmd)"]
+                    ,   T.concat["                in (newClientState, Maybe.map (Cmd.map ",netName,"Trans) mcmd)"]
                     ]
                 ttCase netName = 
                     T.unlines 
                     [
-                        T.concat["        ",netName,"OTrans tr -> ",netName,".transitionType tr"]
+                        T.concat["        ",netName,"Trans tr -> ",netName,".transitionType tr"]
                     ]
                 o2iCase netName = 
                     T.unlines 
                     [
-                        T.concat["        ",netName,"OTrans tr -> Maybe.map ",netName,"InMsg <| ",netName,".outgoingToIncoming tr"]
+                        T.concat["        ",netName,"Trans tr -> Maybe.map ",netName,"InMsg <| ",netName,".outgoingToIncoming tr"]
                     ]
             in
             T.unlines
@@ -125,52 +124,51 @@ generateClient gsvg rootDir fp
             ,   "import Static.Types exposing(..)"
             ,   "import Maybe"
             ,   ""
-            ,   "update : TopLevelData -> NetIncomingMessage -> NetModel -> (NetModel, Maybe (Cmd NetOutgoingTransition))"
+            ,   "update : TopLevelData -> NetIncomingMessage -> NetModel -> (NetModel, Maybe (Cmd NetTransition))"
             ,   "update tld netInMsg state ="
-            ,   "        case (netInMsg,state) of"
+            ,   "    case (netInMsg,state) of"
             ,   T.unlines $ map updateCase netNames
             ,   if length netLst > 1 then "            _ -> (state, Nothing)" else ""
-            ,   "transitionType : NetOutgoingTransition -> TransitionType"
-            ,   "transitionType oTrans ="
-            ,   "    case oTrans of"
-            ,   T.unlines $ map ttCase netNames
-            ,   "outgoingToIncoming : NetOutgoingTransition -> Maybe NetIncomingMessage"
-            ,   "outgoingToIncoming oTrans ="
-            ,   "    case oTrans of"
+            ,   "outgoingToIncoming : NetTransition -> Maybe NetIncomingMessage"
+            ,   "outgoingToIncoming trans ="
+            ,   "    case trans of"
             ,   T.unlines $ map o2iCase netNames
             ]
         encode :: T.Text
         encode = 
             let
-                encodeCase netName = T.concat["        ",netName,"OTrans msg -> ",netName,".encodeOutgoingTransition msg"]
+                encodeCase netName = T.concat["        ",netName,"Trans msg -> ",netName,".encodeTransition msg"]
             in
             T.unlines
             [
                 "module Static.Encode exposing(..)"
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Encode as ",n]) netNames
-            ,   "import Static.Types exposing(NetOutgoingTransition(..))"
+            ,   "import Static.Types exposing(NetTransition(..))"
             ,   ""
-            ,   "encodeOutgoingTransition : NetOutgoingTransition -> String"
-            ,   "encodeOutgoingTransition netTrans ="
+            ,   "encodeTransition : NetTransition -> Maybe String"
+            ,   "encodeTransition netTrans ="
             ,   "    case netTrans of"
             ,   T.unlines $ map encodeCase netNames
             ]
         subs :: T.Text
         subs =
             let
-
+                subCase netName = T.concat["        ",netName," m -> Sub.map ",netName,"Trans <| ",netName,".subs m"]
             in
             T.unlines
             [
                 "module Static.Subs exposing(..)"
             ,   "import Static.Types exposing(..)"
-            ,   "subscriptions : NetModel -> Sub NetOutgoingTransition"
-            ,   "subscriptions model = Sub.none"
+            ,   T.unlines $ map (\netName -> T.concat["import ",netName,".Static.Subs as ",netName]) netNames
+            ,   "subscriptions : NetModel -> Sub NetTransition"
+            ,   "subscriptions model ="
+            ,   "    case model of"
+            ,   T.unlines $ map subCase netNames
             ]
         view :: T.Text
         view =
             let
-                viewCase netName = T.concat["        ",netName," m -> Html.map ",netName,"OTrans <| ",netName,".view m"]
+                viewCase netName = T.concat["        ",netName," m -> Html.map ",netName,"Trans <| ",netName,".view m"]
                 titlCase netName = T.concat["        ",netName," m -> ",netName,".title m"]
             in
             T.unlines
@@ -179,7 +177,7 @@ generateClient gsvg rootDir fp
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.View as ",n]) netNames
             ,   "import Static.Types exposing(..)"
             ,   "import Html exposing(Html)"
-            ,   "view : NetModel -> Html NetOutgoingTransition"
+            ,   "view : NetModel -> Html NetTransition"
             ,   "view model ="
             ,   "    case model of"
             ,   T.unlines $ map viewCase netNames

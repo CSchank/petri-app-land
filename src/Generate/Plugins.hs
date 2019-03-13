@@ -6,17 +6,20 @@ import qualified Data.Text as T
 import Types
 import                  System.FilePath.Posix   ((</>),(<.>))
 import Utils
+import qualified Data.Map.Strict as M'
 
 
-generatePlugins :: FilePath -> T.Text -> [Plugin] -> IO ()
-generatePlugins fp netName ps = 
+generatePlugins :: FilePath -> M'.Map String ElmCustom -> Net -> [Plugin] -> IO ()
+generatePlugins fp extraTypes net ps = 
     let
+        netName = getNetName net
+
         onePlugin n (Plugin name) = T.concat["    (_,rp",T.pack $ show n,") <- forkIO $ (initPlugin :: IO Plugins.",T.pack name,".",T.pack name,")"]
         onePlugin n (PluginGen name _) = T.concat["    (_,rp",T.pack $ show n,") <- forkIO $ (initPlugin :: IO Plugins.",T.pack name,".",T.pack name,")"]
         oneResult n               = T.concat["    p",T.pack $ show n," <- result =<< rp", T.pack $ show n]
         ret n                     = T.concat["    return $ ",T.concat $ map (\n -> T.concat ["TM.insert p",T.pack $ show n," $ "]) [0..length ps - 1], "TM.empty"]
     in do
-        writeIfNew 0 (fp </> "Static" </> "Plugins" <.> "hs") $ T.unlines
+        writeIfNew 0 (fp </> T.unpack netName </> "Static" </> "Plugins" <.> "hs") $ T.unlines
             ([
                 T.concat["module ",netName,".Static.Plugins where"]
             ,   T.concat["import ",netName,".Static.Types"]
@@ -40,12 +43,13 @@ generatePlugins fp netName ps =
             (map oneResult [0..length ps - 1])
             ++
             [ ret $ length ps ])
-        mapM_ (\p -> 
-                    case p of 
-                        Plugin _ -> return ()
-                        PluginGen name gen -> do
-                            g <- gen
-                            mapM_ (\(n,t) -> 
-                                    writeIfNew 0 (if n == "" then fp </> "Static" </> "Plugins" </> name <.> "hs"
-                                                  else fp </> "Static" </> "Plugins" </> name </> n <.> "hs") t) g
+        mapM_ 
+            (\p -> 
+                case p of 
+                    Plugin _ -> return ()
+                    PluginGen name gen -> do
+                        g <- gen extraTypes net
+                        mapM_ (\(n,t) -> 
+                                writeIfNew 0 (if n == "" then fp </> "Plugins" </> name <.> "hs"
+                                                else fp </> "Plugins" </> name </> n <.> "hs") t) g
             ) ps -- generate other files for plugins

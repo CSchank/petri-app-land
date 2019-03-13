@@ -55,7 +55,7 @@ generateNewtype commentsEnabled deriv typeName et =
     let
         typ = "newtype"
     in
-        T.concat [ typ, " ", T.pack typeName, " = ", et2Txt Haskell commentsEnabled et
+        T.concat [ typ, " ", T.pack typeName, " = ", T.pack typeName," ",et2Txt Haskell commentsEnabled et
                  , if length deriv > 0 then T.concat ["   deriving",derivTxt deriv] else ""
                  ]
 
@@ -80,6 +80,7 @@ et2Txt l c (ElmList edt)                = T.concat ["(List ",edt2Txt l c edt,")"
 et2Txt l c (ElmDict edt0 edt1)          = T.concat ["(Dict ",edt2Txt l c edt0," ",edt2Txt l c edt1,")"]
 et2Txt l c (ElmType name)               = T.pack name
 et2Txt l c (ElmExisting name mod)       = T.concat[T.pack mod,".",T.pack name]
+et2Txt l c (ElmExistingWParams name params mod) = T.concat["(",T.pack mod,".",T.pack name," ",T.intercalate " " $ map (\(typ,imp) -> T.pack $ imp ++ "." ++ typ) params,")"]
 et2Txt l c (ElmWildcardType s)          = T.pack s
 et2Txt l c (ElmMaybe edt)               = T.concat ["(Maybe ",edt2Txt l c edt,")"]
 et2Txt l c ElmBool                      = T.concat ["Bool"]
@@ -116,10 +117,11 @@ et2Def ElmString                        = "\"\""
 et2Def (ElmSizedString _)               = "\"\""
 et2Def (ElmPair (etn0,_,_) (etn1,_,_))  = T.concat ["(",et2Def etn0,", ",et2Def etn1,")"]
 et2Def (ElmTriple (etn0,_,_) (etn1,_,_) (etn2,_,_)) = T.concat ["(",et2Def etn0,", ",et2Def etn1,", ",et2Def etn2,")"]
-et2Def (ElmList _)                    = "[]"
+et2Def (ElmList _)                      = "[]"
 et2Def (ElmDict _ _)                    = "Dict.empty"
 et2Def (ElmType name)                   = T.concat["default", T.pack name]
-et2Def (ElmExisting name _)           = T.concat ["(error \"Please fill out default type for type",T.pack name,"\")"]
+et2Def (ElmExisting name _)             = T.concat ["(error \"Please fill out default type for type",T.pack name,"\")"]
+et2Def (ElmExistingWParams name _ _)    = T.concat ["(error \"Please fill out default type for type",T.pack name,"\")"]
 et2Def (ElmWildcardType s)              = T.concat["default", T.pack s]
 et2Def (ElmMaybe _)                     = "Nothing"
 et2Def ElmBool                          = "False"

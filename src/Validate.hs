@@ -6,7 +6,7 @@ import Types
 import qualified Data.Text as T
 import qualified Data.Set as S
 import Utils
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe,mapMaybe)
 import Data.List ((\\))
 
 
@@ -75,6 +75,22 @@ validateEt ecSet note (ElmExisting str imp) =
         [note++", in ElmExisting type `"++str++"`: import must be non-empty and valid"]
     else
         []
+validateEt ecSet note (ElmExistingWParams str params imp) = 
+    (if not $ validateType str then
+        [note++", in ElmExistingWParam type `"++str++"`: invalid name for type"]
+    else 
+        []) ++
+    if imp == "" then
+        [note++", in ElmExistingWParam type `"++str++"`: import must be non-empty and valid"]
+    else
+        [] ++
+        mapMaybe (\(param, imp) -> 
+            if not $ validateType param then 
+                Just $ note++", in ElmExistingWParam type `"++str++"`, in type parameter `"++param++"`: invalid name for parameter"
+            else if not $ validateType imp then
+                Just $ note++", in ElmExistingWParam type `"++str++"`, in type parameter `"++param++"`, in import for type parameter `"++imp++"`: invalid name for import"
+            else
+                Nothing) params
 
 validateConstructor :: S.Set String -> String -> Constructor -> [String]
 validateConstructor ecSet note ("",edts) = 
@@ -97,9 +113,9 @@ validateElmCustom ecSet note (ElmCustom name constrs) =
         concatMap (validateConstructor ecSet (note++", in custom type `"++name++"`")) constrs
 
 validatePlace :: S.Set String -> String -> HybridPlace -> [String]
-validatePlace ecSet note (HybridPlace "" _ _ _ _ _ _) =
+validatePlace ecSet note (HybridPlace "" _ _ _ _ _) =
     [note++": a HybridPlace has an empty name"]
-validatePlace ecSet note (HybridPlace name serverState playerState clientState mSubnet initCmds cSubs) =
+validatePlace ecSet note (HybridPlace name serverState playerState clientState mSubnet initCmds) =
     let
         validations =
             concatMap (validateEdt ecSet (note++", in place `"++T.unpack name++"`, in server state")) serverState ++

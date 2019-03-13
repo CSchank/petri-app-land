@@ -91,18 +91,18 @@ fnub = nub --S.toList . S.fromList
 getPlaceState :: HybridPlace -> Constructor
 getPlaceState p =
     case p of
-        (HybridPlace n _ s _ _ _ _) -> (T.unpack n,s)
+        (HybridPlace n _ s _ _ _) -> (T.unpack n,s)
 
 getPlaceName :: HybridPlace -> T.Text
 getPlaceName p =
     case p of
-        (HybridPlace n _ _ _ _ _ _) -> n
+        (HybridPlace n _ _ _ _ _) -> n
 
 
 getPlayerState :: HybridPlace -> Constructor
 getPlayerState p =
     case p of
-        (HybridPlace n _ s _ _ _ _) -> (T.unpack n,s)
+        (HybridPlace n _ s _ _ _) -> (T.unpack n,s)
         
 getNetName :: Net -> T.Text
 getNetName (HybridNet name _ _ _ _) = name
@@ -111,6 +111,10 @@ getTransitionName :: NetTransition -> T.Text
 getTransitionName (NetTransition _ (name,_) _ _) = T.pack name
 getTransitionName (ClientTransition (name,_) _ _) = T.pack name
 getTransitionName (CmdTransition (name,_) _ _) = T.pack name
+
+findConstrImports :: Language -> Constructor -> [T.Text]
+findConstrImports l (_, ets) = 
+    concatMap (findImports l) ets
 
 findImports :: Language -> ElmDocType -> [T.Text]
 findImports l (ElmPair edt0 edt1, _, _)          = findImports l edt0 ++ findImports l edt1
@@ -122,6 +126,9 @@ findImports l (ElmDict edt0 edt1, _, _)          =
 findImports l (ElmExisting name imp, _, _)       = 
     if l == Haskell then [T.concat ["import qualified ",T.pack imp, " (",T.pack name,")"]]
     else [T.concat ["import ",T.pack imp]]
+findImports l (ElmExistingWParams name params imp, _, _)       = 
+    if l == Haskell then ([T.concat ["import qualified ",T.pack imp, " (",T.pack name,")"]] ++ map (\(param,mod) -> T.concat ["import qualified ",T.pack mod, " (",T.pack param,")"]) params)
+    else ([T.concat ["import ",T.pack imp]] ++ map (\(param,mod) -> T.concat ["import ",T.pack mod]) params)
 findImports l (ElmResult edt0 edt1, _, _)       = 
     (if l == Haskell then ["import Static.Result (Result(..))"] else [])
         ++ findImports l edt0 ++ findImports l edt1
