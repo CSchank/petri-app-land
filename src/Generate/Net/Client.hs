@@ -152,6 +152,10 @@ generate extraTypes fp net =
                     ,   "import Html exposing(Html)"
                     ,   "import Debug exposing(todo)"
                     ,   ""
+                    ,   T.concat["subs : ", placeName, " -> Sub Msg"]
+                    ,   T.concat["subs ", uncapitalize placeName, " ="]
+                    ,   "    Sub.none"
+                    ,   ""
                     ,   T.concat["view : ", placeName, " -> Html Msg"]
                     ,   T.concat["view ", uncapitalize placeName, " ="]
                     ,   T.concat["    todo \"Please fill out the view function for the ",name," net for the ",placeName," place.\""]
@@ -395,7 +399,7 @@ generate extraTypes fp net =
                     ,   T.concat ["init = S",startingPlace," Init.init"]
                     ]
                 encoder =
-                    T.unlines
+                    T.unlines $
                     [
                         T.concat ["module ",name,".Static.Encode exposing(..)"]
                     ,   T.concat ["import ",name,".Static.Types exposing(..)"]
@@ -404,9 +408,9 @@ generate extraTypes fp net =
                     ,   "import Static.Types"
                     ,   "encodeTransition : Transition -> Maybe String"
                     ,   "encodeTransition trans ="
-                    ,   "    case trans of"
-                    ,   "        Internal _ -> Nothing"
-                    ,   "        External ext -> Just <| encodeOutgoingTransition ext"
+                    ,   "    case trans of"] ++
+                    (if length internalClientTransitions > 0 then ["        Internal _ -> Nothing"] else [""]) ++
+                    [   "        External ext -> Just <| encodeOutgoingTransition ext"
                     ,   generateEncoder Elm outgoingTransitions
                     ,   "--extra types encoders"
                     ,   T.unlines $ map (generateEncoder Elm) $ M.elems extraTypes
