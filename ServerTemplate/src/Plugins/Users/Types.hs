@@ -29,6 +29,7 @@ $(deriveSafeCopy 0 'base ''Group)
 
 data Error = 
       UserNotFound
+    | UserAlreadyExists
     | InsufficientPermissions
     | MiscError
     deriving(Eq,Show,Ord,Data)
@@ -43,8 +44,6 @@ newtype Password = Password ByteString      deriving (Eq, Ord, Show, Data, Typea
 $(deriveSafeCopy 0 'base ''Password)
 newtype Groups = Groups (Set.Set Word16)    deriving (Eq, Ord, Show, Data, Typeable)
 $(deriveSafeCopy 0 'base ''Groups)
-newtype Group = Group Word16                deriving (Eq, Ord, Show, Data, Typeable)
-$(deriveSafeCopy 0 'base ''Group)
 
 data UserData = 
     UserData 
@@ -76,11 +75,6 @@ instance Indexable UserData where
                     [un, Username $ T.toLower unTxt] -- lookup based on all lowercase as well
         ,   ixFun $ \ud -> [pwdHash ud]
         ,   ixFun $ \ud -> [groups ud]
-        ,   ixFun $ \ud -> 
-                let
-                    (Groups grs) = groups ud
-                in
-                    map Group grs
         ]
 
 instance Indexable GroupData where
