@@ -29,7 +29,7 @@ evalTask ps (TaskOnError xToTOk tOk) = do
         Err x ->
             evalTask ps (xToTOk x)
 evalTask ps (StateTask toMsg) = 
-    toMsg (fromJust $ TM.lookup ps)
+    toMsg (safeFromJust "Tried to load a plugin that's not installed." $ TM.lookup ps)
 evalTask ps (TaskAndThen aToTb ta) = do
     taResult <- evalTask ps ta
     case taResult of
