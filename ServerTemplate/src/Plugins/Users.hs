@@ -78,6 +78,13 @@ instance (Plugin Plugins.Users.Users) where
                     userDb = as
                 ,   sessions = newTv
                 }
+    -- create an acid-state checkpoint and close the plugin
+    teardownPlugin users = do
+        let uDb = userDb users
+        createCheckpoint uDb
+        putStrLn "Users checkpoint created."
+        closeAcidState uDb
+        putStrLn "Users database closed."
 
 lookupPasswordByName :: T.Text -> Query UserDB (Maybe ByteString)
 lookupPasswordByName username = do

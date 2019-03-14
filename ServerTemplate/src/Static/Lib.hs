@@ -6,7 +6,7 @@ module Static.Lib
 import           Control.Concurrent             (forkIO,threadDelay)
 import           Control.Concurrent.Async       (race)
 import           Control.Concurrent.STM         (TQueue, atomically, readTQueue,
-                                                 writeTQueue, STM)
+                                                 writeTQueue, STM, readTMVar, newEmptyTMVar)
 import           Control.Monad                  (forever)
 import           Control.Monad.IO.Class         (liftIO)
 import qualified Data.Text              as T
@@ -20,6 +20,8 @@ import           Network.Wai.Handler.WebSockets (websocketsOr)
 
 import           Text.Read                      (readMaybe)
 import qualified Network.WebSockets             as WS
+import qualified System.Signal                  as Sig
+import           System.Exit                    (exitSuccess)
 import System.Environment (getArgs)
 
 import qualified Static.ServerLogic as ServerLogic
@@ -85,7 +87,16 @@ mainServer :: IO ()
 mainServer = do
     args <- getArgs
     let port = if length args > 0 then (read $ (args !! 0) :: Int) else 8080
+    killVar <- atomically $ newEmptyTMVar
     centralMessageChan <- atomically ServerLogic.newCentralMessageChan
-    forkIO $ ServerLogic.processCentralChan centralMessageChan
+    forkIO $ ServerLogic.processCentralChan centralMessageChan killVar
     Prelude.putStrLn $ "starting server on port " ++ show port
-    run port (app centralMessageChan)
+    Sig.installHandler Sig.sigINT 
+        (\_ -> do
+            atomically $ writeTQueue centralMessageChan KillMessageReceived
+        )
+    _ <- forkIO $ run port (app centralMessageChan)
+    --wait for the kill variable to be filled
+    _ <- atomically $ readTMVar killVar
+    Prelude.putStrLn "Exiting..."
+    exitSuccess

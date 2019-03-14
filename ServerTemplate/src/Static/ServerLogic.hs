@@ -2,7 +2,9 @@
 module Static.ServerLogic where
 
 import           Control.Concurrent.STM (STM, TQueue, TVar, atomically, newTQueue,
-                                         readTQueue, writeTQueue, newTVar, readTVar)
+                                         readTQueue, writeTQueue, newTVar, readTVar, 
+                                         TMVar, putTMVar
+                                         )
 import           Control.Monad          (forever,void)
 import qualified Data.Map.Strict        as M'
 import qualified Data.IntMap.Strict     as IM'
@@ -10,7 +12,7 @@ import           Data.Text              (Text)
 import           Control.Monad.IO.Class         (liftIO)
 import qualified Data.Text              as T
 import qualified Network.WebSockets     as WS
-import           Control.Concurrent             (forkIO)
+import           Control.Concurrent.Thread      (forkIO, result)
 import           Control.Concurrent.Async       (race_)
 import           Control.Exception      (finally)
 import qualified Data.Time.Clock.POSIX         as Time
@@ -41,8 +43,8 @@ newClientMessageChan :: STM (TQueue OutgoingClientThreadMessage)
 newClientMessageChan =
     newTQueue
 
-processCentralChan :: TQueue CentralMessage -> IO ()
-processCentralChan chan =
+processCentralChan :: TQueue CentralMessage -> TMVar () -> IO ()
+processCentralChan chan ks =
     -- This loop holds the server state and reads from the CentralMessage
     -- channel.
     let
@@ -57,6 +59,7 @@ processCentralChan chan =
             , serverState = serverState
             , nextClientId = 0
             , startTime = t
+            , killSwitch = ks
             }
     in do
         t <- Time.getPOSIXTime
@@ -150,6 +153,14 @@ processCentralMessage centralMessageChan state (UserConnectionLost clientID) =
                            }
 
     disconnect tld clientID netModel state
+
+
+processCentralMessage centralMessageChan state KillMessageReceived = 
+    do
+        putStrLn "Preparing to stop server..."
+        teardown (serverState state)
+        atomically $ putTMVar (killSwitch state) ()
+        return state
 {-
 --get current state of central thread
 processCentralMessage centralMessageChan state (GetCurrentState queue) = do

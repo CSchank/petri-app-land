@@ -42,6 +42,7 @@ dependencies:
 - unordered-containers
 - safecopy
 - mtl
+- signal
 
 library:
   source-dirs: 

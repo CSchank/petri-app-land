@@ -483,7 +483,7 @@ generate extraTypes fp net =
                     ,   T.concat ["import ",name,".Init as Init"]
                     ,   T.concat ["import ",name,".Update as Update"]
                     ,   T.concat ["import ",name,".Static.Wrappers"]
-                    ,   T.concat ["import ",name,".Static.Plugins (initPlugins)"]
+                    ,   T.concat ["import ",name,".Static.Plugins (initPlugins,teardownPlugins)"]
                     ,   "import Static.ServerTypes"
                     ,   "import qualified Data.IntMap as IM'"
                     ,   "import qualified Data.TMap as TM\n"
@@ -496,6 +496,9 @@ generate extraTypes fp net =
                     ,   T.concat["        , placeStates = ",T.concat $ map (\(HybridPlace name _ _ _ _ (mCmd,_)) -> T.concat["TM.insert",if isJust mCmd then T.concat[" (fst init",name] else T.concat[" init",name]," $ "]) places,"TM.empty"]
                     ,   T.concat["        , pluginStates = ip"]
                     ,   "        }"
+                    ,   "teardown :: NetState Player -> IO ()"
+                    ,   "teardown ns = do"
+                    ,   "    teardownPlugins (pluginStates ns)"
                     ]
                 encoder = T.unlines 
                     [

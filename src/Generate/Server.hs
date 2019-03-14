@@ -50,9 +50,12 @@ generateServer gsvg rootDir fp
             [
                 "module Static.Init where"
             ,   "import Static.Types"
+            ,   "import qualified Data.TMap as TM"
+            ,   "import Data.Maybe (fromJust)"
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Init"]) netNames
             ,   ""
             ,   T.concat["init = ",startNet,".Static.Init.init"]
+            ,   T.concat["teardown = ",startNet,".Static.Init.teardown . fromJust . TM.lookup"]
             ,   "-- reference to the initial Net"
             ,   T.concat["initNet :: NetModel"]
             ,   T.concat["initNet = ",startNet]

@@ -18,8 +18,12 @@ generatePlugins fp extraTypes net ps =
         onePlugin n (PluginGen name _) = T.concat["    (_,rp",T.pack $ show n,") <- forkIO $ (initPlugin :: IO Plugins.",T.pack name,".",T.pack name,")"]
         oneResult n               = T.concat["    p",T.pack $ show n," <- result =<< rp", T.pack $ show n]
         ret n                     = T.concat["    return $ ",T.concat $ map (\n -> T.concat ["TM.insert p",T.pack $ show n," $ "]) [0..length ps - 1], "TM.empty"]
+
+        pluginTD n (Plugin name) = T.concat["    (_,rp",T.pack $ show n,") <- forkIO $ teardownPlugin (fromJust $ TM.lookup ps :: Plugins.",T.pack name,".",T.pack name,")"]
+        pluginTD n (PluginGen name _) = T.concat["    (_,rp",T.pack $ show n,") <- forkIO $ teardownPlugin (fromJust $ TM.lookup ps :: Plugins.",T.pack name,".",T.pack name,")"]
+
     in do
-        writeIfNew 0 (fp </> T.unpack netName </> "Static" </> "Plugins" <.> "hs") $ T.unlines
+        writeIfNew 0 (fp </> T.unpack netName </> "Static" </> "Plugins" <.> "hs") $ T.unlines $
             ([
                 T.concat["module ",netName,".Static.Plugins where"]
             ,   T.concat["import ",netName,".Static.Types"]
@@ -43,6 +47,14 @@ generatePlugins fp extraTypes net ps =
             (map oneResult [0..length ps - 1])
             ++
             [ ret $ length ps ])
+            ++
+            [
+                "teardownPlugins :: PluginState -> IO ()"
+            ,   "teardownPlugins ps = do"
+            ,   T.intercalate "\n" $ map (uncurry pluginTD) $ zip [0..] ps
+            ,   T.intercalate "\n" $ map oneResult [0..length ps - 1]
+            ,   "    return ()"
+            ]
         mapM_ 
             (\p -> 
                 case p of 

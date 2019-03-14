@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, ExistentialQuantification #-}
 module Static.ServerTypes where
 
-import           Control.Concurrent.STM (STM, TQueue, TVar)
+import           Control.Concurrent.STM (STM, TQueue, TVar, TMVar)
 import qualified Data.Map.Strict        as M'
 import qualified Data.IntMap.Strict     as IM'
 import           Static.Types
@@ -19,6 +19,7 @@ data CentralMessage
     | ReceivedMessage 
         (Maybe ClientID)    -- Just: message from a client, Nothing: message from a command
         NetTransition       -- message that was sent
+    | KillMessageReceived
 
 data OutgoingClientThreadMessage
     = SendMessage T.Text    -- send message to client
@@ -34,6 +35,7 @@ data ServerState = ServerState
     , nextClientId :: ClientID
     , serverState :: TMap                       -- TMap of all the NetStates
     , startTime :: Int                          -- Unix time the server was started
+    , killSwitch :: TMVar ()                    -- fill this TMVar to turn off the server
     }
 
 data NetState playerState = NetState
@@ -62,3 +64,4 @@ data NetMsg netMsg =
 
 class (Typeable state) => Plugin state where
     initPlugin :: IO state --initialize the plugin and return its singleton state
+    teardownPlugin :: state -> IO () -- called when the server is stopped, allows plugins to save whatever they were doing
