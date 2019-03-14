@@ -26,7 +26,7 @@ generateEncoder l (ElmCustom name edts) =
 
         encodeEt :: Int -> ElmDocType -> [T.Text]
         encodeEt indt (ElmIntRange low high,n,_) = 
-            indtTxts indt $ [T.concat[T.pack n, "Txt = encodeInt ",T.pack $ show low," ",T.pack $ show high," ",T.pack n]
+            indtTxts indt $ [T.concat[T.pack n, "Txt = encodeInt (",T.pack $ show low,") (",T.pack $ show high,") ",T.pack n]
                             ]
         encodeEt indt (ElmFloatRange low high precision,n,_) =
             let
