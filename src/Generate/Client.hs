@@ -104,7 +104,7 @@ generateClient gsvg rootDir fp
                     ,            "                let"
                     ,   T.concat["                    (",newName,", mcmd) = ",netName,".update tld msg m"]
                     ,   T.concat["                    newClientState = ",netName," ",newName]
-                    ,   T.concat["                in (newClientState, Maybe.map (Cmd.map ",netName,"Trans) mcmd)"]
+                    ,   T.concat["                in (newClientState, Cmd.map ",netName,"Trans mcmd)"]
                     ]
                 ttCase netName = 
                     T.unlines 
@@ -124,11 +124,11 @@ generateClient gsvg rootDir fp
             ,   "import Static.Types exposing(..)"
             ,   "import Maybe"
             ,   ""
-            ,   "update : TopLevelData -> NetIncomingMessage -> NetModel -> (NetModel, Maybe (Cmd NetTransition))"
+            ,   "update : TopLevelData -> NetIncomingMessage -> NetModel -> (NetModel, Cmd NetTransition)"
             ,   "update tld netInMsg state ="
             ,   "    case (netInMsg,state) of"
             ,   T.unlines $ map updateCase netNames
-            ,   if length netLst > 1 then "            _ -> (state, Nothing)" else ""
+            ,   if length netLst > 1 then "            _ -> (state, Cmd.none)" else ""
             ,   "outgoingToIncoming : NetTransition -> Maybe NetIncomingMessage"
             ,   "outgoingToIncoming trans ="
             ,   "    case trans of"

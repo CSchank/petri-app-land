@@ -479,6 +479,7 @@ generate extraTypes fp net =
                         ,   decl
                         ,   T.concat["    error \"Please fill out function",fnName," in the Update module for net", name,"\""]
                         ]
+                generateTrans _ = ""
 
                 hiddenInit = T.unlines 
                     [
@@ -578,3 +579,4 @@ generate extraTypes fp net =
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Update" <.> "hs") hiddenUpdate
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "FromSuperPlace" <.> "hs") fromSuperPlace
                 generatePlugins (fp </> "server" </> "src") extraTypes net plugins
+        _ -> return ()

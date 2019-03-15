@@ -78,7 +78,7 @@ generate extraTypes fp net =
                         placeConstrs = concatMap place2edts places
                         imports = fnub $ concatMap (findImports Elm) $ transConstrs ++ placeConstrs
                     in
-                    T.unlines 
+                    T.unlines $
                     [
                         T.concat ["module ", name, ".Static.Types exposing(..)"]
                     ,   T.concat ["import ", name,".Static.ExtraTypes exposing(..)"]
@@ -87,9 +87,10 @@ generate extraTypes fp net =
                     , "-- the types of all places in the net"
                     , "type Dummy = Dummy"
                     , generateNetTypes name places -- the initial places
-                    , "type Transition ="
-                    , "      Internal InternalTransition"
-                    , "    | External OutgoingTransition"
+                    , "type Transition ="] ++
+                    (if length internalClientTransitions > 0 then 
+                        ["      Internal InternalTransition |"] else []) ++
+                    [ "    External OutgoingTransition"
                     ]
                 transFromPlace :: T.Text -> [(Bool,NetTransition)]
                 transFromPlace place = 
@@ -205,6 +206,11 @@ generate extraTypes fp net =
 
                 outgoingClientTransitions localExcluded = filter (outgoingFromClient localExcluded) transitions
 
+                internalMap =
+                    M.fromList $
+                           map (\trans -> (getTransitionName trans, True)) internalClientTransitions
+                        ++ map (\trans -> (getTransitionName trans, False)) (outgoingClientTransitions True)
+
                 generateNetTypes :: T.Text -> [HybridPlace] -> T.Text
                 generateNetTypes netName places = 
                     let
@@ -284,11 +290,20 @@ generate extraTypes fp net =
                             let
                                 fnName = T.concat["update",T.pack n,place]
                             in
-                            T.unlines
-                            [T.concat[fnName," : FromSuperPlace -> ",T.pack n," -> ",place," -> ",place]
-                            ,T.concat[fnName," fsp ",generatePattern (n,et)," ",uncapitalize place," ="]
-                            ,T.concat["    todo \"Please implement update function ",fnName," for the ",name," net.\""]
-                            ]
+                            case mCmd of
+                                Just cmd ->
+                                    T.unlines
+                                    [T.concat[fnName," : FromSuperPlace -> ",T.pack n," -> ",place," -> (",place,", Cmd ",cmd,")"]
+                                    ,T.concat[fnName," fsp ",generatePattern (n,et)," ",uncapitalize place," ="]
+                                    ,T.concat["    (todo \"Please implement update function ",fnName," for the ",name," net.\", Cmd.none)"]
+                                    ]
+                                Nothing ->
+                                    T.unlines
+                                    [T.concat[fnName," : FromSuperPlace -> ",T.pack n," -> ",place," -> ",place]
+                                    ,T.concat[fnName," fsp ",generatePattern (n,et)," ",uncapitalize place," ="]
+                                    ,T.concat["    todo \"Please implement update function ",fnName," for the ",name," net.\""]
+                                    ]
+                        trUpFn _ = ""
                     in T.unlines
                     [
                         T.concat ["module ",name,".Update exposing(..)"]
@@ -324,18 +339,35 @@ generate extraTypes fp net =
                                                                       ,", S",from," st)"
                                                                       ," -> (S",to
                                                                       ," <| update",from,T.pack n,to
-                                                                      ," fsp ",generatePattern (n, t)," st, Nothing)"
+                                                                      ," fsp ",generatePattern (n, t)," st, Cmd.none)"
                                                                       ]
                                         _ -> Nothing
                             in
                                 T.unlines $ mapMaybe connectionCase connections
-                        updateCase (ClientTransition (n,t) place _) =
-                             T.concat ["        ("
+                        updateCase (ClientTransition (n,t) place mCmd) =
+                            case mCmd of 
+                                Just cmd ->
+                                    let
+                                        cmdInternal = 
+                                            case M.lookup cmd internalMap of
+                                                Just it -> it
+                                                _ -> error $ "Cmd " ++ T.unpack cmd ++ " does not exist!"
+                                    in
+                                    T.concat ["        ("
+                                        ,generatePattern ("M"++n,t)
+                                        ,", S",place," st)"
+                                        ," -> Tuple.mapBoth S",place," (Cmd.map <|"
+                                        ,if cmdInternal then " Internal " else " External " ," << unwrap",cmd,")"
+                                        ," <| update",T.pack n,place
+                                        ," fsp ",generatePattern (n,t)," st"
+                                        ]
+                                Nothing ->
+                                    T.concat ["        ("
                                         ,generatePattern ("M"++n,t)
                                         ,", S",place," st)"
                                         ," -> (S",place
                                         ," <| update",T.pack n,place
-                                        ," fsp ",generatePattern (n,t)," st, Nothing)"
+                                        ," fsp ",generatePattern (n,t)," st, Cmd.none)"
                                         ]
                         updateCase (CmdTransition {}) =
                             ""
@@ -363,11 +395,11 @@ generate extraTypes fp net =
                     ,   "import Static.Types exposing(..)"
                     ,   "import Dict"
                     ,   ""
-                    ,   T.concat ["update : FromSuperPlace -> IncomingMessage -> NetState -> (NetState,Maybe (Cmd Transition))"]
+                    ,   T.concat ["update : FromSuperPlace -> IncomingMessage -> NetState -> (NetState,Cmd Transition)"]
                     ,   T.concat ["update fsp trans state ="]
                     ,   "    case (trans,state) of"
                     ,   T.unlines $ map updateCase transitions
-                    ,   if length places > 1 then "        _ -> (state, Nothing)" else ""
+                    ,   if length places > 1 then "        _ -> (state, Cmd.none)" else ""
                    {-} ,   "transitionType : OutgoingTransition -> TransitionType"
                     ,   "transitionType oTrans ="
                     ,   "    case oTrans of"
