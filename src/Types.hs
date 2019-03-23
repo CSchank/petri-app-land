@@ -39,8 +39,8 @@ type ClientCmd          = T.Text
 type ServerTransition   = Constructor
 type ServerCmd          = T.Text
 
-data HybridPlace =
-    HybridPlace 
+data Place =
+    Place 
         T.Text          --name of the place
         [ElmDocType]    --server place state
         [ElmDocType]    --player state
@@ -75,10 +75,10 @@ data TransitionOrigin =
 
 -- a net describing a collections of places and transitions
 data Net = 
-    HybridNet
+    Net
         T.Text                                  --net name
         T.Text                                  --starting place for client
-        [HybridPlace]                           --all the places in this net
+        [Place]                           --all the places in this net
         [NetTransition]      --transitions between the places
         [Plugin]                                --a list of plugins to be generated / installed on this net
 

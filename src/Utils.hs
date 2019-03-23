@@ -88,24 +88,24 @@ capStr str =
 fnub :: Ord a => [a] -> [a]
 fnub = nub --S.toList . S.fromList
 
-getPlaceState :: HybridPlace -> Constructor
+getPlaceState :: Place -> Constructor
 getPlaceState p =
     case p of
-        (HybridPlace n _ s _ _ _) -> (T.unpack n,s)
+        (Place n _ s _ _ _) -> (T.unpack n,s)
 
-getPlaceName :: HybridPlace -> T.Text
+getPlaceName :: Place -> T.Text
 getPlaceName p =
     case p of
-        (HybridPlace n _ _ _ _ _) -> n
+        (Place n _ _ _ _ _) -> n
 
 
-getPlayerState :: HybridPlace -> Constructor
+getPlayerState :: Place -> Constructor
 getPlayerState p =
     case p of
-        (HybridPlace n _ s _ _ _) -> (T.unpack n,s)
+        (Place n _ s _ _ _) -> (T.unpack n,s)
         
 getNetName :: Net -> T.Text
-getNetName (HybridNet name _ _ _ _) = name
+getNetName (Net name _ _ _ _) = name
 
 getTransitionName :: NetTransition -> T.Text
 getTransitionName (NetTransition _ (name,_) _ _) = T.pack name

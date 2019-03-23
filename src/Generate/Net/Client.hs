@@ -26,8 +26,8 @@ trans2constr trans =
         CmdTransition constr _ _    -> constr
 
 
-place2edts :: HybridPlace -> [ElmDocType]
-place2edts (HybridPlace _ _ _ edts _ _) = edts
+place2edts :: Place -> [ElmDocType]
+place2edts (Place _ _ _ edts _ _) = edts
     
 
 transName from msgN = T.concat [T.pack msgN,"from",from]
@@ -43,7 +43,7 @@ netTrans2MConstr trans =
 generate :: M.Map String ElmCustom -> FilePath -> Net -> IO ()
 generate extraTypes fp net =
     case net of 
-        (HybridNet name startingPlace places transitions plugins) ->
+        (Net name startingPlace places transitions plugins) ->
             let
                 inits = T.unlines 
                     [
@@ -54,10 +54,10 @@ generate extraTypes fp net =
                     , T.concat ["init : ",startingPlace]
                     , T.concat ["init = ",constr2Def extraTypes (getPlaceState $ getPlace startingPlace)]
                     ]
-                placeNames = map (\(HybridPlace name _ _ _ _ _) -> name) places
+                placeNames = map (\(Place name _ _ _ _ _) -> name) places
                 -- the functions that the user changes
-                generateNetInit :: M.Map String ElmCustom -> HybridPlace -> T.Text
-                generateNetInit extraTypes (HybridPlace name _ _ clientPlaceState mSubnet (mCmd,_)) = 
+                generateNetInit :: M.Map String ElmCustom -> Place -> T.Text
+                generateNetInit extraTypes (Place name _ _ clientPlaceState mSubnet (mCmd,_)) = 
                     let
                         fnName = T.concat ["init",name]
                         typ = case mCmd of
@@ -101,7 +101,7 @@ generate extraTypes fp net =
                                     ClientTransition _ pl _ -> if pl == place then Just (True,tr) else Nothing
                                     CmdTransition _ pl _ -> if pl == place then Just (False,tr) else Nothing
                             ) transitions
-                perPlaceTypes (HybridPlace placeName _ _ _ _ _) = 
+                perPlaceTypes (Place placeName _ _ _ _ _) = 
                     let
                         transitions = transFromPlace placeName
                         transConstrs = map (trans2constr . snd) transitions
@@ -116,7 +116,7 @@ generate extraTypes fp net =
                     ,   if length transConstrs == 0 then "x = 0" else ""
                     ,   generateType Elm False [] $ ec "Msg" transConstrs
                     ]
-                perPlaceWrappers (HybridPlace placeName _ _ _ _ _) = 
+                perPlaceWrappers (Place placeName _ _ _ _ _) = 
                     let
                         transitions = transFromPlace placeName
                         transConstrs = 
@@ -142,7 +142,7 @@ generate extraTypes fp net =
                     ,   "    case msg of"
                     ,   T.unlines $ map (\(tc,wtc,int) -> T.concat["        ",generatePattern tc," -> ",if int then "Internal " else "External ",generatePattern wtc]) zippedTrans
                     ]
-                perPlaceViews (HybridPlace placeName _ _ _ _ _) = 
+                perPlaceViews (Place placeName _ _ _ _ _) = 
                     T.unlines
                     [
                         T.concat["module ",name,".View.",placeName," exposing(..)"]
@@ -211,15 +211,15 @@ generate extraTypes fp net =
                            map (\trans -> (getTransitionName trans, True)) internalClientTransitions
                         ++ map (\trans -> (getTransitionName trans, False)) (outgoingClientTransitions True)
 
-                generateNetTypes :: T.Text -> [HybridPlace] -> T.Text
+                generateNetTypes :: T.Text -> [Place] -> T.Text
                 generateNetTypes netName places = 
                     let
                         placeModel = 
                             generateType Elm False [DOrd,DEq,DShow] $ 
-                                ElmCustom (T.unpack netName) $ map (\(HybridPlace n _ _ _ _ _) -> (T.unpack n,[edt (ElmType $ T.unpack n) "" ""])) places
+                                ElmCustom (T.unpack netName) $ map (\(Place n _ _ _ _ _) -> (T.unpack n,[edt (ElmType $ T.unpack n) "" ""])) places
                         placeTypes = T.unlines $ map generatePlaceType places
-                        generatePlaceType :: HybridPlace -> T.Text
-                        generatePlaceType (HybridPlace name _ _ clientPlaceState _ _) =
+                        generatePlaceType :: Place -> T.Text
+                        generatePlaceType (Place name _ _ clientPlaceState _ _) =
                             T.unlines
                                 [
                                     generateType Elm True [DOrd,DEq,DShow,DTypeable] $ ElmCustom (T.unpack name) [(T.unpack name, clientPlaceState)],""
@@ -413,11 +413,11 @@ generate extraTypes fp net =
                         else ""
                     ]
             
-                placeMap :: M.Map T.Text HybridPlace
-                placeMap = M.fromList $ map (\(pl@(HybridPlace n _ _ _ _ _)) -> (n,pl)) places
+                placeMap :: M.Map T.Text Place
+                placeMap = M.fromList $ map (\(pl@(Place n _ _ _ _ _)) -> (n,pl)) places
 
-                getPlace :: T.Text -> HybridPlace
-                getPlace name = M.findWithDefault (HybridPlace "" [] [] [] Nothing (Nothing,Nothing)) name placeMap
+                getPlace :: T.Text -> Place
+                getPlace name = M.findWithDefault (Place "" [] [] [] Nothing (Nothing,Nothing)) name placeMap
 
                 hiddenInit = T.unlines
                     [
@@ -547,7 +547,7 @@ generate extraTypes fp net =
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Types" <.> "elm") types
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Init" <.> "elm") hiddenInit
                 createDirectoryIfMissing True $ fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Helpers"
-                mapM_ (\(HybridPlace pName _ _ edts _ _)  -> writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "elm") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Elm name (T.unpack pName,edts) False]) places
+                mapM_ (\(Place pName _ _ edts _ _)  -> writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "elm") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Elm name (T.unpack pName,edts) False]) places
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Encode" <.> "elm") encoder
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Decode" <.> "elm") decoder
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Wrappers" <.> "elm") wrappers

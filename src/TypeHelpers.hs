@@ -3,6 +3,8 @@ module TypeHelpers where
 import Types
 
 msg = constructor
+request = constructor
+response = constructor
 
 constructor :: String -> [ElmDocType] -> Constructor
 constructor name edts =

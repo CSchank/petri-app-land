@@ -112,10 +112,10 @@ validateElmCustom ecSet note (ElmCustom name constrs) =
     else
         concatMap (validateConstructor ecSet (note++", in custom type `"++name++"`")) constrs
 
-validatePlace :: S.Set String -> String -> HybridPlace -> [String]
-validatePlace ecSet note (HybridPlace "" _ _ _ _ _) =
-    [note++": a HybridPlace has an empty name"]
-validatePlace ecSet note (HybridPlace name serverState playerState clientState mSubnet initCmds) =
+validatePlace :: S.Set String -> String -> Place -> [String]
+validatePlace ecSet note (Place "" _ _ _ _ _) =
+    [note++": a Place has an empty name"]
+validatePlace ecSet note (Place name serverState playerState clientState mSubnet initCmds) =
     let
         validations =
             concatMap (validateEdt ecSet (note++", in place `"++T.unpack name++"`, in server state")) serverState ++
@@ -123,7 +123,7 @@ validatePlace ecSet note (HybridPlace name serverState playerState clientState m
             concatMap (validateEdt ecSet (note++", in place `"++T.unpack name++"`, in client state")) clientState 
     in
         if not $ validateType $ T.unpack name then
-            [note++": invalid name for HybridPlace: `"++T.unpack name] ++ validations
+            [note++": invalid name for Place: `"++T.unpack name] ++ validations
         else
             validations
 
@@ -172,7 +172,7 @@ validateTransition placeSet ecSet note (CmdTransition constr@(transName,edts) pl
 
 
 validateNet :: S.Set String -> Net -> [String]
-validateNet ecSet (HybridNet name startingPlace places transitions subnets) =
+validateNet ecSet (Net name startingPlace places transitions subnets) =
     let
         placeSet = S.fromList $ map (T.unpack . getPlaceName) places
         duplicateTransitions = fnub $ transitions \\ fnub transitions
@@ -207,7 +207,7 @@ validateCSApp
     =
     let
         ecSet = S.fromList $ map (\(ElmCustom n _) -> n) extraTLst
-        netSet = S.fromList $ map (\(HybridNet n _ _ _ _) -> n) nets
+        netSet = S.fromList $ map (\(Net n _ _ _ _) -> n) nets
         validations =
             concatMap (validateNet ecSet) nets ++
             concatMap (validateElmCustom ecSet ("in extra types")) extraTLst

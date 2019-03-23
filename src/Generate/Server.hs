@@ -31,7 +31,7 @@ generateServer gsvg rootDir fp
                   ) =
     let
         extraT = M.fromList $ map (\(ElmCustom n constrs) -> (n,ElmCustom n constrs)) extraTlst
-        netNames = map (\(HybridNet name _ _ _ _) -> name) netLst
+        netNames = map (\(Net name _ _ _ _) -> name) netLst
         init :: T.Text
         init = 
             let

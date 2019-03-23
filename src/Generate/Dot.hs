@@ -28,7 +28,7 @@ generateDot (startCp
 
 generateNetDot :: Net -> T.Text
 generateNetDot
-        (HybridNet name startingPlace places transitions plugins)
+        (Net name startingPlace places transitions plugins)
         =
     let
         nodes :: T.Text
