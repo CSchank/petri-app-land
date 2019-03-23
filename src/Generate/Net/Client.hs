@@ -114,7 +114,7 @@ generate extraTypes fp net =
                     ,   T.concat["import ",name,".Static.ExtraTypes exposing(..)"]
                     ,   T.unlines imports
                     ,   if length transConstrs == 0 then "x = 0" else ""
-                    ,   generateType Elm False [] $ ec "Msg" transConstrs
+                    ,   generateType Elm False [] $ ct "Msg" transConstrs
                     ]
                 perPlaceWrappers (Place placeName _ _ _ _ _) = 
                     let
@@ -216,7 +216,7 @@ generate extraTypes fp net =
                     let
                         placeModel = 
                             generateType Elm False [DOrd,DEq,DShow] $ 
-                                CustomT (T.unpack netName) $ map (\(Place n _ _ _ _ _) -> (T.unpack n,[edt (TypeT $ T.unpack n) "" ""])) places
+                                CustomT (T.unpack netName) $ map (\(Place n _ _ _ _ _) -> (T.unpack n,[dt (TypeT $ T.unpack n) "" ""])) places
                         placeTypes = T.unlines $ map generatePlaceType places
                         generatePlaceType :: Place -> T.Text
                         generatePlaceType (Place name _ _ clientPlaceState _ _) =
@@ -233,21 +233,21 @@ generate extraTypes fp net =
 
                         individualMessages =
                             fnub $
-                                map (\(_,msg@(msgN,edts)) -> ec msgN [msg]) incomingMsgs ++
-                                map (\(pl,etd) -> ec pl [(pl,etd)]) (map trans2constr (outgoingClientTransitions False))
+                                map (\(_,msg@(msgN,edts)) -> ct msgN [msg]) incomingMsgs ++
+                                map (\(pl,etd) -> ct pl [(pl,etd)]) (map trans2constr (outgoingClientTransitions False))
 
 
                         --allConnections = concat $ map (\(_, Transition (transName,transEt) connections mCmd) -> ((transName,transEt),connections)) transitions
 
-                        internalTransitions = ec "InternalTransition" $ map (\(n,t) -> ("T"++n,t)) $ map trans2constr internalClientTransitions
-                        outgoingTransitions = ec "OutgoingTransition" $ map (\(n,t) -> ("T"++n,t)) $ map trans2constr (outgoingClientTransitions True)
+                        internalTransitions = ct "InternalTransition" $ map (\(n,t) -> ("T"++n,t)) $ map trans2constr internalClientTransitions
+                        outgoingTransitions = ct "OutgoingTransition" $ map (\(n,t) -> ("T"++n,t)) $ map trans2constr (outgoingClientTransitions True)
                     in
                         T.unlines 
                             [
                                 "-- place states"
                             ,   placeTypes
                             ,   "-- union place type"
-                            ,   generateType Elm False [] $ ec "NetState" $ map (\placeName -> constructor ("S"++T.unpack placeName) [edt (TypeT $ T.unpack placeName) "" ""]) placeNames
+                            ,   generateType Elm False [] $ ct "NetState" $ map (\placeName -> constructor ("S"++T.unpack placeName) [dt (TypeT $ T.unpack placeName) "" ""]) placeNames
                             ,   "-- internal transition types"
                             ,   generateType Elm False [] internalTransitions
                             ,   "-- outgoing transition types"

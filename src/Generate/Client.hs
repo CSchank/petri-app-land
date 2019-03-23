@@ -57,9 +57,9 @@ generateClient gsvg rootDir fp
         types :: T.Text
         types = 
             let
-                netUnion    = ec "NetModel" $ map (\nname -> constructor (T.unpack nname) [edt (TypeT (T.unpack nname++".Static.Types.NetState")) "" ""]) netNames
-                netMsgUnion = ec "NetIncomingMessage" $ map (\nname -> constructor (T.unpack nname ++ "InMsg") [edt (TypeT $ T.unpack nname ++ ".Static.Types.IncomingMessage") "" ""]) netNames
-                netOutgoingMsgUnion = ec "NetTransition" $ map (\nname -> constructor (T.unpack nname ++ "Trans") [edt (TypeT $ T.unpack nname ++ ".Static.Types.Transition") "" ""]) netNames
+                netUnion    = ct "NetModel" $ map (\nname -> constructor (T.unpack nname) [dt (TypeT (T.unpack nname++".Static.Types.NetState")) "" ""]) netNames
+                netMsgUnion = ct "NetIncomingMessage" $ map (\nname -> constructor (T.unpack nname ++ "InMsg") [dt (TypeT $ T.unpack nname ++ ".Static.Types.IncomingMessage") "" ""]) netNames
+                netOutgoingMsgUnion = ct "NetTransition" $ map (\nname -> constructor (T.unpack nname ++ "Trans") [dt (TypeT $ T.unpack nname ++ ".Static.Types.Transition") "" ""]) netNames
             in
             T.unlines 
             [

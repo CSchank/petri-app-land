@@ -16,8 +16,8 @@ generateStandalones ecMap netName fp places =
         cState2ConstrMap (Place name _ _ edts _ _) = (T.unpack name, edts)
         placeList = S.toList $ S.fromList $ map cState2ConstrMap places
     in
-        mapM_ (\(pn,edt) -> TIO.writeFile (fp </> "client" </> "src" </> T.unpack netName </> "Static" </> "Standalone" </> pn <.> "elm") $ 
-            generateStandalone ecMap netName (pn,edt)) placeList
+        mapM_ (\(pn,dt) -> TIO.writeFile (fp </> "client" </> "src" </> T.unpack netName </> "Static" </> "Standalone" </> pn <.> "elm") $ 
+            generateStandalone ecMap netName (pn,dt)) placeList
 
 generateStandalone :: M.Map String CustomT -> T.Text -> Constructor -> T.Text
 generateStandalone ecMap netName (sn,edts) =

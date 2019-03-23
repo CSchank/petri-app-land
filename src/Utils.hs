@@ -119,7 +119,7 @@ findConstrImports l (_, ets) =
 findImports :: Language -> DocTypeT -> [T.Text]
 findImports l (PairT edt0 edt1, _, _)          = findImports l edt0 ++ findImports l edt1
 findImports l (TripleT edt0 edt1 edt2, _, _)   = findImports l edt0 ++ findImports l edt1 ++ findImports l edt2
-findImports l (ListT edt, _, _)                = if l == Haskell then ["import Static.List (List)"] else [] ++ findImports l edt
+findImports l (ListT dt, _, _)                = if l == Haskell then ["import Static.List (List)"] else [] ++ findImports l dt
 findImports l (DictT edt0 edt1, _, _)          = 
     if l == Haskell then ["import Static.Dict (Dict)"] else ["import Dict exposing (Dict)"] 
         ++ findImports l edt0 ++ findImports l edt1

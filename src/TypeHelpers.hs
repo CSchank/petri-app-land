@@ -10,16 +10,16 @@ constructor :: String -> [DocTypeT] -> Constructor
 constructor name edts =
     (name, edts)
 
-edt :: TypeT -> String -> String -> DocTypeT
-edt et name desc =
+dt :: TypeT -> String -> String -> DocTypeT
+dt et name desc =
     (et, name, desc)
 
-ec :: String -> [Constructor] -> CustomT
-ec name constrs =
+ct :: String -> [Constructor] -> CustomT
+ct name constrs =
     CustomT name constrs
 
 clientID :: DocTypeT
-clientID = edt (IntRangeT 0 999999) "clientID" "id assigned when logging in"-- almost a type alias
+clientID = dt (IntRangeT 0 999999) "clientID" "id assigned when logging in"-- almost a type alias
 
 natural :: TypeT
 natural =

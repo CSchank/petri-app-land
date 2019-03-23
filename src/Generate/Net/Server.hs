@@ -120,8 +120,8 @@ generate extraTypes fp net =
                         constructors (from,toLst) =
                             map (\mTo -> 
                                 case mTo of 
-                                    Just (to,(msgName,_))   -> constructor (T.unpack $ T.concat[T.pack msgN,"_",from,"to",to]) [edt (TypeT $ T.unpack $ T.concat [to,"Player"]) "" "", edt (TypeT msgName) "" ""]
-                                    _                       -> constructor (T.unpack $ T.concat[T.pack msgN,"_Stay_",from]) [edt (TypeT $ T.unpack $ T.concat [from,"Player"]) "" ""]
+                                    Just (to,(msgName,_))   -> constructor (T.unpack $ T.concat[T.pack msgN,"_",from,"to",to]) [dt (TypeT $ T.unpack $ T.concat [to,"Player"]) "" "", dt (TypeT msgName) "" ""]
+                                    _                       -> constructor (T.unpack $ T.concat[T.pack msgN,"_Stay_",from]) [dt (TypeT $ T.unpack $ T.concat [from,"Player"]) "" ""]
                                         ) toLst
                     in
                         map (\(from,toLst) -> CustomT (T.unpack $ transName from msgN) $ constructors (from,toLst)) (grouped connections)
@@ -134,14 +134,14 @@ generate extraTypes fp net =
                 transConstrs = map trans2constr transitions
 
                 transType :: CustomT
-                transType = ec "Transition" transConstrs
+                transType = ct "Transition" transConstrs
 
                 generateNetTypes :: T.Text -> [Place] -> T.Text
                 generateNetTypes netName places = 
                     let
                         placeModel = 
                             generateType Haskell False [DOrd,DEq,DShow] $ 
-                                CustomT (T.unpack netName) $ map (\(Place n m _ _ _ _) -> (T.unpack n++"Player",[edt (TypeT $ T.unpack n) "" ""])) places
+                                CustomT (T.unpack netName) $ map (\(Place n m _ _ _ _) -> (T.unpack n++"Player",[dt (TypeT $ T.unpack n) "" ""])) places
                         placeTypes = T.unlines $ map generatePlaceType places
                         generatePlaceType :: Place -> T.Text
                         generatePlaceType (Place name serverPlaceState playerPlaceState _ _ _) =
@@ -169,8 +169,8 @@ generate extraTypes fp net =
                             ,   "-- individual transition types"
                             ,   T.unlines $ map transitionTxt transitions
                             ,   "-- main transition types"
-                            ,   generateType Haskell True [DOrd,DEq,DShow] $ ec "Transition" $ map (\(n,t) -> ("T"++n,t)) transConstrs
-                            ,   T.unlines $ map (\(n,et) -> generateType Haskell True [DOrd,DEq,DShow] $ ec n [(n,et)]) transConstrs
+                            ,   generateType Haskell True [DOrd,DEq,DShow] $ ct "Transition" $ map (\(n,t) -> ("T"++n,t)) transConstrs
+                            ,   T.unlines $ map (\(n,et) -> generateType Haskell True [DOrd,DEq,DShow] $ ct n [(n,et)]) transConstrs
                             ,   "-- player state union type"
                             ,   generateType Haskell False [DOrd,DEq,DShow] playerUnionType
                             ,   "-- extra server types"

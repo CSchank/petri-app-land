@@ -61,7 +61,7 @@ createTransitionUnwrap def l (Transition transType (transName,_) connections mCm
                     case mTo of 
                         Just (to,(msgName,_)) ->
                             let 
-                                (n,args) = constructor (T.unpack $ T.concat[transTxt,"_",from,"to",to]) [edt (TypeT "") "player" "", edt (TypeT msgName) "msg" ""]
+                                (n,args) = constructor (T.unpack $ T.concat[transTxt,"_",from,"to",to]) [dt (TypeT "") "player" "", dt (TypeT msgName) "msg" ""]
                             in
                                 T.concat
                                     [
@@ -69,7 +69,7 @@ createTransitionUnwrap def l (Transition transType (transName,_) connections mCm
                                     ]
                         Nothing -> 
                             let 
-                                (n,args) = constructor (T.unpack $ T.concat[transTxt,"_Stay_",from]) [edt (TypeT "") "player" ""]
+                                (n,args) = constructor (T.unpack $ T.concat[transTxt,"_Stay_",from]) [dt (TypeT "") "player" ""]
                             in
                                 T.concat
                                     [

@@ -23,12 +23,12 @@ findCustoms ecMap (TypeT n, _, _) =
         ++ [T.pack n]
 findCustoms ecMap (PairT edt0 edt1, _, _) = findCustoms ecMap edt0 ++ findCustoms ecMap edt1
 findCustoms ecMap (TripleT edt0 edt1 edt2, _, _) = findCustoms ecMap edt0 ++ findCustoms ecMap edt1 ++ findCustoms ecMap edt2
-findCustoms ecMap (ListT edt, _, _) = findCustoms ecMap edt
+findCustoms ecMap (ListT dt, _, _) = findCustoms ecMap dt
 findCustoms ecMap (DictT edt0 edt1, _, _) = findCustoms ecMap edt0 ++  findCustoms ecMap edt1
 findCustoms ecMap (ExistingT name mod,_,_)    = [T.concat[T.pack mod,".",T.pack name]]
 findCustoms ecMap (ExistingWParamsT name params mod,_,_) = 
     [T.concat["(",T.pack mod,".",T.pack name]] ++ (map (\(typ,imp) -> T.pack $ imp ++ "." ++ typ) params)
-findCustoms ecMap (MaybeT edt, _, _) = findCustoms ecMap edt
+findCustoms ecMap (MaybeT dt, _, _) = findCustoms ecMap dt
 findCustoms ecMap (ResultT edt0 edt1, _, _) = findCustoms ecMap edt0 ++ findCustoms ecMap edt1
 findCustoms ecMap _ = []
 
@@ -52,7 +52,7 @@ generateDatabase ts extraTypesMap net =
                             (TypeT tn, n, d) -> (TypeT (T.unpack (getNetName net) ++ ".Static.Types." ++ tn), n, d)
                             a -> a
                         ) values
-                rowT = ec name $ [constructor name (keys++values)]
+                rowT = ct name $ [constructor name (keys++values)]
 
                 imports = concatMap (findImports Haskell) keys ++ concatMap (findImports Haskell) values
                 customs = concatMap (findCustoms extraTypesMap) (keys ++ values)

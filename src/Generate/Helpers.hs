@@ -13,9 +13,9 @@ import                  Data.Time               (getCurrentTime)
 generateHelpers :: FilePath -> T.Text -> [Constructor] -> [Constructor] -> IO ()
 generateHelpers fp netName cStates sStates = do
     currentTime <- getCurrentTime
-    mapM_ (\(sn,edt) -> writeIfNew 1 (fp </> "server" </> "src" </> "Static" </> "Helpers" </> sn <.> "hs") $ T.unlines $ disclaimer currentTime : [generateHelper Haskell netName (sn,edt) False]) sStates
-    mapM_ (\(sn,edt) -> writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Helpers" </> sn <.> "elm") $ T.unlines $ disclaimer currentTime : [generateHelper Elm netName (sn,edt) False]) cStates
-    mapM_ (\(sn,edt) -> writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Helpers" </> sn ++ "Model" <.> "elm") $ T.unlines $ disclaimer currentTime : [generateHelper Elm netName (sn,edt) True]) cStates
+    mapM_ (\(sn,dt) -> writeIfNew 1 (fp </> "server" </> "src" </> "Static" </> "Helpers" </> sn <.> "hs") $ T.unlines $ disclaimer currentTime : [generateHelper Haskell netName (sn,dt) False]) sStates
+    mapM_ (\(sn,dt) -> writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Helpers" </> sn <.> "elm") $ T.unlines $ disclaimer currentTime : [generateHelper Elm netName (sn,dt) False]) cStates
+    mapM_ (\(sn,dt) -> writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Helpers" </> sn ++ "Model" <.> "elm") $ T.unlines $ disclaimer currentTime : [generateHelper Elm netName (sn,dt) True]) cStates
 
 generateHelper :: Language -> T.Text -> Constructor -> Bool -> T.Text
 generateHelper l netName (sn,edts) getOnly =

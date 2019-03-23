@@ -9,41 +9,41 @@ import TypeHelpers
 outputDirectory = "NewspaperExample"
 
 articleType :: CustomT
-articleType = ec -- helper to make custom types
+articleType = ct -- helper to make custom types
                 "Article" -- name of type (Elm syntax rules)
-                [("Article",[edt StringT "title"{-valid function name, used in helper functions-} "title of the article"
-                            ,edt StringT "author" "author"
-                            ,edt (IntRangeT 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
-                            ,edt StringT "body" "article body"
+                [("Article",[dt StringT "title"{-valid function name, used in helper functions-} "title of the article"
+                            ,dt StringT "author" "author"
+                            ,dt (IntRangeT 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
+                            ,dt StringT "body" "article body"
                             ]
                  )
-                ,("Letter",[edt StringT "title" "title of the article being referred to"
-                            ,edt StringT "author" "author"
-                            ,edt (IntRangeT 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
-                            ,edt StringT "body" "article body"
+                ,("Letter",[dt StringT "title" "title of the article being referred to"
+                            ,dt StringT "author" "author"
+                            ,dt (IntRangeT 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
+                            ,dt StringT "body" "article body"
                             ]
                  )
                 ]
 draftType :: CustomT
-draftType = ec -- helper to make custom types
+draftType = ct -- helper to make custom types
                 "Draft" -- name of type (Elm syntax rules)
-                [("DraftArticle",  [edt StringT "title"{-valid function name, used in helper functions-} "title of the article"
-                            ,edt StringT "author" "author"
-                            ,edt (IntRangeT 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
-                            ,edt StringT "body" "article body"
-                            ,edt (ListT $ edt (PairT (edt (IntRangeT 0 99999) "uid" "userid")
-                                                         (edt StringT "comment" "comment")
+                [("DraftArticle",  [dt StringT "title"{-valid function name, used in helper functions-} "title of the article"
+                            ,dt StringT "author" "author"
+                            ,dt (IntRangeT 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
+                            ,dt StringT "body" "article body"
+                            ,dt (ListT $ dt (PairT (dt (IntRangeT 0 99999) "uid" "userid")
+                                                         (dt StringT "comment" "comment")
                                                 )
                                                 "uidComment" "(uid,comment)"
                                   ) "comments" "[(uid,comment)]"
                             ]
                  )
-                ,("DraftLetter",  [edt StringT "title"{-valid function name, used in helper functions-} "title of the article"
-                            ,edt StringT "author" "author"
-                            ,edt (IntRangeT 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
-                            ,edt StringT "body" "article body"
-                            ,edt (ListT $ edt (PairT (edt (IntRangeT 0 99999) "uid" "userid")
-                                                         (edt StringT "comment" "comment")
+                ,("DraftLetter",  [dt StringT "title"{-valid function name, used in helper functions-} "title of the article"
+                            ,dt StringT "author" "author"
+                            ,dt (IntRangeT 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
+                            ,dt StringT "body" "article body"
+                            ,dt (ListT $ dt (PairT (dt (IntRangeT 0 99999) "uid" "userid")
+                                                         (dt StringT "comment" "comment")
                                                 )
                                                 "uidComment" "(uid,comment)"
                                   ) "comments" "[(uid,comment)]"
@@ -64,21 +64,21 @@ newspaperNet =
 
         readingRoom = 
             HybridPlace "ReadingRoom" 
-                [edt (ListT $ edt (TypeT "Article") "article" "") "articles" ""] --server state
-                [edt StringT "nowReading" "title of current article being read"] --player state
-                [edt (ListT $ edt (TypeT "Article") "article" "") "articles" "" -- partial list of articles
-                ,edt (ListT $ edt StringT "title" "") "titles" "" -- all article titles
-                ,edt (MaybeT (edt StringT "viewing" "title of article begin viewed")) "maybeViewing" "article being viewed or Nothing for index"] --client state
+                [dt (ListT $ dt (TypeT "Article") "article" "") "articles" ""] --server state
+                [dt StringT "nowReading" "title of current article being read"] --player state
+                [dt (ListT $ dt (TypeT "Article") "article" "") "articles" "" -- partial list of articles
+                ,dt (ListT $ dt StringT "title" "") "titles" "" -- all article titles
+                ,dt (MaybeT (dt StringT "viewing" "title of article begin viewed")) "maybeViewing" "article being viewed or Nothing for index"] --client state
                 Nothing
                 (Nothing, Nothing)
                 Nothing
 
         editingRoom = 
             HybridPlace "EditingRoom" 
-                [edt (ListT $ edt (TypeT "Draft") "drafts" "") "articles" ""] --server state
-                [edt (MaybeT (edt StringT "nowEditing" "title of current article being read")) "maybeEditing" "article being edited or Nothing for index"] --player state
-                [edt (MaybeT (edt (TypeT "Draft") "article" "article currently being edited")) "maybeEditing" "article being edited or Nothing for index"
-                ,edt (ListT $ edt StringT "title" "") "titles" "" -- all article titles
+                [dt (ListT $ dt (TypeT "Draft") "drafts" "") "articles" ""] --server state
+                [dt (MaybeT (dt StringT "nowEditing" "title of current article being read")) "maybeEditing" "article being edited or Nothing for index"] --player state
+                [dt (MaybeT (dt (TypeT "Draft") "article" "article currently being edited")) "maybeEditing" "article being edited or Nothing for index"
+                ,dt (ListT $ dt StringT "title" "") "titles" "" -- all article titles
                 ] --client state
                 Nothing
                 (Nothing, Nothing)
@@ -86,17 +86,17 @@ newspaperNet =
         enterRR =
             Transition
                 (constructor "EnterReadingRoom" [])
-                [("MainStreet", Just ("ReadingRoom", constructor "DidEnterReadingRoom" [edt (ListT $ edt (TypeT "Article") "article" "") "articles" ""]))]
+                [("MainStreet", Just ("ReadingRoom", constructor "DidEnterReadingRoom" [dt (ListT $ dt (TypeT "Article") "article" "") "articles" ""]))]
                 Nothing
         enterER =
             Transition
                 (constructor "EnterEditingRoom" [])
-                [("MainStreet", Just ("ReadingRoom", constructor "DidEnterEditingRoom" [edt (ListT $ edt StringT "title" "") "articles" ""]))]
+                [("MainStreet", Just ("ReadingRoom", constructor "DidEnterEditingRoom" [dt (ListT $ dt StringT "title" "") "articles" ""]))]
                 Nothing
         startEditing =
             Transition
-                (constructor "StartEditing" [edt StringT "title" "article to start editing"])
-                [("EditingRoom", Just ("EditingRoom", constructor "DidStartEditing" [edt (TypeT "Draft") "draft" "article to edit"]))]
+                (constructor "StartEditing" [dt StringT "title" "article to start editing"])
+                [("EditingRoom", Just ("EditingRoom", constructor "DidStartEditing" [dt (TypeT "Draft") "draft" "article to edit"]))]
                 Nothing
         leaveRR =
             Transition
@@ -111,37 +111,37 @@ newspaperNet =
         publishArticle =
             Transition
                 (constructor "PublishArticle" [])
-                [("EditingRoom", Just ("ReadingRoom", constructor "DidPublish" [edt (ListT $ edt (TypeT "Article") "article" "") "articles" ""]))
+                [("EditingRoom", Just ("ReadingRoom", constructor "DidPublish" [dt (ListT $ dt (TypeT "Article") "article" "") "articles" ""]))
                 ,("EditingRoom", Nothing)] -- if you are not editing, then go back to the same place
                 Nothing
         saveDraft =
             Transition
-                (constructor "SaveDraft" [edt (TypeT "Draft") "draft" "edited draft"])
-                [("EditingRoom", Just ("EditingRoom", constructor "DidSaveDraft" [edt (ListT $ edt StringT "article" "article title") "articles" "titles of all drafts"]))
+                (constructor "SaveDraft" [dt (TypeT "Draft") "draft" "edited draft"])
+                [("EditingRoom", Just ("EditingRoom", constructor "DidSaveDraft" [dt (ListT $ dt StringT "article" "article title") "articles" "titles of all drafts"]))
                 ] -- if you are not editing, then go back to the same place
                 Nothing
         enterTitle =
             Transition
-                (constructor "EnterTitle" [edt StringT "title" "edited title"])
-                [("EditingRoom", Just ("EditingRoom", constructor "DidEnterTitle" [edt (ListT $ edt StringT "article" "article title") "articles" "titles of all drafts"]))
+                (constructor "EnterTitle" [dt StringT "title" "edited title"])
+                [("EditingRoom", Just ("EditingRoom", constructor "DidEnterTitle" [dt (ListT $ dt StringT "article" "article title") "articles" "titles of all drafts"]))
                 ] -- if you are not editing, then go back to the same place
                 Nothing
         enterText =
             Transition
-                (constructor "EnterText" [edt StringT "text" "edited text"])
-                [("EditingRoom", Just ("EditingRoom", constructor "DidEnterText" [edt (ListT $ edt StringT "article" "article title") "articles" "titles of all drafts"]))
+                (constructor "EnterText" [dt StringT "text" "edited text"])
+                [("EditingRoom", Just ("EditingRoom", constructor "DidEnterText" [dt (ListT $ dt StringT "article" "article title") "articles" "titles of all drafts"]))
                 ] -- if you are not editing, then go back to the same place
                 Nothing
         enterComment =
             Transition
-                (constructor "EnterComment" [edt StringT "comment" "edited comment"])
-                [("EditingRoom", Just ("EditingRoom", constructor "DidEnterComment" [edt StringT "comment" "edited comment"]))
+                (constructor "EnterComment" [dt StringT "comment" "edited comment"])
+                [("EditingRoom", Just ("EditingRoom", constructor "DidEnterComment" [dt StringT "comment" "edited comment"]))
                 ] -- if you are not editing, then go back to the same place
                 Nothing
         postComment =
             Transition
-                (constructor "PostComment" [edt StringT "comment" "edited comment"])
-                [("EditingRoom", Just ("EditingRoom", constructor "DidPostComment" [edt StringT "comment" "edited comment"]))
+                (constructor "PostComment" [dt StringT "comment" "edited comment"])
+                [("EditingRoom", Just ("EditingRoom", constructor "DidPostComment" [dt StringT "comment" "edited comment"]))
                 ] -- if you are not editing, then go back to the same place
                 Nothing
     in

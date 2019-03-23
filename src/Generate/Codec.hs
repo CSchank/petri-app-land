@@ -118,21 +118,21 @@ generateEncoder l (CustomT name edts) =
         encodeEt indt (EmptyT, _, _) = 
             error "EmptyT serialization not supported. They should only be used for place states and client- and server-only messages."
 
-        cases = map (\(constrName,edt) -> 
-                        T.concat ["        ",T.pack constrName,T.concat $ map (\(et,name,desc) -> T.pack $ " " ++ name) edt," -> "
-                                ,if length edt > 0 then 
+        cases = map (\(constrName,dt) -> 
+                        T.concat ["        ",T.pack constrName,T.concat $ map (\(et,name,desc) -> T.pack $ " " ++ name) dt," -> "
+                                ,if length dt > 0 then 
                                     T.concat ["\n            let\n"
-                                            ,T.unlines $ concat $ map (encodeEt 4) edt
+                                            ,T.unlines $ concat $ map (encodeEt 4) dt
                                             ,"            in"] 
                                  else ""
                                 ,"\n                tConcat [\"",T.pack constrName
-                                ,if length edt > 0 then T.concat[delim,"\", "] else "\""
+                                ,if length dt > 0 then T.concat[delim,"\", "] else "\""
                                 ,T.intercalate (T.concat[",\"",delim,"\","]) $ 
                                         map (\(et,name,desc) -> case et of 
                                                                     DictT _ _ -> T.pack $ name ++ "AsListTxt"
                                                                     _           -> T.pack $ name ++ "Txt"
                                         
-                                            ) edt, "]"
+                                            ) dt, "]"
                                 ]) edts
         fullTxt = T.unlines 
                     [T.concat["encode",T.pack name .::. T.pack name,if l == Haskell then " -> T.Text" else " -> String"]
@@ -271,20 +271,20 @@ generateDecoder l (CustomT name edts) =
                             ,                             T.unlines $ decodeEt (indt+5) etd,")"
                             ,T.concat["                [] -> (Err \"Ran out of string to process while parsing ",T.pack name,"\",[]))"]
                             ]-}
-        cases = map (\(constrName,edt) -> 
+        cases = map (\(constrName,dt) -> 
                         T.concat [ T.pack "        (\"",T.pack constrName, T.pack "\"", " " .:. " rest) ->"
                                 ,"\n            (Err \"\",rest) |> \n"
-                                ,T.unlines $ concatMap (\(n,et) -> (decodeEt (4+n) et) ++ indtTxts (4+n) [" |>"]) $ zip [0..] edt
-                                ,indtTxt (5 + length edt) $ T.concat ["(\\(r"
-                                                                    ,T.pack $ show $ length edt + 3,",l",T.pack $ show $ length edt + 4,") -> ("
-                                                                    ,if length edt > 0 && l == Haskell then 
-                                                                        T.concat ["Result.map",if length edt > 1 then T.pack $ show $ length edt else ""] 
-                                                                        else if length edt > 0 && l == Elm then
-                                                                        T.concat ["rMap",if length edt > 1 then T.pack $ show $ length edt else ""] 
+                                ,T.unlines $ concatMap (\(n,et) -> (decodeEt (4+n) et) ++ indtTxts (4+n) [" |>"]) $ zip [0..] dt
+                                ,indtTxt (5 + length dt) $ T.concat ["(\\(r"
+                                                                    ,T.pack $ show $ length dt + 3,",l",T.pack $ show $ length dt + 4,") -> ("
+                                                                    ,if length dt > 0 && l == Haskell then 
+                                                                        T.concat ["Result.map",if length dt > 1 then T.pack $ show $ length dt else ""] 
+                                                                        else if length dt > 0 && l == Elm then
+                                                                        T.concat ["rMap",if length dt > 1 then T.pack $ show $ length dt else ""] 
                                                                         else "Ok <|"," "
                                                                     ,T.pack constrName," "
-                                                                    ,T.intercalate " " $ map (\n -> T.pack $ "r" ++ show (n+4)) [0..length edt-1]
-                                                                    ,",l",T.pack $ show $ length edt + 4,"))"]
+                                                                    ,T.intercalate " " $ map (\n -> T.pack $ "r" ++ show (n+4)) [0..length dt-1]
+                                                                    ,",l",T.pack $ show $ length dt + 4,"))"]
                                 ]) edts
     in
         T.unlines [typeSig

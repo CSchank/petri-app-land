@@ -76,13 +76,13 @@ et2Txt l c StringT                    = "String"
 et2Txt l c (SizedStringT _)           = "String"
 et2Txt l c (PairT edt0 edt1)          = T.concat ["(",edt2Txt l c edt0,", ",edt2Txt l c edt1,")"]
 et2Txt l c (TripleT edt0 edt1 edt2)   = T.concat ["(",edt2Txt l c edt0,", ",edt2Txt l c edt1,", ",edt2Txt l c edt2,")"]
-et2Txt l c (ListT edt)                = T.concat ["(List ",edt2Txt l c edt,")"]
+et2Txt l c (ListT dt)                = T.concat ["(List ",edt2Txt l c dt,")"]
 et2Txt l c (DictT edt0 edt1)          = T.concat ["(Dict ",edt2Txt l c edt0," ",edt2Txt l c edt1,")"]
 et2Txt l c (TypeT name)               = T.pack name
 et2Txt l c (ExistingT name mod)       = T.concat[T.pack mod,".",T.pack name]
 et2Txt l c (ExistingWParamsT name params mod) = T.concat["(",T.pack mod,".",T.pack name," ",T.intercalate " " $ map (\(typ,imp) -> T.pack $ imp ++ "." ++ typ) params,")"]
 et2Txt l c (WildcardTypeT s)          = T.pack s
-et2Txt l c (MaybeT edt)               = T.concat ["(Maybe ",edt2Txt l c edt,")"]
+et2Txt l c (MaybeT dt)               = T.concat ["(Maybe ",edt2Txt l c dt,")"]
 et2Txt l c BoolT                      = T.concat ["Bool"]
 et2Txt l c (ResultT edt0 edt1)        = T.concat ["(Result ",edt2Txt l c edt0," ",edt2Txt l c edt1,")"]
 et2Txt l c EmptyT                     = "()"
@@ -96,15 +96,15 @@ ec2Def ecMap (CustomT _ _) =
 
 constr2Def :: M.Map String CustomT -> Constructor -> T.Text
 constr2Def ecMap (name,edts) =
-    T.concat[T.pack name," ",T.intercalate " " $ map (\edt -> etd2Def ecMap edt) edts]
+    T.concat[T.pack name," ",T.intercalate " " $ map (\dt -> etd2Def ecMap dt) edts]
 
 etd2Def :: M.Map String CustomT -> DocTypeT -> T.Text
 etd2Def ecMap (PairT edt0 edt1, _, _)       = T.concat ["(",etd2Def ecMap edt0,", ",etd2Def ecMap edt1,")"]
 etd2Def ecMap (TripleT edt0 edt1 edt2,_,_)  = T.concat ["(",etd2Def ecMap edt0,", ",etd2Def ecMap edt1,", ",etd2Def ecMap edt2,")"]
-etd2Def ecMap (ResultT edt _,_,_)           = T.concat ["(Err ",etd2Def ecMap edt,")"]
+etd2Def ecMap (ResultT dt _,_,_)           = T.concat ["(Err ",etd2Def ecMap dt,")"]
 etd2Def ecMap (TypeT name,_,_)              = 
     case M.lookup name ecMap of
-        Just ec -> ec2Def ecMap ec
+        Just ct -> ec2Def ecMap ct
         Nothing -> error $ "Custom data type " ++ name ++ " does not exist in map!"
 etd2Def _ (ExistingT name _, _, _)          = T.concat ["(error \"Please fill out default type for type",T.pack name,"\")"]
 etd2Def _ (WildcardTypeT s,_,_)         = error "Unknown default type for type variable" --T.concat["error \"Error: default type unknown for type variable\""]
