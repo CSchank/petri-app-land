@@ -18,7 +18,7 @@ data CentralMessage
     | UserConnectionLost ClientID
     | ReceivedMessage 
         (Maybe ClientID)    -- Just: message from a client, Nothing: message from a command
-        Transition       -- message that was sent
+        NetTransition       -- message that was sent
     | KillMessageReceived
 
 data OutgoingClientThreadMessage

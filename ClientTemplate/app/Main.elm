@@ -154,7 +154,7 @@ type Msg
     | WSProcess Value
     | NewUrlRequest B.UrlRequest
     | NewUrlChange Url.Url
-    | OutgoingTrans Static.Types.Transition
+    | OutgoingTrans Static.Types.NetTransition
     | IncomingMsg Static.Types.NetIncomingMessage
 
 
