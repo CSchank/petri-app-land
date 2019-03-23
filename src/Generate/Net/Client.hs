@@ -18,29 +18,29 @@ import Generate.Wrappers
 import Generate.Plugins
 import Generate.Standalone
 
-trans2constr :: NetTransition -> Constructor
+trans2constr :: Transition -> Constructor
 trans2constr trans = 
     case trans of
-        NetTransition tt constr _ _ -> constr
+        Transition tt constr _ _ -> constr
         ClientTransition constr _ _ -> constr
         CmdTransition constr _ _    -> constr
 
 
-place2edts :: Place -> [ElmDocType]
+place2edts :: Place -> [DocTypeT]
 place2edts (Place _ _ _ edts _ _) = edts
     
 
 transName from msgN = T.concat [T.pack msgN,"from",from]
 
-netTrans2MConstr :: NetTransition -> Maybe Constructor
+netTrans2MConstr :: Transition -> Maybe Constructor
 netTrans2MConstr trans = 
     case trans of
-        NetTransition tt constr _ _ -> if tt == OriginClientOnly || tt == OriginEitherPossible then Just constr else Nothing
+        Transition tt constr _ _ -> if tt == OriginClientOnly || tt == OriginEitherPossible then Just constr else Nothing
         CmdTransition constr _ _-> Just constr
         ClientTransition {} -> Nothing
 
 
-generate :: M.Map String ElmCustom -> FilePath -> Net -> IO ()
+generate :: M.Map String CustomT -> FilePath -> Net -> IO ()
 generate extraTypes fp net =
     case net of 
         (Net name startingPlace places transitions plugins) ->
@@ -56,7 +56,7 @@ generate extraTypes fp net =
                     ]
                 placeNames = map (\(Place name _ _ _ _ _) -> name) places
                 -- the functions that the user changes
-                generateNetInit :: M.Map String ElmCustom -> Place -> T.Text
+                generateNetInit :: M.Map String CustomT -> Place -> T.Text
                 generateNetInit extraTypes (Place name _ _ clientPlaceState mSubnet (mCmd,_)) = 
                     let
                         fnName = T.concat ["init",name]
@@ -92,11 +92,11 @@ generate extraTypes fp net =
                         ["      Internal InternalTransition |"] else []) ++
                     [ "    External OutgoingTransition"
                     ]
-                transFromPlace :: T.Text -> [(Bool,NetTransition)]
+                transFromPlace :: T.Text -> [(Bool,Transition)]
                 transFromPlace place = 
                         mapMaybe (\tr ->
                                 case tr of
-                                    NetTransition tt _ lstTrans _->
+                                    Transition tt _ lstTrans _->
                                         if tt /= OriginServerOnly && any (\(from,_) -> from == place) lstTrans then Just (False,tr) else Nothing
                                     ClientTransition _ pl _ -> if pl == place then Just (True,tr) else Nothing
                                     CmdTransition _ pl _ -> if pl == place then Just (False,tr) else Nothing
@@ -174,7 +174,7 @@ generate extraTypes fp net =
                     ]
                 incomingMsgs :: [(String,Constructor)]
                 incomingMsgs = concat $ map (\tr -> case tr of 
-                                                        NetTransition _ (n,_) lstTrans _ -> 
+                                                        Transition _ (n,_) lstTrans _ -> 
                                                             mapMaybe (\(from,mTo) -> case mTo of 
                                                                                         Just (to,msg) -> Just (n,msg)
                                                                                         Nothing -> Nothing)
@@ -183,15 +183,15 @@ generate extraTypes fp net =
                                                         CmdTransition constr@(n, _) _ _ -> [(n,constr)] 
                                                         ) transitions
                 incomingCM = map (\(_,(msgN,edts)) -> (msgN,edts)) incomingMsgs
-                incomingMsg = ElmCustom "IncomingMessage" $ map (\(n,t) -> ("M"++n,t)) incomingCM
+                incomingMsg = CustomT "IncomingMessage" $ map (\(n,t) -> ("M"++n,t)) incomingCM
 
                 transConstrs :: [Constructor]
                 transConstrs = map trans2constr transitions
 
                 outgoingFromClient localExcluded t = 
                     case t of 
-                        NetTransition OriginClientOnly _ _ _ -> True
-                        NetTransition OriginEitherPossible _ _ _ -> True
+                        Transition OriginClientOnly _ _ _ -> True
+                        Transition OriginEitherPossible _ _ _ -> True
                         ClientTransition {} -> not localExcluded
                         CmdTransition _ _ _ -> True
                         _ -> False
@@ -216,13 +216,13 @@ generate extraTypes fp net =
                     let
                         placeModel = 
                             generateType Elm False [DOrd,DEq,DShow] $ 
-                                ElmCustom (T.unpack netName) $ map (\(Place n _ _ _ _ _) -> (T.unpack n,[edt (ElmType $ T.unpack n) "" ""])) places
+                                CustomT (T.unpack netName) $ map (\(Place n _ _ _ _ _) -> (T.unpack n,[edt (TypeT $ T.unpack n) "" ""])) places
                         placeTypes = T.unlines $ map generatePlaceType places
                         generatePlaceType :: Place -> T.Text
                         generatePlaceType (Place name _ _ clientPlaceState _ _) =
                             T.unlines
                                 [
-                                    generateType Elm True [DOrd,DEq,DShow,DTypeable] $ ElmCustom (T.unpack name) [(T.unpack name, clientPlaceState)],""
+                                    generateType Elm True [DOrd,DEq,DShow,DTypeable] $ CustomT (T.unpack name) [(T.unpack name, clientPlaceState)],""
                                 ]
                         clientMsgType :: T.Text
                         clientMsgType =
@@ -237,7 +237,7 @@ generate extraTypes fp net =
                                 map (\(pl,etd) -> ec pl [(pl,etd)]) (map trans2constr (outgoingClientTransitions False))
 
 
-                        --allConnections = concat $ map (\(_, NetTransition (transName,transEt) connections mCmd) -> ((transName,transEt),connections)) transitions
+                        --allConnections = concat $ map (\(_, Transition (transName,transEt) connections mCmd) -> ((transName,transEt),connections)) transitions
 
                         internalTransitions = ec "InternalTransition" $ map (\(n,t) -> ("T"++n,t)) $ map trans2constr internalClientTransitions
                         outgoingTransitions = ec "OutgoingTransition" $ map (\(n,t) -> ("T"++n,t)) $ map trans2constr (outgoingClientTransitions True)
@@ -247,7 +247,7 @@ generate extraTypes fp net =
                                 "-- place states"
                             ,   placeTypes
                             ,   "-- union place type"
-                            ,   generateType Elm False [] $ ec "NetState" $ map (\placeName -> constructor ("S"++T.unpack placeName) [edt (ElmType $ T.unpack placeName) "" ""]) placeNames
+                            ,   generateType Elm False [] $ ec "NetState" $ map (\placeName -> constructor ("S"++T.unpack placeName) [edt (TypeT $ T.unpack placeName) "" ""]) placeNames
                             ,   "-- internal transition types"
                             ,   generateType Elm False [] internalTransitions
                             ,   "-- outgoing transition types"
@@ -269,8 +269,8 @@ generate extraTypes fp net =
                 update :: T.Text
                 update =
                     let
-                        trUpFn :: NetTransition -> T.Text
-                        trUpFn (NetTransition _ (transName,_) connections _) =
+                        trUpFn :: Transition -> T.Text
+                        trUpFn (Transition _ (transName,_) connections _) =
                             let
                                 conUpFn (from,mTo) = 
                                     case mTo of
@@ -316,11 +316,11 @@ generate extraTypes fp net =
                     ,   ""
                     ,   T.unlines $ map trUpFn transitions
                     ]
-                {-fromsTos :: (HybridTransition, NetTransition) -> [(T.Text,T.Text)]
-                fromsTos (_, NetTransition (transName,_) connections mCmd) =
+                {-fromsTos :: (HybridTransition, Transition) -> [(T.Text,T.Text)]
+                fromsTos (_, Transition (transName,_) connections mCmd) =
                     fnub $ map (\(from,(to,_)) -> (from,to)) connections-}
-                fromsTos :: NetTransition -> ([T.Text],[T.Text])
-                fromsTos (NetTransition _ (transName,_) connections mCmd) =
+                fromsTos :: Transition -> ([T.Text],[T.Text])
+                fromsTos (Transition _ (transName,_) connections mCmd) =
                     (fnub $ map (\(from,_) -> from) connections,fnub $ mapMaybe (\(from,mTo) -> if isJust mTo then fmap fst mTo else Just from) connections)
                 fromsTos (ClientTransition _ place _) =
                     ([place],[place])
@@ -329,8 +329,8 @@ generate extraTypes fp net =
                 hiddenUpdate :: T.Text
                 hiddenUpdate = 
                     let
-                        updateCase :: NetTransition -> T.Text
-                        updateCase (NetTransition _ (transName,_) connections _) =
+                        updateCase :: Transition -> T.Text
+                        updateCase (Transition _ (transName,_) connections _) =
                             let
                                 connectionCase (from,mTo) =
                                     case mTo of 
@@ -371,15 +371,15 @@ generate extraTypes fp net =
                                         ]
                         updateCase (CmdTransition {}) =
                             ""
-                        ttCase :: NetTransition -> Maybe T.Text
-                        ttCase (NetTransition tt (name,ets) _ _) = 
+                        ttCase :: Transition -> Maybe T.Text
+                        ttCase (Transition tt (name,ets) _ _) = 
                             if tt == OriginClientOnly || tt == OriginEitherPossible then Just $ T.concat["        ",generatePattern ("T"++name,ets)," -> OutgoingToServer"] else Nothing
                         ttCase (ClientTransition (name,ets) _ _) =
                             Just $ T.concat["        ",generatePattern ("T"++name,ets)," -> LocalOnly"]
                         ttCase (CmdTransition (name,ets) _ _) =
                             Just $ T.concat["        ",generatePattern ("T"++name,ets)," -> OutgoingToServer"]
-                        o2i :: NetTransition -> Maybe T.Text
-                        o2i (NetTransition _ (name,ets) _ _) = 
+                        o2i :: Transition -> Maybe T.Text
+                        o2i (Transition _ (name,ets) _ _) = 
                             Nothing
                         o2i (CmdTransition (name,ets) _ _) = 
                             Nothing
@@ -449,18 +449,18 @@ generate extraTypes fp net =
                     ]
 
                 wOutgoingClientTransitions = map (\(n,t) -> ("T"++n,t)) $ map trans2constr (outgoingClientTransitions True)
-                outgoingTransitions = ElmCustom "OutgoingTransition" wOutgoingClientTransitions
+                outgoingTransitions = CustomT "OutgoingTransition" wOutgoingClientTransitions
                 incomingClientTransitions localOnly = 
                     concat $ mapMaybe (\tr ->
                         case tr of 
-                            NetTransition tt (name,ets) clientTransitions _ -> 
+                            Transition tt (name,ets) clientTransitions _ -> 
                                 Just $ mapMaybe (\(from,mTo) -> fmap snd mTo) clientTransitions 
                             ClientTransition constr _ _ ->
                                 if localOnly then Nothing else Just [constr]
                             CmdTransition constr _ _ ->
                                 Just [constr]) transitions
                 incomingTransitions localOnly = 
-                    ElmCustom "IncomingMessage" $ map (\(n,et) -> ("M"++n,et)) (incomingClientTransitions localOnly)
+                    CustomT "IncomingMessage" $ map (\(n,et) -> ("M"++n,et)) (incomingClientTransitions localOnly)
                 decoder = T.unlines 
                     [
                         T.concat ["module ",name,".Static.Decode exposing(..)"]

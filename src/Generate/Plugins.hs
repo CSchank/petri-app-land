@@ -9,7 +9,7 @@ import Utils
 import qualified Data.Map.Strict as M'
 
 
-generatePlugins :: FilePath -> M'.Map String ElmCustom -> Net -> [Plugin] -> IO ()
+generatePlugins :: FilePath -> M'.Map String CustomT -> Net -> [Plugin] -> IO ()
 generatePlugins fp extraTypes net ps = 
     let
         netName = getNetName net

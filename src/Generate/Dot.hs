@@ -69,8 +69,8 @@ generateNetDot
                             ,   T.concat["  ",transName,"node -> ",from,"node [","sametail=",sameTailName,",","style=dashed]"]
                             ]
 
-                oneTrans :: NetTransition -> T.Text
-                oneTrans (NetTransition _ (transName,_) connections cmd) =
+                oneTrans :: Transition -> T.Text
+                oneTrans (Transition _ (transName,_) connections cmd) =
                     T.unlines $ map (oneConnection $ T.pack transName) connections
                 oneTrans (ClientTransition {}) =
                     T.unlines $ ["Not yet supported."]

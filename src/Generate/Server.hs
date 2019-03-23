@@ -30,7 +30,7 @@ generateServer gsvg rootDir fp
                   ,extraTlst
                   ) =
     let
-        extraT = M.fromList $ map (\(ElmCustom n constrs) -> (n,ElmCustom n constrs)) extraTlst
+        extraT = M.fromList $ map (\(CustomT n constrs) -> (n,CustomT n constrs)) extraTlst
         netNames = map (\(Net name _ _ _ _) -> name) netLst
         init :: T.Text
         init = 
@@ -64,8 +64,8 @@ generateServer gsvg rootDir fp
         types = 
             let
                 netUnion    = ec "NetModel" $ map (\nname -> constructor (T.unpack nname) []) netNames
-                netMsgUnion = ec "NetTransition" $ map (\nname -> constructor (T.unpack nname ++ "Trans") [edt (ElmType $ T.unpack nname ++ ".Static.Types.Transition") "" ""]) netNames
-                netOutgoingMsgUnion = ec "NetOutgoingMessage" $ map (\nname -> constructor (T.unpack nname ++ "OMsg") [edt (ElmType $ T.unpack nname ++ ".Static.Types.ClientMessage") "" ""]) netNames
+                netMsgUnion = ec "Transition" $ map (\nname -> constructor (T.unpack nname ++ "Trans") [edt (TypeT $ T.unpack nname ++ ".Static.Types.Transition") "" ""]) netNames
+                netOutgoingMsgUnion = ec "NetOutgoingMessage" $ map (\nname -> constructor (T.unpack nname ++ "OMsg") [edt (TypeT $ T.unpack nname ++ ".Static.Types.ClientMessage") "" ""]) netNames
             in
             T.unlines 
             [
@@ -95,7 +95,7 @@ generateServer gsvg rootDir fp
             ,   "import qualified Static.Result as Result"
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Decode"]) netNames
             ,   ""
-            ,   "decodeIncomingMessage :: T.Text -> NetModel -> Result T.Text NetTransition"
+            ,   "decodeIncomingMessage :: T.Text -> NetModel -> Result T.Text Transition"
             ,   "decodeIncomingMessage txt clientNet ="
             ,   "    case clientNet of"
             ,   T.concat $ map (\netName -> T.concat["        ",netName," -> Result.map ",netName,"Trans $ fst $ ",netName,".Static.Decode.decodeTransition (Err \"\",T.splitOn \"\\0\" txt)"]) netNames
@@ -129,7 +129,7 @@ generateServer gsvg rootDir fp
             ,   "import qualified Static.Cmd as Cmd"
             ,   "import qualified Plugins.Users.Types as Users"
             ,   ""
-            ,   "update :: TopLevelData -> Maybe ClientID -> NetTransition -> ServerState -> (ServerState, [(ClientID,NetOutgoingMessage)], Maybe (Cmd.Cmd NetTransition))"
+            ,   "update :: TopLevelData -> Maybe ClientID -> Transition -> ServerState -> (ServerState, [(ClientID,NetOutgoingMessage)], Maybe (Cmd.Cmd Transition))"
             ,   "update tld mClientID netTrans state ="
             ,   "    case netTrans of"
             ,   T.unlines $ map updateCase netNames
@@ -190,7 +190,7 @@ generateServer gsvg rootDir fp
             ,   "import Utils.Utils as Utils"
             ,   "import qualified Static.Cmd as Cmd"
             ,   ""
-            ,   "processCmd :: TQueue CentralMessage -> Maybe (Cmd.Cmd NetTransition) -> NetTransition -> ServerState -> IO ()"
+            ,   "processCmd :: TQueue CentralMessage -> Maybe (Cmd.Cmd Transition) -> Transition -> ServerState -> IO ()"
             ,   "processCmd centralMessageQueue mCmd nTrans state ="
             ,   "    case mCmd of"
             ,   "        Just cmd ->"

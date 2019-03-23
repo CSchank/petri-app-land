@@ -77,7 +77,7 @@ main = generate outputDirectory generatorRoot clientServerApp
 ## Unreleased changes
 
 {-# START_FILE src/ClientServerSpec.hs #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-} -- allows us to use T.Text directly
 
 module ClientServerSpec where
 
@@ -85,81 +85,64 @@ import Types
 import TypeHelpers
 
 --directory to output the generated files
-outputDirectory = "MyNewPetriProject"
+outputDirectory = "."
 --where the generator is
 generatorRoot = "../elm-haskell-state-diagram"
-
-clientID = edt (ElmIntRange 0 999999) "clientID" "id assigned when logging in"
-
-exampleCustomType :: ElmCustom
-exampleCustomType = ec -- helper to make custom types
-                "MyNewType" -- name of type (Elm syntax rules)
-                [("MyConstructor",
-                            [edt ElmString "myString" "a nice string"
-                            ,edt (ElmIntRange 0 255) "myInt" "an integer from 0-255"
-                            ]
-                 )
-                ,("MyOtherConstructor",
-                            [edt ElmString "title" "the title of the work of art"
-                            ,edt ElmString "author" "the artist who created it"
-                            ,clientID -- the clientID of the author
-                            ]
-                 )
-                ]
 
 exampleNet :: Net
 exampleNet =
     let
         placeOne =
-            HybridPlace "FirstPlace" 
-                    [edt (ElmList $ edt (ElmType "Notice") "notice" "") "notices" ""] --server state
-                    [clientID]                  --player state
-                    []                          --client state
+            Place "FirstPlace" 
+                    [] --server state (persistent for this place)
+                    [] --player state (client state stored on server)
+                    [] --client state (state stored on client)
                     Nothing
                     (Nothing, Nothing)
                     Nothing
 
         placeTwo =
-            HybridPlace "SecondPlace"
-                    [edt (ElmList $ edt (ElmType "MyNewType") "info" "some random info") 
-                        "listInfo" 
-                        "a list of random info"
-                    ] --server state
-                    [clientID]                  --player state
-                    []                          --client state
+            Place "SecondPlace"
+                    []
+                    []
+                    []
                     Nothing
                     (Nothing, Nothing)
                     Nothing
 
         goToTwo =                 
-            NetTransition
-                (constructor "GoToTwo" [edt (ElmType "MyNewType") "newInfo" "some new random info"])
+            Transition
+                (constructor "GoToTwo" [])
                 [("FirstPlace", Just ("SecondPlace", constructor "WentToSecondPlace" []))
                 ,("SecondPlace", Nothing) --some people will stay
                 ]
                 Nothing
 
         goToOne =                 
-            NetTransition
-                (constructor "GoToOne" [edt (ElmType "MyNewType") "newInfo" "some new random info"])
+            Transition
+                (constructor "GoToOne" [])
                 [("SecondPlace", Just ("FirstPlace", constructor "WentToSecondPlace" []))
                 ,("SecondPlace", Nothing)
                 ]
                 Nothing
     in
-        HybridNet
-            "MyExampleNet"
-            "PlaceOne"
-            [placeOne, placeTwo]
-            [(ClientOnlyTransition,goToTwo),(ClientOnlyTransition,goToOne)]
-            []
+        Net
+            "MyExampleNet"  -- name of the petri net (by convention, suffixed by "Net")
+            "PlaceOne"      -- starting place when a user logs in
+            [placeOne
+            ,placeTwo
+            ]  -- list of all defined places
+            [goToTwo
+            ,goToOne
+            ]   -- list of all defined transitions
+            []  -- list of installed plugins
 
-
+-- the entire client-server app
 clientServerApp :: ClientServerApp
 clientServerApp =
     ( "MyExampleNet"            --starting net for a client
-    , [exampleNet]             --all the nets in this client/server app
-    , [exampleCustomType]              --extra client types used in states or messages
+    , [exampleNet]              --all the nets in this client/server app (current only one is supported at a time)
+    , [exampleCustomType]       --extra client types used in states or messages
     )
 
 {-# START_FILE LICENSE #-}

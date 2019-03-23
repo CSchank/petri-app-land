@@ -13,8 +13,8 @@ generateAllOf h n =
         (.::.) = if h then " :: " else " : "
         nTxt = T.pack $ show n
         name = T.concat["AllOf",nTxt]
-        constr = (T.unpack name,[(ElmWildcardType (i2A n),(i2A n),"") | n <- [0..n-1]])
-        typ = generateType Haskell False [] $ ElmCustom (T.unpack name) [constr]
+        constr = (T.unpack name,[(WildcardTypeT (i2A n),(i2A n),"") | n <- [0..n-1]])
+        typ = generateType Haskell False [] $ CustomT (T.unpack name) [constr]
         decl = T.concat["unwrap ",T.intercalate " " $ map (\n -> T.concat["f",T.pack $ show n]) [0..n-1], " wl ",generatePattern constr," ="]
         allOf = T.concat["AllOf",nTxt," ",T.intercalate " " $ map (T.pack . i2A) [0..n-1]]
         oneCase n = 

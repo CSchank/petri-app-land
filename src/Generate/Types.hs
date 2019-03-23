@@ -2,7 +2,7 @@
 
 module Generate.Types where
 
-import Types                 (Language(..),ElmDocType, ElmType(..), ElmCustom(..), Constructor)
+import Types                 (Language(..),DocTypeT, TypeT(..), CustomT(..), Constructor)
 import qualified Data.Map       as M
 import qualified Data.Text      as T
 import qualified Data.Set       as S
@@ -20,8 +20,8 @@ deriv2Txt DTypeable = "Typeable"
 deriv2Txt (DCustom d) = d
 derivTxt deriv = T.concat ["(",T.intercalate "," $ map deriv2Txt deriv,")"]
 
-generateType :: Language -> Bool -> [Deriving] -> ElmCustom -> T.Text
-generateType l commentsEnabled deriv (ElmCustom typeName constrs) =
+generateType :: Language -> Bool -> [Deriving] -> CustomT -> T.Text
+generateType l commentsEnabled deriv (CustomT typeName constrs) =
     let
         typ   = if l == Haskell then "data" else "type"
 
@@ -29,7 +29,7 @@ generateType l commentsEnabled deriv (ElmCustom typeName constrs) =
         typeParams = concatMap (\(_,constr) -> 
                         mapMaybe (\ (et,_,_) ->
                             case et of 
-                                ElmWildcardType n -> Just $ T.pack n
+                                WildcardTypeT n -> Just $ T.pack n
                                 _ -> Nothing                
                             ) constr
                         ) constrs
@@ -41,7 +41,7 @@ generateType l commentsEnabled deriv (ElmCustom typeName constrs) =
                  ]
         else ""
 
-generateTypeAlias :: Language -> Bool -> [Deriving] -> String -> ElmType -> T.Text
+generateTypeAlias :: Language -> Bool -> [Deriving] -> String -> TypeT -> T.Text
 generateTypeAlias l commentsEnabled deriv typeName et =
     let
         typ = if l == Haskell then "type" else "type alias"
@@ -50,7 +50,7 @@ generateTypeAlias l commentsEnabled deriv typeName et =
                  , if length deriv > 0 && l == Haskell then T.concat ["   deriving",derivTxt deriv] else ""
                  ]
 
-generateNewtype :: Bool -> [Deriving] -> String -> ElmType -> T.Text
+generateNewtype :: Bool -> [Deriving] -> String -> TypeT -> T.Text
 generateNewtype commentsEnabled deriv typeName et =
     let
         typ = "newtype"
@@ -63,70 +63,70 @@ generateConstructor :: Language -> Bool -> Constructor -> T.Text
 generateConstructor l commentsEnabled (constrName,elmDocTypes) =
     T.intercalate " " $ T.pack constrName : map (edt2Txt l commentsEnabled) elmDocTypes
 
-edt2Txt :: Language -> Bool -> (ElmType, String, String) -> T.Text
+edt2Txt :: Language -> Bool -> (TypeT, String, String) -> T.Text
 edt2Txt l commentsEnabled (et, n, d) = T.concat [et2Txt l commentsEnabled et, if commentsEnabled then T.concat [" {-", T.pack n, "-}"] else ""]
 
-edt2Pat :: (ElmType, String, String) -> T.Text
+edt2Pat :: (TypeT, String, String) -> T.Text
 edt2Pat (et, n, d) = T.pack n
 
-et2Txt :: Language -> Bool -> ElmType -> T.Text
-et2Txt l c (ElmIntRange _ _)            = "Int"
-et2Txt l c (ElmFloatRange _ _ _)        = if l == Haskell then "Double" else "Float"
-et2Txt l c ElmString                    = "String"
-et2Txt l c (ElmSizedString _)           = "String"
-et2Txt l c (ElmPair edt0 edt1)          = T.concat ["(",edt2Txt l c edt0,", ",edt2Txt l c edt1,")"]
-et2Txt l c (ElmTriple edt0 edt1 edt2)   = T.concat ["(",edt2Txt l c edt0,", ",edt2Txt l c edt1,", ",edt2Txt l c edt2,")"]
-et2Txt l c (ElmList edt)                = T.concat ["(List ",edt2Txt l c edt,")"]
-et2Txt l c (ElmDict edt0 edt1)          = T.concat ["(Dict ",edt2Txt l c edt0," ",edt2Txt l c edt1,")"]
-et2Txt l c (ElmType name)               = T.pack name
-et2Txt l c (ElmExisting name mod)       = T.concat[T.pack mod,".",T.pack name]
-et2Txt l c (ElmExistingWParams name params mod) = T.concat["(",T.pack mod,".",T.pack name," ",T.intercalate " " $ map (\(typ,imp) -> T.pack $ imp ++ "." ++ typ) params,")"]
-et2Txt l c (ElmWildcardType s)          = T.pack s
-et2Txt l c (ElmMaybe edt)               = T.concat ["(Maybe ",edt2Txt l c edt,")"]
-et2Txt l c ElmBool                      = T.concat ["Bool"]
-et2Txt l c (ElmResult edt0 edt1)        = T.concat ["(Result ",edt2Txt l c edt0," ",edt2Txt l c edt1,")"]
-et2Txt l c ElmEmpty                     = "()"
+et2Txt :: Language -> Bool -> TypeT -> T.Text
+et2Txt l c (IntRangeT _ _)            = "Int"
+et2Txt l c (FloatRangeT _ _ _)        = if l == Haskell then "Double" else "Float"
+et2Txt l c StringT                    = "String"
+et2Txt l c (SizedStringT _)           = "String"
+et2Txt l c (PairT edt0 edt1)          = T.concat ["(",edt2Txt l c edt0,", ",edt2Txt l c edt1,")"]
+et2Txt l c (TripleT edt0 edt1 edt2)   = T.concat ["(",edt2Txt l c edt0,", ",edt2Txt l c edt1,", ",edt2Txt l c edt2,")"]
+et2Txt l c (ListT edt)                = T.concat ["(List ",edt2Txt l c edt,")"]
+et2Txt l c (DictT edt0 edt1)          = T.concat ["(Dict ",edt2Txt l c edt0," ",edt2Txt l c edt1,")"]
+et2Txt l c (TypeT name)               = T.pack name
+et2Txt l c (ExistingT name mod)       = T.concat[T.pack mod,".",T.pack name]
+et2Txt l c (ExistingWParamsT name params mod) = T.concat["(",T.pack mod,".",T.pack name," ",T.intercalate " " $ map (\(typ,imp) -> T.pack $ imp ++ "." ++ typ) params,")"]
+et2Txt l c (WildcardTypeT s)          = T.pack s
+et2Txt l c (MaybeT edt)               = T.concat ["(Maybe ",edt2Txt l c edt,")"]
+et2Txt l c BoolT                      = T.concat ["Bool"]
+et2Txt l c (ResultT edt0 edt1)        = T.concat ["(Result ",edt2Txt l c edt0," ",edt2Txt l c edt1,")"]
+et2Txt l c EmptyT                     = "()"
 
      
-ec2Def :: M.Map String ElmCustom -> ElmCustom -> T.Text
-ec2Def ecMap (ElmCustom name (fstConstr:_)) =
+ec2Def :: M.Map String CustomT -> CustomT -> T.Text
+ec2Def ecMap (CustomT name (fstConstr:_)) =
     T.concat ["(",constr2Def ecMap fstConstr,")"]
-ec2Def ecMap (ElmCustom _ _) = 
+ec2Def ecMap (CustomT _ _) = 
     error "Custom data type has no constructors!"
 
-constr2Def :: M.Map String ElmCustom -> Constructor -> T.Text
+constr2Def :: M.Map String CustomT -> Constructor -> T.Text
 constr2Def ecMap (name,edts) =
     T.concat[T.pack name," ",T.intercalate " " $ map (\edt -> etd2Def ecMap edt) edts]
 
-etd2Def :: M.Map String ElmCustom -> ElmDocType -> T.Text
-etd2Def ecMap (ElmPair edt0 edt1, _, _)       = T.concat ["(",etd2Def ecMap edt0,", ",etd2Def ecMap edt1,")"]
-etd2Def ecMap (ElmTriple edt0 edt1 edt2,_,_)  = T.concat ["(",etd2Def ecMap edt0,", ",etd2Def ecMap edt1,", ",etd2Def ecMap edt2,")"]
-etd2Def ecMap (ElmResult edt _,_,_)           = T.concat ["(Err ",etd2Def ecMap edt,")"]
-etd2Def ecMap (ElmType name,_,_)              = 
+etd2Def :: M.Map String CustomT -> DocTypeT -> T.Text
+etd2Def ecMap (PairT edt0 edt1, _, _)       = T.concat ["(",etd2Def ecMap edt0,", ",etd2Def ecMap edt1,")"]
+etd2Def ecMap (TripleT edt0 edt1 edt2,_,_)  = T.concat ["(",etd2Def ecMap edt0,", ",etd2Def ecMap edt1,", ",etd2Def ecMap edt2,")"]
+etd2Def ecMap (ResultT edt _,_,_)           = T.concat ["(Err ",etd2Def ecMap edt,")"]
+etd2Def ecMap (TypeT name,_,_)              = 
     case M.lookup name ecMap of
         Just ec -> ec2Def ecMap ec
         Nothing -> error $ "Custom data type " ++ name ++ " does not exist in map!"
-etd2Def _ (ElmExisting name _, _, _)          = T.concat ["(error \"Please fill out default type for type",T.pack name,"\")"]
-etd2Def _ (ElmWildcardType s,_,_)         = error "Unknown default type for type variable" --T.concat["error \"Error: default type unknown for type variable\""]
+etd2Def _ (ExistingT name _, _, _)          = T.concat ["(error \"Please fill out default type for type",T.pack name,"\")"]
+etd2Def _ (WildcardTypeT s,_,_)         = error "Unknown default type for type variable" --T.concat["error \"Error: default type unknown for type variable\""]
 etd2Def _ (et,_,_)                        = et2Def et
 
-et2Def :: ElmType -> T.Text
-et2Def (ElmIntRange lo _)               = if lo < 0 then T.concat["(",T.pack $ show lo,")"] else T.pack $ show lo
-et2Def (ElmFloatRange lo _ _)           = if lo < 0 then T.concat["(",T.pack $ show lo,")"] else T.pack $ show lo
-et2Def ElmString                        = "\"\""
-et2Def (ElmSizedString _)               = "\"\""
-et2Def (ElmPair (etn0,_,_) (etn1,_,_))  = T.concat ["(",et2Def etn0,", ",et2Def etn1,")"]
-et2Def (ElmTriple (etn0,_,_) (etn1,_,_) (etn2,_,_)) = T.concat ["(",et2Def etn0,", ",et2Def etn1,", ",et2Def etn2,")"]
-et2Def (ElmList _)                      = "[]"
-et2Def (ElmDict _ _)                    = "Dict.empty"
-et2Def (ElmType name)                   = T.concat["default", T.pack name]
-et2Def (ElmExisting name _)             = T.concat ["(error \"Please fill out default type for type",T.pack name,"\")"]
-et2Def (ElmExistingWParams name _ _)    = T.concat ["(error \"Please fill out default type for type",T.pack name,"\")"]
-et2Def (ElmWildcardType s)              = T.concat["default", T.pack s]
-et2Def (ElmMaybe _)                     = "Nothing"
-et2Def ElmBool                          = "False"
-et2Def (ElmResult (et,_,_) _)           = T.concat["Err ",et2Def et]
-et2Def ElmEmpty                         = "()"
+et2Def :: TypeT -> T.Text
+et2Def (IntRangeT lo _)               = if lo < 0 then T.concat["(",T.pack $ show lo,")"] else T.pack $ show lo
+et2Def (FloatRangeT lo _ _)           = if lo < 0 then T.concat["(",T.pack $ show lo,")"] else T.pack $ show lo
+et2Def StringT                        = "\"\""
+et2Def (SizedStringT _)               = "\"\""
+et2Def (PairT (etn0,_,_) (etn1,_,_))  = T.concat ["(",et2Def etn0,", ",et2Def etn1,")"]
+et2Def (TripleT (etn0,_,_) (etn1,_,_) (etn2,_,_)) = T.concat ["(",et2Def etn0,", ",et2Def etn1,", ",et2Def etn2,")"]
+et2Def (ListT _)                      = "[]"
+et2Def (DictT _ _)                    = "Dict.empty"
+et2Def (TypeT name)                   = T.concat["default", T.pack name]
+et2Def (ExistingT name _)             = T.concat ["(error \"Please fill out default type for type",T.pack name,"\")"]
+et2Def (ExistingWParamsT name _ _)    = T.concat ["(error \"Please fill out default type for type",T.pack name,"\")"]
+et2Def (WildcardTypeT s)              = T.concat["default", T.pack s]
+et2Def (MaybeT _)                     = "Nothing"
+et2Def BoolT                          = "False"
+et2Def (ResultT (et,_,_) _)           = T.concat["Err ",et2Def et]
+et2Def EmptyT                         = "()"
 
 generatePattern :: Constructor -> T.Text
 generatePattern (constrName, args) =

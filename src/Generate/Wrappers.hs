@@ -23,7 +23,7 @@ createUnwrap l outputType inputPrefix (n,args) =
             ,   ""
             ]
 
-createWrap :: M.Map String ElmCustom -> Bool -> Language -> String -> String -> Constructor -> T.Text
+createWrap :: M.Map String CustomT -> Bool -> Language -> String -> String -> Constructor -> T.Text
 createWrap ecMap def l inputType outputPrefix (n,args) =
     let
         (.::.) = if l == Haskell then " :: " else " : "
@@ -44,8 +44,8 @@ createWrap ecMap def l inputType outputPrefix (n,args) =
 grouped = M.toList . M.fromListWith (\ a b -> a ++ b) . map (\(a,b) -> (a,[b]))
 
 
-createTransitionUnwrap :: Bool -> Language -> NetTransition -> T.Text
-createTransitionUnwrap def l (NetTransition transType (transName,_) connections mCmd) =
+createTransitionUnwrap :: Bool -> Language -> Transition -> T.Text
+createTransitionUnwrap def l (Transition transType (transName,_) connections mCmd) =
     let
         (.::.) = if l == Haskell then " :: " else " : "
         transTxt = T.pack transName
@@ -61,7 +61,7 @@ createTransitionUnwrap def l (NetTransition transType (transName,_) connections 
                     case mTo of 
                         Just (to,(msgName,_)) ->
                             let 
-                                (n,args) = constructor (T.unpack $ T.concat[transTxt,"_",from,"to",to]) [edt (ElmType "") "player" "", edt (ElmType msgName) "msg" ""]
+                                (n,args) = constructor (T.unpack $ T.concat[transTxt,"_",from,"to",to]) [edt (TypeT "") "player" "", edt (TypeT msgName) "msg" ""]
                             in
                                 T.concat
                                     [
@@ -69,7 +69,7 @@ createTransitionUnwrap def l (NetTransition transType (transName,_) connections 
                                     ]
                         Nothing -> 
                             let 
-                                (n,args) = constructor (T.unpack $ T.concat[transTxt,"_Stay_",from]) [edt (ElmType "") "player" ""]
+                                (n,args) = constructor (T.unpack $ T.concat[transTxt,"_Stay_",from]) [edt (TypeT "") "player" ""]
                             in
                                 T.concat
                                     [

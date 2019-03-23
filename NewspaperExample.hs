@@ -8,42 +8,42 @@ import TypeHelpers
 
 outputDirectory = "NewspaperExample"
 
-articleType :: ElmCustom
+articleType :: CustomT
 articleType = ec -- helper to make custom types
                 "Article" -- name of type (Elm syntax rules)
-                [("Article",[edt ElmString "title"{-valid function name, used in helper functions-} "title of the article"
-                            ,edt ElmString "author" "author"
-                            ,edt (ElmIntRange 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
-                            ,edt ElmString "body" "article body"
+                [("Article",[edt StringT "title"{-valid function name, used in helper functions-} "title of the article"
+                            ,edt StringT "author" "author"
+                            ,edt (IntRangeT 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
+                            ,edt StringT "body" "article body"
                             ]
                  )
-                ,("Letter",[edt ElmString "title" "title of the article being referred to"
-                            ,edt ElmString "author" "author"
-                            ,edt (ElmIntRange 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
-                            ,edt ElmString "body" "article body"
+                ,("Letter",[edt StringT "title" "title of the article being referred to"
+                            ,edt StringT "author" "author"
+                            ,edt (IntRangeT 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
+                            ,edt StringT "body" "article body"
                             ]
                  )
                 ]
-draftType :: ElmCustom
+draftType :: CustomT
 draftType = ec -- helper to make custom types
                 "Draft" -- name of type (Elm syntax rules)
-                [("DraftArticle",  [edt ElmString "title"{-valid function name, used in helper functions-} "title of the article"
-                            ,edt ElmString "author" "author"
-                            ,edt (ElmIntRange 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
-                            ,edt ElmString "body" "article body"
-                            ,edt (ElmList $ edt (ElmPair (edt (ElmIntRange 0 99999) "uid" "userid")
-                                                         (edt ElmString "comment" "comment")
+                [("DraftArticle",  [edt StringT "title"{-valid function name, used in helper functions-} "title of the article"
+                            ,edt StringT "author" "author"
+                            ,edt (IntRangeT 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
+                            ,edt StringT "body" "article body"
+                            ,edt (ListT $ edt (PairT (edt (IntRangeT 0 99999) "uid" "userid")
+                                                         (edt StringT "comment" "comment")
                                                 )
                                                 "uidComment" "(uid,comment)"
                                   ) "comments" "[(uid,comment)]"
                             ]
                  )
-                ,("DraftLetter",  [edt ElmString "title"{-valid function name, used in helper functions-} "title of the article"
-                            ,edt ElmString "author" "author"
-                            ,edt (ElmIntRange 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
-                            ,edt ElmString "body" "article body"
-                            ,edt (ElmList $ edt (ElmPair (edt (ElmIntRange 0 99999) "uid" "userid")
-                                                         (edt ElmString "comment" "comment")
+                ,("DraftLetter",  [edt StringT "title"{-valid function name, used in helper functions-} "title of the article"
+                            ,edt StringT "author" "author"
+                            ,edt (IntRangeT 0 999999999) "timestamp" "seconds since 1970" -- warning Y2.286K bug
+                            ,edt StringT "body" "article body"
+                            ,edt (ListT $ edt (PairT (edt (IntRangeT 0 99999) "uid" "userid")
+                                                         (edt StringT "comment" "comment")
                                                 )
                                                 "uidComment" "(uid,comment)"
                                   ) "comments" "[(uid,comment)]"
@@ -64,84 +64,84 @@ newspaperNet =
 
         readingRoom = 
             HybridPlace "ReadingRoom" 
-                [edt (ElmList $ edt (ElmType "Article") "article" "") "articles" ""] --server state
-                [edt ElmString "nowReading" "title of current article being read"] --player state
-                [edt (ElmList $ edt (ElmType "Article") "article" "") "articles" "" -- partial list of articles
-                ,edt (ElmList $ edt ElmString "title" "") "titles" "" -- all article titles
-                ,edt (ElmMaybe (edt ElmString "viewing" "title of article begin viewed")) "maybeViewing" "article being viewed or Nothing for index"] --client state
+                [edt (ListT $ edt (TypeT "Article") "article" "") "articles" ""] --server state
+                [edt StringT "nowReading" "title of current article being read"] --player state
+                [edt (ListT $ edt (TypeT "Article") "article" "") "articles" "" -- partial list of articles
+                ,edt (ListT $ edt StringT "title" "") "titles" "" -- all article titles
+                ,edt (MaybeT (edt StringT "viewing" "title of article begin viewed")) "maybeViewing" "article being viewed or Nothing for index"] --client state
                 Nothing
                 (Nothing, Nothing)
                 Nothing
 
         editingRoom = 
             HybridPlace "EditingRoom" 
-                [edt (ElmList $ edt (ElmType "Draft") "drafts" "") "articles" ""] --server state
-                [edt (ElmMaybe (edt ElmString "nowEditing" "title of current article being read")) "maybeEditing" "article being edited or Nothing for index"] --player state
-                [edt (ElmMaybe (edt (ElmType "Draft") "article" "article currently being edited")) "maybeEditing" "article being edited or Nothing for index"
-                ,edt (ElmList $ edt ElmString "title" "") "titles" "" -- all article titles
+                [edt (ListT $ edt (TypeT "Draft") "drafts" "") "articles" ""] --server state
+                [edt (MaybeT (edt StringT "nowEditing" "title of current article being read")) "maybeEditing" "article being edited or Nothing for index"] --player state
+                [edt (MaybeT (edt (TypeT "Draft") "article" "article currently being edited")) "maybeEditing" "article being edited or Nothing for index"
+                ,edt (ListT $ edt StringT "title" "") "titles" "" -- all article titles
                 ] --client state
                 Nothing
                 (Nothing, Nothing)
                 Nothing
         enterRR =
-            NetTransition
+            Transition
                 (constructor "EnterReadingRoom" [])
-                [("MainStreet", Just ("ReadingRoom", constructor "DidEnterReadingRoom" [edt (ElmList $ edt (ElmType "Article") "article" "") "articles" ""]))]
+                [("MainStreet", Just ("ReadingRoom", constructor "DidEnterReadingRoom" [edt (ListT $ edt (TypeT "Article") "article" "") "articles" ""]))]
                 Nothing
         enterER =
-            NetTransition
+            Transition
                 (constructor "EnterEditingRoom" [])
-                [("MainStreet", Just ("ReadingRoom", constructor "DidEnterEditingRoom" [edt (ElmList $ edt ElmString "title" "") "articles" ""]))]
+                [("MainStreet", Just ("ReadingRoom", constructor "DidEnterEditingRoom" [edt (ListT $ edt StringT "title" "") "articles" ""]))]
                 Nothing
         startEditing =
-            NetTransition
-                (constructor "StartEditing" [edt ElmString "title" "article to start editing"])
-                [("EditingRoom", Just ("EditingRoom", constructor "DidStartEditing" [edt (ElmType "Draft") "draft" "article to edit"]))]
+            Transition
+                (constructor "StartEditing" [edt StringT "title" "article to start editing"])
+                [("EditingRoom", Just ("EditingRoom", constructor "DidStartEditing" [edt (TypeT "Draft") "draft" "article to edit"]))]
                 Nothing
         leaveRR =
-            NetTransition
+            Transition
                 (constructor "LeaveReadingRoom" [])
                 [("ReadingRoom", Just ("MainStreet", constructor "DidLeaveReadingRoom" []))]
                 Nothing
         leaveER =
-            NetTransition
+            Transition
                 (constructor "LeaveEditingRoom" [])
                 [("EditingRoom", Just ("MainStreet", constructor "DidLeaveEditingRoom" []))]
                 Nothing
         publishArticle =
-            NetTransition
+            Transition
                 (constructor "PublishArticle" [])
-                [("EditingRoom", Just ("ReadingRoom", constructor "DidPublish" [edt (ElmList $ edt (ElmType "Article") "article" "") "articles" ""]))
+                [("EditingRoom", Just ("ReadingRoom", constructor "DidPublish" [edt (ListT $ edt (TypeT "Article") "article" "") "articles" ""]))
                 ,("EditingRoom", Nothing)] -- if you are not editing, then go back to the same place
                 Nothing
         saveDraft =
-            NetTransition
-                (constructor "SaveDraft" [edt (ElmType "Draft") "draft" "edited draft"])
-                [("EditingRoom", Just ("EditingRoom", constructor "DidSaveDraft" [edt (ElmList $ edt ElmString "article" "article title") "articles" "titles of all drafts"]))
+            Transition
+                (constructor "SaveDraft" [edt (TypeT "Draft") "draft" "edited draft"])
+                [("EditingRoom", Just ("EditingRoom", constructor "DidSaveDraft" [edt (ListT $ edt StringT "article" "article title") "articles" "titles of all drafts"]))
                 ] -- if you are not editing, then go back to the same place
                 Nothing
         enterTitle =
-            NetTransition
-                (constructor "EnterTitle" [edt ElmString "title" "edited title"])
-                [("EditingRoom", Just ("EditingRoom", constructor "DidEnterTitle" [edt (ElmList $ edt ElmString "article" "article title") "articles" "titles of all drafts"]))
+            Transition
+                (constructor "EnterTitle" [edt StringT "title" "edited title"])
+                [("EditingRoom", Just ("EditingRoom", constructor "DidEnterTitle" [edt (ListT $ edt StringT "article" "article title") "articles" "titles of all drafts"]))
                 ] -- if you are not editing, then go back to the same place
                 Nothing
         enterText =
-            NetTransition
-                (constructor "EnterText" [edt ElmString "text" "edited text"])
-                [("EditingRoom", Just ("EditingRoom", constructor "DidEnterText" [edt (ElmList $ edt ElmString "article" "article title") "articles" "titles of all drafts"]))
+            Transition
+                (constructor "EnterText" [edt StringT "text" "edited text"])
+                [("EditingRoom", Just ("EditingRoom", constructor "DidEnterText" [edt (ListT $ edt StringT "article" "article title") "articles" "titles of all drafts"]))
                 ] -- if you are not editing, then go back to the same place
                 Nothing
         enterComment =
-            NetTransition
-                (constructor "EnterComment" [edt ElmString "comment" "edited comment"])
-                [("EditingRoom", Just ("EditingRoom", constructor "DidEnterComment" [edt ElmString "comment" "edited comment"]))
+            Transition
+                (constructor "EnterComment" [edt StringT "comment" "edited comment"])
+                [("EditingRoom", Just ("EditingRoom", constructor "DidEnterComment" [edt StringT "comment" "edited comment"]))
                 ] -- if you are not editing, then go back to the same place
                 Nothing
         postComment =
-            NetTransition
-                (constructor "PostComment" [edt ElmString "comment" "edited comment"])
-                [("EditingRoom", Just ("EditingRoom", constructor "DidPostComment" [edt ElmString "comment" "edited comment"]))
+            Transition
+                (constructor "PostComment" [edt StringT "comment" "edited comment"])
+                [("EditingRoom", Just ("EditingRoom", constructor "DidPostComment" [edt StringT "comment" "edited comment"]))
                 ] -- if you are not editing, then go back to the same place
                 Nothing
     in

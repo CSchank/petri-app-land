@@ -13,8 +13,8 @@ generateOneOf h n =
         (.::.) = if h then " :: " else " : "
         nTxt = T.pack $ show n
         name = T.concat["OneOf",nTxt]
-        constrs = map (\n -> ("Op"++show n,[(ElmWildcardType (i2A n),"","")])) [0..n-1]
-        typ = generateType Haskell False [] $ ElmCustom (T.unpack name) $ constrs
+        constrs = map (\n -> ("Op"++show n,[(WildcardTypeT (i2A n),"","")])) [0..n-1]
+        typ = generateType Haskell False [] $ CustomT (T.unpack name) $ constrs
         decl = T.concat["unwrap ",T.intercalate " " $ map (\n -> T.concat["f",T.pack $ show n]) [0..n-1], " oneOf ="]
         oneOf = T.concat["OneOf",nTxt," ",T.intercalate " " $ map (T.pack . i2A) [0..n-1]]
         oneCase n = 

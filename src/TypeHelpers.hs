@@ -6,21 +6,21 @@ msg = constructor
 request = constructor
 response = constructor
 
-constructor :: String -> [ElmDocType] -> Constructor
+constructor :: String -> [DocTypeT] -> Constructor
 constructor name edts =
     (name, edts)
 
-edt :: ElmType -> String -> String -> ElmDocType
+edt :: TypeT -> String -> String -> DocTypeT
 edt et name desc =
     (et, name, desc)
 
-ec :: String -> [Constructor] -> ElmCustom
+ec :: String -> [Constructor] -> CustomT
 ec name constrs =
-    ElmCustom name constrs
+    CustomT name constrs
 
-clientID :: ElmDocType
-clientID = edt (ElmIntRange 0 999999) "clientID" "id assigned when logging in"-- almost a type alias
+clientID :: DocTypeT
+clientID = edt (IntRangeT 0 999999) "clientID" "id assigned when logging in"-- almost a type alias
 
-natural :: ElmType
+natural :: TypeT
 natural =
-    ElmIntRange 0 (2^32)
+    IntRangeT 0 (2^32)

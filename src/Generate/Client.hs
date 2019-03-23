@@ -29,7 +29,7 @@ generateClient gsvg rootDir fp
                   ,extraTlst
                   ) =
     let
-        extraT = M.fromList $ map (\(ElmCustom n constrs) -> (n,ElmCustom n constrs)) extraTlst
+        extraT = M.fromList $ map (\(CustomT n constrs) -> (n,CustomT n constrs)) extraTlst
         netNames = map (\(Net name _ _ _ _) -> name) netLst
         init :: T.Text
         init = 
@@ -51,15 +51,15 @@ generateClient gsvg rootDir fp
             ,   "import Static.Types exposing(..)"
             ,   T.concat ["import ",startNet,".Static.Init"]
             ,   ""
-            ,   "init : (NetModel, Cmd NetTransition)"
+            ,   "init : (NetModel, Cmd Transition)"
             ,   T.concat["init = (",startNet," ",startNet,".Static.Init.init, Cmd.none)"]
             ]
         types :: T.Text
         types = 
             let
-                netUnion    = ec "NetModel" $ map (\nname -> constructor (T.unpack nname) [edt (ElmType (T.unpack nname++".Static.Types.NetState")) "" ""]) netNames
-                netMsgUnion = ec "NetIncomingMessage" $ map (\nname -> constructor (T.unpack nname ++ "InMsg") [edt (ElmType $ T.unpack nname ++ ".Static.Types.IncomingMessage") "" ""]) netNames
-                netOutgoingMsgUnion = ec "NetTransition" $ map (\nname -> constructor (T.unpack nname ++ "Trans") [edt (ElmType $ T.unpack nname ++ ".Static.Types.Transition") "" ""]) netNames
+                netUnion    = ec "NetModel" $ map (\nname -> constructor (T.unpack nname) [edt (TypeT (T.unpack nname++".Static.Types.NetState")) "" ""]) netNames
+                netMsgUnion = ec "NetIncomingMessage" $ map (\nname -> constructor (T.unpack nname ++ "InMsg") [edt (TypeT $ T.unpack nname ++ ".Static.Types.IncomingMessage") "" ""]) netNames
+                netOutgoingMsgUnion = ec "Transition" $ map (\nname -> constructor (T.unpack nname ++ "Trans") [edt (TypeT $ T.unpack nname ++ ".Static.Types.Transition") "" ""]) netNames
             in
             T.unlines 
             [
@@ -124,12 +124,12 @@ generateClient gsvg rootDir fp
             ,   "import Static.Types exposing(..)"
             ,   "import Maybe"
             ,   ""
-            ,   "update : TopLevelData -> NetIncomingMessage -> NetModel -> (NetModel, Cmd NetTransition)"
+            ,   "update : TopLevelData -> NetIncomingMessage -> NetModel -> (NetModel, Cmd Transition)"
             ,   "update tld netInMsg state ="
             ,   "    case (netInMsg,state) of"
             ,   T.unlines $ map updateCase netNames
             ,   if length netLst > 1 then "            _ -> (state, Cmd.none)" else ""
-            ,   "outgoingToIncoming : NetTransition -> Maybe NetIncomingMessage"
+            ,   "outgoingToIncoming : Transition -> Maybe NetIncomingMessage"
             ,   "outgoingToIncoming trans ="
             ,   "    case trans of"
             ,   T.unlines $ map o2iCase netNames
@@ -143,9 +143,9 @@ generateClient gsvg rootDir fp
             [
                 "module Static.Encode exposing(..)"
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Encode as ",n]) netNames
-            ,   "import Static.Types exposing(NetTransition(..))"
+            ,   "import Static.Types exposing(Transition(..))"
             ,   ""
-            ,   "encodeTransition : NetTransition -> Maybe String"
+            ,   "encodeTransition : Transition -> Maybe String"
             ,   "encodeTransition netTrans ="
             ,   "    case netTrans of"
             ,   T.unlines $ map encodeCase netNames
@@ -160,7 +160,7 @@ generateClient gsvg rootDir fp
                 "module Static.Subs exposing(..)"
             ,   "import Static.Types exposing(..)"
             ,   T.unlines $ map (\netName -> T.concat["import ",netName,".Static.Subs as ",netName]) netNames
-            ,   "subscriptions : NetModel -> Sub NetTransition"
+            ,   "subscriptions : NetModel -> Sub Transition"
             ,   "subscriptions model ="
             ,   "    case model of"
             ,   T.unlines $ map subCase netNames
@@ -177,7 +177,7 @@ generateClient gsvg rootDir fp
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.View as ",n]) netNames
             ,   "import Static.Types exposing(..)"
             ,   "import Html exposing(Html)"
-            ,   "view : NetModel -> Html NetTransition"
+            ,   "view : NetModel -> Html Transition"
             ,   "view model ="
             ,   "    case model of"
             ,   T.unlines $ map viewCase netNames

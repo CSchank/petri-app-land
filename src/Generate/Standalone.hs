@@ -10,7 +10,7 @@ import qualified Data.Map as M
 import                  System.FilePath.Posix   ((</>),(<.>))
 import Generate.Types
 
-generateStandalones :: M.Map String ElmCustom -> T.Text -> FilePath -> [Place] -> IO ()
+generateStandalones :: M.Map String CustomT -> T.Text -> FilePath -> [Place] -> IO ()
 generateStandalones ecMap netName fp places =
     let
         cState2ConstrMap (Place name _ _ edts _ _) = (T.unpack name, edts)
@@ -19,7 +19,7 @@ generateStandalones ecMap netName fp places =
         mapM_ (\(pn,edt) -> TIO.writeFile (fp </> "client" </> "src" </> T.unpack netName </> "Static" </> "Standalone" </> pn <.> "elm") $ 
             generateStandalone ecMap netName (pn,edt)) placeList
 
-generateStandalone :: M.Map String ElmCustom -> T.Text -> Constructor -> T.Text
+generateStandalone :: M.Map String CustomT -> T.Text -> Constructor -> T.Text
 generateStandalone ecMap netName (sn,edts) =
     let
         snTxt = T.pack sn

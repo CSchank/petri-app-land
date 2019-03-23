@@ -107,8 +107,8 @@ getPlayerState p =
 getNetName :: Net -> T.Text
 getNetName (Net name _ _ _ _) = name
 
-getTransitionName :: NetTransition -> T.Text
-getTransitionName (NetTransition _ (name,_) _ _) = T.pack name
+getTransitionName :: Transition -> T.Text
+getTransitionName (Transition _ (name,_) _ _) = T.pack name
 getTransitionName (ClientTransition (name,_) _ _) = T.pack name
 getTransitionName (CmdTransition (name,_) _ _) = T.pack name
 
@@ -116,20 +116,20 @@ findConstrImports :: Language -> Constructor -> [T.Text]
 findConstrImports l (_, ets) = 
     concatMap (findImports l) ets
 
-findImports :: Language -> ElmDocType -> [T.Text]
-findImports l (ElmPair edt0 edt1, _, _)          = findImports l edt0 ++ findImports l edt1
-findImports l (ElmTriple edt0 edt1 edt2, _, _)   = findImports l edt0 ++ findImports l edt1 ++ findImports l edt2
-findImports l (ElmList edt, _, _)                = if l == Haskell then ["import Static.List (List)"] else [] ++ findImports l edt
-findImports l (ElmDict edt0 edt1, _, _)          = 
+findImports :: Language -> DocTypeT -> [T.Text]
+findImports l (PairT edt0 edt1, _, _)          = findImports l edt0 ++ findImports l edt1
+findImports l (TripleT edt0 edt1 edt2, _, _)   = findImports l edt0 ++ findImports l edt1 ++ findImports l edt2
+findImports l (ListT edt, _, _)                = if l == Haskell then ["import Static.List (List)"] else [] ++ findImports l edt
+findImports l (DictT edt0 edt1, _, _)          = 
     if l == Haskell then ["import Static.Dict (Dict)"] else ["import Dict exposing (Dict)"] 
         ++ findImports l edt0 ++ findImports l edt1
-findImports l (ElmExisting name imp, _, _)       = 
+findImports l (ExistingT name imp, _, _)       = 
     if l == Haskell then [T.concat ["import qualified ",T.pack imp, " (",T.pack name,")"]]
     else [T.concat ["import ",T.pack imp]]
-findImports l (ElmExistingWParams name params imp, _, _)       = 
+findImports l (ExistingWParamsT name params imp, _, _)       = 
     if l == Haskell then ([T.concat ["import qualified ",T.pack imp, " (",T.pack name,")"]] ++ map (\(param,mod) -> T.concat ["import qualified ",T.pack mod, " (",T.pack param,")"]) params)
     else ([T.concat ["import ",T.pack imp]] ++ map (\(param,mod) -> T.concat ["import ",T.pack mod]) params)
-findImports l (ElmResult edt0 edt1, _, _)       = 
+findImports l (ResultT edt0 edt1, _, _)       = 
     (if l == Haskell then ["import Static.Result (Result(..))"] else [])
         ++ findImports l edt0 ++ findImports l edt1
 findImports _ _ = []

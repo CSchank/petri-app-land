@@ -18,8 +18,8 @@ validateSymbol :: String -> Bool
 validateSymbol name@(h:rest) =
     h `elem` (['a'..'z'] ++ "_")
 
-validateEdt :: S.Set String -> String -> ElmDocType -> [String]
-validateEdt ecSet note (et,"",_) = [note++": empty data name for ElmDocType with ElmType " ++ show et]
+validateEdt :: S.Set String -> String -> DocTypeT -> [String]
+validateEdt ecSet note (et,"",_) = [note++": empty data name for DocTypeT with TypeT " ++ show et]
 validateEdt ecSet note (et,name@(h:rest),_) =
     if validateSymbol name
         then [] ++ validateEt ecSet (note++", in `"++name++"`") et
@@ -27,68 +27,68 @@ validateEdt ecSet note (et,name@(h:rest),_) =
         [(note++", in "++name)++": invalid name for type"]
         ++ validateEt ecSet (note++", in "++name) et
 
-validateEt :: S.Set String -> String -> ElmType -> [String]
-validateEt ecSet note (ElmIntRange lo hi) =
+validateEt :: S.Set String -> String -> TypeT -> [String]
+validateEt ecSet note (IntRangeT lo hi) =
     if lo > hi then [note ++ ": lower bound on IntRange should not be greater than upper bound"] else []
-validateEt ecSet note (ElmFloatRange lo hi prec) = 
+validateEt ecSet note (FloatRangeT lo hi prec) = 
     if lo > hi then  [note ++ ": lower bound on FloatRange should not be greater than upper bound"] else [] ++
     if prec < 1 then [note ++ ": float precision must be a number greater than zero"] else []
-validateEt ecSet note ElmString = []
-validateEt ecSet note (ElmSizedString n) = 
+validateEt ecSet note StringT = []
+validateEt ecSet note (SizedStringT n) = 
     if n < 0 then 
         [note ++ ": sized string cannot have a size less than zero"] 
     else []
-validateEt ecSet note (ElmPair edt0 edt1) = 
+validateEt ecSet note (PairT edt0 edt1) = 
     validateEdt ecSet (note++", in first element of pair") edt0 ++ 
     validateEdt ecSet (note++", in second element of pair") edt1
-validateEt ecSet note (ElmTriple edt0 edt1 edt2) = 
+validateEt ecSet note (TripleT edt0 edt1 edt2) = 
     validateEdt ecSet (note++", in first element of triple") edt0 ++ 
     validateEdt ecSet (note++", in second element of triple") edt1 ++ 
     validateEdt ecSet (note++", in third element of triple") edt2
-validateEt ecSet note (ElmList edt) = validateEdt ecSet (note++", in list element") edt
-validateEt ecSet note (ElmDict edt0 edt1) = 
+validateEt ecSet note (ListT edt) = validateEdt ecSet (note++", in list element") edt
+validateEt ecSet note (DictT edt0 edt1) = 
     (case edt0 of
-        (ElmType _,_,_) -> [note++": Elm does not support custom types as dictionary keys"]
+        (TypeT _,_,_) -> [note++": Elm does not support custom types as dictionary keys"]
         _ -> [])
     ++ validateEdt ecSet (note ++ ", in dict key") edt0
     ++ validateEdt ecSet (note ++ ", in dict value") edt1
-validateEt ecSet note (ElmType name@(h:rest)) =
+validateEt ecSet note (TypeT name@(h:rest)) =
     if not (h `elem` ['A'..'Z']) then
         [note++", in Type `"++name++"`: invalid name for type"]
     else [] ++
     if not (name `S.member` ecSet) then
         [note++", in Type `" ++name ++ "`: custom type does not exist"]
     else []
-validateEt ecSet note (ElmWildcardType str) = [note++": in "++str++" type parameters not supported"] -- a type parameter
-validateEt ecSet note (ElmMaybe edt) = validateEdt ecSet (note++", in Maybe constructor") edt
-validateEt ecSet note ElmBool = []
-validateEt ecSet note (ElmResult edt0 edt1) =
+validateEt ecSet note (WildcardTypeT str) = [note++": in "++str++" type parameters not supported"] -- a type parameter
+validateEt ecSet note (MaybeT edt) = validateEdt ecSet (note++", in Maybe constructor") edt
+validateEt ecSet note BoolT = []
+validateEt ecSet note (ResultT edt0 edt1) =
        validateEdt ecSet (note ++ ", in Error result") edt0
     ++ validateEdt ecSet (note ++ ", in Ok result") edt1
-validateEt ecSet note ElmEmpty = []
-validateEt ecSet note (ElmExisting str imp) = 
+validateEt ecSet note EmptyT = []
+validateEt ecSet note (ExistingT str imp) = 
     (if not $ validateType str then
-        [note++", in ElmExisting type `"++str++"`: invalid name for type"]
+        [note++", in ExistingT type `"++str++"`: invalid name for type"]
     else 
         []) ++
     if imp == "" then
-        [note++", in ElmExisting type `"++str++"`: import must be non-empty and valid"]
+        [note++", in ExistingT type `"++str++"`: import must be non-empty and valid"]
     else
         []
-validateEt ecSet note (ElmExistingWParams str params imp) = 
+validateEt ecSet note (ExistingWParamsT str params imp) = 
     (if not $ validateType str then
-        [note++", in ElmExistingWParam type `"++str++"`: invalid name for type"]
+        [note++", in ExistingWParamT type `"++str++"`: invalid name for type"]
     else 
         []) ++
     if imp == "" then
-        [note++", in ElmExistingWParam type `"++str++"`: import must be non-empty and valid"]
+        [note++", in ExistingWParamT type `"++str++"`: import must be non-empty and valid"]
     else
         [] ++
         mapMaybe (\(param, imp) -> 
             if not $ validateType param then 
-                Just $ note++", in ElmExistingWParam type `"++str++"`, in type parameter `"++param++"`: invalid name for parameter"
+                Just $ note++", in ExistingWParamT type `"++str++"`, in type parameter `"++param++"`: invalid name for parameter"
             else if not $ validateType imp then
-                Just $ note++", in ElmExistingWParam type `"++str++"`, in type parameter `"++param++"`, in import for type parameter `"++imp++"`: invalid name for import"
+                Just $ note++", in ExistingWParamT type `"++str++"`, in type parameter `"++param++"`, in import for type parameter `"++imp++"`: invalid name for import"
             else
                 Nothing) params
 
@@ -102,10 +102,10 @@ validateConstructor ecSet note (name,edts) =
     else
         concat (map (validateEdt ecSet (note++", in constructor `"++name++"`")) edts)
 
-validateElmCustom :: S.Set String -> String -> ElmCustom -> [String]
-validateElmCustom ecSet note (ElmCustom "" constrs) = 
+validateElmCustom :: S.Set String -> String -> CustomT -> [String]
+validateElmCustom ecSet note (CustomT "" constrs) = 
     concat (map (validateConstructor ecSet (note++", in unnamed custom type")) constrs)
-validateElmCustom ecSet note (ElmCustom name constrs) =
+validateElmCustom ecSet note (CustomT name constrs) =
     if not $ validateType name then
         [(note++", in custom type `"++name)++"`: invalid custom type name"] ++ 
         concatMap (validateConstructor ecSet (note++", in custom type `"++name++"`")) constrs
@@ -127,8 +127,8 @@ validatePlace ecSet note (Place name serverState playerState clientState mSubnet
         else
             validations
 
-validateTransition :: S.Set String -> S.Set String -> String -> NetTransition -> [String]
-validateTransition placeSet ecSet note (NetTransition _ constr@(transName,edts) fromtoLst mCmd) =
+validateTransition :: S.Set String -> S.Set String -> String -> Transition -> [String]
+validateTransition placeSet ecSet note (Transition _ constr@(transName,edts) fromtoLst mCmd) =
     let
         fromTos :: [(String,String)]
         fromTos = 
@@ -206,7 +206,7 @@ validateCSApp
     )
     =
     let
-        ecSet = S.fromList $ map (\(ElmCustom n _) -> n) extraTLst
+        ecSet = S.fromList $ map (\(CustomT n _) -> n) extraTLst
         netSet = S.fromList $ map (\(Net n _ _ _ _) -> n) nets
         validations =
             concatMap (validateNet ecSet) nets ++

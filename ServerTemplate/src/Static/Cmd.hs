@@ -65,7 +65,7 @@ eval ns cmd = do
             cmds <- mapConcurrently (\a -> wait a >>= eval ns . toCmdMsg) result
             return $ concat cmds
 
-process :: Cmd NetTransition -> TQueue CentralMessage -> NetState player -> IO ()
+process :: Cmd Transition -> TQueue CentralMessage -> NetState player -> IO ()
 process cmd centralMsgQ ns = do
     results <- eval ns cmd
     -- concurrently map over all commands, they could arrive in any order at this point
