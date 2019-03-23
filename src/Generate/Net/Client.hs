@@ -530,7 +530,14 @@ generate extraTypes fp net =
                 createDirectoryIfMissing True $ fp </> "client" </> "src" </> T.unpack name </> "View"
                 mapM_ (\pl -> writeIfNotExists (fp </> "client" </> "src" </> T.unpack name </> "View" </> T.unpack (getPlaceName pl) <.> "elm") $ perPlaceViews pl) places
                 writeIfNotExists (fp </> "client" </> "src" </> T.unpack name </> "Init" <.> "elm") inits 
+                writeIfNotExists (fp </> "client" </> "src" </> T.unpack name </> "Update" <.> "elm") update
 
+                --template directory (always generated)
+                createDirectoryIfMissing True $ fp </> "client" </> "src" </> T.unpack name </> "Templates" </> "View"
+                mapM_ (\pl -> writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Templates" </> "View" </> T.unpack (getPlaceName pl) <.> "elm") $ perPlaceViews pl) places
+                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Templates" </> "Init" <.> "elm") inits 
+                writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Templates" </> "Update" <.> "elm") update
+                
                 --static / rewriteable code
                 createDirectoryIfMissing True $ fp </> "client" </> "src" </> T.unpack name </> "Static"
                 createDirectoryIfMissing True $ fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Types"
@@ -539,7 +546,6 @@ generate extraTypes fp net =
                 mapM_ (\pl -> writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Wrappers" </> T.unpack (getPlaceName pl) <.> "elm") $ perPlaceWrappers pl) places
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Types" <.> "elm") types
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Init" <.> "elm") hiddenInit
-                writeIfNotExists (fp </> "client" </> "src" </> T.unpack name </> "Update" <.> "elm") update
                 createDirectoryIfMissing True $ fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Helpers"
                 mapM_ (\(HybridPlace pName _ _ edts _ _)  -> writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "elm") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Elm name (T.unpack pName,edts) False]) places
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Encode" <.> "elm") encoder
