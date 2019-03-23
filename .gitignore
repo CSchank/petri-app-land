@@ -2,3 +2,4 @@ Test
 .stack-work
 elm-stuff/
 elm-haskell-state-diagram.cabal
+dist/

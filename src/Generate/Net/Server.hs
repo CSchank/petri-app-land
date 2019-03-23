@@ -42,6 +42,8 @@ generate extraTypes fp net =
                     [
                     T.concat ["module ", name, ".Init where"]
                     ,T.concat["import ",name,".Static.Types"]
+                    , "import Static.Cmd (Cmd)"
+                    , "import Static.Cmd as Cmd"
                     , ""
                     , "-- the initial states of each place in this net"
                     , T.unlines $ map (generateNetInit extraTypes) places -- the initial places

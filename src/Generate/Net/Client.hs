@@ -50,7 +50,7 @@ generate extraTypes fp net =
                     T.concat ["module ", name, ".Init exposing(..)"]
                     ,T.concat["import ",name,".Static.Types exposing(..)"]
                     , ""
-                    , "-- the initial states of each place in this net"
+                    , "-- the initial state of the starting place"
                     , T.concat ["init : ",startingPlace]
                     , T.concat ["init = ",constr2Def extraTypes (getPlaceState $ getPlace startingPlace)]
                     ]
