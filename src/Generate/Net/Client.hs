@@ -27,10 +27,10 @@ trans2constr trans =
 
 
 place2edts :: Place -> [DocTypeT]
-place2edts (Place _ _ _ edts _ _) = edts
+place2edts (Place _ _ _ edts _) = edts
     
 
-transName from msgN = T.concat [T.pack msgN,"from",from]
+transName from msgN = T.concat [ msgN,"from",from]
 
 netTrans2MConstr :: Transition -> Maybe Constructor
 netTrans2MConstr trans = 
@@ -40,7 +40,7 @@ netTrans2MConstr trans =
         ClientTransition {} -> Nothing
 
 
-generate :: M.Map String CustomT -> FilePath -> Net -> IO ()
+generate :: M.Map T.Text CustomT -> FilePath -> Net -> IO ()
 generate extraTypes fp net =
     case net of 
         (Net name startingPlace places transitions plugins) ->
@@ -54,24 +54,7 @@ generate extraTypes fp net =
                     , T.concat ["init : ",startingPlace]
                     , T.concat ["init = ",constr2Def extraTypes (getPlaceState $ getPlace startingPlace)]
                     ]
-                placeNames = map (\(Place name _ _ _ _ _) -> name) places
-                -- the functions that the user changes
-                generateNetInit :: M.Map String CustomT -> Place -> T.Text
-                generateNetInit extraTypes (Place name _ _ clientPlaceState mSubnet (mCmd,_)) = 
-                    let
-                        fnName = T.concat ["init",name]
-                        typ = case mCmd of
-                                Just cmdN -> T.concat [fnName, " : (", capitalize name,", Cmd ",cmdN,")"]
-                                Nothing       -> T.concat [fnName, " : ", capitalize name]
-                        decl = case mCmd of
-                                Just _  -> T.concat [fnName, " = (", constr2Def extraTypes (T.unpack name,clientPlaceState),", Cmd.none)"]
-                                Nothing -> T.concat [fnName, " = ", constr2Def extraTypes (T.unpack name,clientPlaceState)]
-                    in
-                        T.unlines 
-                        [
-                            typ
-                        ,   decl
-                        ]
+                placeNames = map (\(Place name _ _ _ _) -> name) places
                 types = 
                     let
                         transConstrs = concatMap (\(_,ets) -> ets) $ map trans2constr $ outgoingClientTransitions True
@@ -101,7 +84,7 @@ generate extraTypes fp net =
                                     ClientTransition _ pl _ -> if pl == place then Just (True,tr) else Nothing
                                     CmdTransition _ pl _ -> if pl == place then Just (False,tr) else Nothing
                             ) transitions
-                perPlaceTypes (Place placeName _ _ _ _ _) = 
+                perPlaceTypes (Place placeName _ _ _ _) = 
                     let
                         transitions = transFromPlace placeName
                         transConstrs = map (trans2constr . snd) transitions
@@ -116,14 +99,14 @@ generate extraTypes fp net =
                     ,   if length transConstrs == 0 then "x = 0" else ""
                     ,   generateType Elm False [] $ ct "Msg" transConstrs
                     ]
-                perPlaceWrappers (Place placeName _ _ _ _ _) = 
+                perPlaceWrappers (Place placeName _ _ _ _) = 
                     let
                         transitions = transFromPlace placeName
                         transConstrs = 
                             map (\(n,ets) -> 
-                                (T.unpack name++".Static.Types."++T.unpack placeName++"."++n,ets)) $ 
+                                (T.concat[name,".Static.Types.",placeName,".",n],ets)) $ 
                                 map (trans2constr . snd) transitions
-                        wrappedTransConstrs = map (\(n,t) -> ("T"++n,t)) $ map (trans2constr . snd) transitions
+                        wrappedTransConstrs = map (\(n,t) -> (T.concat["T",n],t)) $ map (trans2constr . snd) transitions
                         internalTrans = map fst transitions
                         zippedTrans = zip3 transConstrs wrappedTransConstrs internalTrans
                         imports = concatMap (findImports Elm) $ concatMap snd wrappedTransConstrs
@@ -142,7 +125,7 @@ generate extraTypes fp net =
                     ,   "    case msg of"
                     ,   T.unlines $ map (\(tc,wtc,int) -> T.concat["        ",generatePattern tc," -> ",if int then "Internal " else "External ",generatePattern wtc]) zippedTrans
                     ]
-                perPlaceViews (Place placeName _ _ _ _ _) = 
+                perPlaceViews (Place placeName _ _ _ _) = 
                     T.unlines
                     [
                         T.concat["module ",name,".View.",placeName," exposing(..)"]
@@ -172,7 +155,7 @@ generate extraTypes fp net =
                     ,   "import Static.Types exposing(TopLevelData)"
                     ,   "type alias FromSuperPlace = TopLevelData" --FIXME: change this depending on where the net resides
                     ]
-                incomingMsgs :: [(String,Constructor)]
+                incomingMsgs :: [(T.Text,Constructor)]
                 incomingMsgs = concat $ map (\tr -> case tr of 
                                                         Transition _ (n,_) lstTrans _ -> 
                                                             mapMaybe (\(from,mTo) -> case mTo of 
@@ -183,7 +166,7 @@ generate extraTypes fp net =
                                                         CmdTransition constr@(n, _) _ _ -> [(n,constr)] 
                                                         ) transitions
                 incomingCM = map (\(_,(msgN,edts)) -> (msgN,edts)) incomingMsgs
-                incomingMsg = CustomT "IncomingMessage" $ map (\(n,t) -> ("M"++n,t)) incomingCM
+                incomingMsg = CustomT "IncomingMessage" $ map (\(n,t) -> (T.concat["M",n],t)) incomingCM
 
                 transConstrs :: [Constructor]
                 transConstrs = map trans2constr transitions
@@ -216,13 +199,13 @@ generate extraTypes fp net =
                     let
                         placeModel = 
                             generateType Elm False [DOrd,DEq,DShow] $ 
-                                CustomT (T.unpack netName) $ map (\(Place n _ _ _ _ _) -> (T.unpack n,[dt (TypeT $ T.unpack n) "" ""])) places
+                                CustomT netName $ map (\(Place n _ _ _ _) -> (n,[dt (TypeT n) "" ""])) places
                         placeTypes = T.unlines $ map generatePlaceType places
                         generatePlaceType :: Place -> T.Text
-                        generatePlaceType (Place name _ _ clientPlaceState _ _) =
+                        generatePlaceType (Place name _ _ clientPlaceState _) =
                             T.unlines
                                 [
-                                    generateType Elm True [DOrd,DEq,DShow,DTypeable] $ CustomT (T.unpack name) [(T.unpack name, clientPlaceState)],""
+                                    generateType Elm True [DOrd,DEq,DShow,DTypeable] $ CustomT name [(name, clientPlaceState)],""
                                 ]
                         clientMsgType :: T.Text
                         clientMsgType =
@@ -239,15 +222,15 @@ generate extraTypes fp net =
 
                         --allConnections = concat $ map (\(_, Transition (transName,transEt) connections mCmd) -> ((transName,transEt),connections)) transitions
 
-                        internalTransitions = ct "InternalTransition" $ map (\(n,t) -> ("T"++n,t)) $ map trans2constr internalClientTransitions
-                        outgoingTransitions = ct "OutgoingTransition" $ map (\(n,t) -> ("T"++n,t)) $ map trans2constr (outgoingClientTransitions True)
+                        internalTransitions = ct "InternalTransition" $ map (\(n,t) -> (T.concat["T",n],t)) $ map trans2constr internalClientTransitions
+                        outgoingTransitions = ct "OutgoingTransition" $ map (\(n,t) -> (T.concat["T",n],t)) $ map trans2constr (outgoingClientTransitions True)
                     in
                         T.unlines 
                             [
                                 "-- place states"
                             ,   placeTypes
                             ,   "-- union place type"
-                            ,   generateType Elm False [] $ ct "NetState" $ map (\placeName -> constructor ("S"++T.unpack placeName) [dt (TypeT $ T.unpack placeName) "" ""]) placeNames
+                            ,   generateType Elm False [] $ ct "NetState" $ map (\placeName -> constructor (T.concat["S",placeName]) [dt (TypeT placeName) "" ""]) placeNames
                             ,   "-- internal transition types"
                             ,   generateType Elm False [] internalTransitions
                             ,   "-- outgoing transition types"
@@ -276,10 +259,10 @@ generate extraTypes fp net =
                                     case mTo of
                                         Just (to,(n,et)) -> 
                                             let
-                                                fnName = T.concat["update",from,T.pack n,to]
+                                                fnName = T.concat["update",from,n,to]
                                             in Just $ 
                                             T.unlines
-                                            [T.concat[fnName," : FromSuperPlace -> ",T.pack n," -> ",from," -> ",to]
+                                            [T.concat[fnName," : FromSuperPlace -> ",n," -> ",from," -> ",to]
                                             ,T.concat[fnName," fsp ",generatePattern (n,et)," ",uncapitalize from," ="]
                                             ,T.concat["    todo \"Please implement update function ",fnName," for the ",name," net.\""]
                                             ]
@@ -288,18 +271,18 @@ generate extraTypes fp net =
                             T.unlines $ mapMaybe conUpFn connections 
                         trUpFn (ClientTransition (n,et) place mCmd) =                         
                             let
-                                fnName = T.concat["update",T.pack n,place]
+                                fnName = T.concat["update",n,place]
                             in
                             case mCmd of
                                 Just cmd ->
                                     T.unlines
-                                    [T.concat[fnName," : FromSuperPlace -> ",T.pack n," -> ",place," -> (",place,", Cmd ",cmd,")"]
+                                    [T.concat[fnName," : FromSuperPlace -> ",n," -> ",place," -> (",place,", Cmd ",cmd,")"]
                                     ,T.concat[fnName," fsp ",generatePattern (n,et)," ",uncapitalize place," ="]
                                     ,T.concat["    (todo \"Please implement update function ",fnName," for the ",name," net.\", Cmd.none)"]
                                     ]
                                 Nothing ->
                                     T.unlines
-                                    [T.concat[fnName," : FromSuperPlace -> ",T.pack n," -> ",place," -> ",place]
+                                    [T.concat[fnName," : FromSuperPlace -> ",n," -> ",place," -> ",place]
                                     ,T.concat[fnName," fsp ",generatePattern (n,et)," ",uncapitalize place," ="]
                                     ,T.concat["    todo \"Please implement update function ",fnName," for the ",name," net.\""]
                                     ]
@@ -335,10 +318,10 @@ generate extraTypes fp net =
                                 connectionCase (from,mTo) =
                                     case mTo of 
                                         Just (to,(n,t)) -> Just $ T.concat ["        ("
-                                                                      ,generatePattern ("M"++n, t)
+                                                                      ,generatePattern (T.concat["M",n], t)
                                                                       ,", S",from," st)"
                                                                       ," -> (S",to
-                                                                      ," <| update",from,T.pack n,to
+                                                                      ," <| update",from, n,to
                                                                       ," fsp ",generatePattern (n, t)," st, Cmd.none)"
                                                                       ]
                                         _ -> Nothing
@@ -354,37 +337,37 @@ generate extraTypes fp net =
                                                 _ -> error $ "Cmd " ++ T.unpack cmd ++ " does not exist!"
                                     in
                                     T.concat ["        ("
-                                        ,generatePattern ("M"++n,t)
+                                        ,generatePattern (T.concat["M",n],t)
                                         ,", S",place," st)"
                                         ," -> Tuple.mapBoth S",place," (Cmd.map <|"
                                         ,if cmdInternal then " Internal " else " External " ," << unwrap",cmd,")"
-                                        ," <| update",T.pack n,place
+                                        ," <| update", n,place
                                         ," fsp ",generatePattern (n,t)," st"
                                         ]
                                 Nothing ->
                                     T.concat ["        ("
-                                        ,generatePattern ("M"++n,t)
+                                        ,generatePattern (T.concat["M",n],t)
                                         ,", S",place," st)"
                                         ," -> (S",place
-                                        ," <| update",T.pack n,place
+                                        ," <| update", n,place
                                         ," fsp ",generatePattern (n,t)," st, Cmd.none)"
                                         ]
                         updateCase (CmdTransition {}) =
                             ""
                         ttCase :: Transition -> Maybe T.Text
                         ttCase (Transition tt (name,ets) _ _) = 
-                            if tt == OriginClientOnly || tt == OriginEitherPossible then Just $ T.concat["        ",generatePattern ("T"++name,ets)," -> OutgoingToServer"] else Nothing
+                            if tt == OriginClientOnly || tt == OriginEitherPossible then Just $ T.concat["        ",generatePattern (T.concat ["T",name],ets)," -> OutgoingToServer"] else Nothing
                         ttCase (ClientTransition (name,ets) _ _) =
-                            Just $ T.concat["        ",generatePattern ("T"++name,ets)," -> LocalOnly"]
+                            Just $ T.concat["        ",generatePattern (T.concat ["T",name],ets)," -> LocalOnly"]
                         ttCase (CmdTransition (name,ets) _ _) =
-                            Just $ T.concat["        ",generatePattern ("T"++name,ets)," -> OutgoingToServer"]
+                            Just $ T.concat["        ",generatePattern (T.concat ["T",name],ets)," -> OutgoingToServer"]
                         o2i :: Transition -> Maybe T.Text
                         o2i (Transition _ (name,ets) _ _) = 
                             Nothing
                         o2i (CmdTransition (name,ets) _ _) = 
                             Nothing
                         o2i (ClientTransition (name,ets) _ _) =
-                            Just $ T.concat["        Internal ",generatePattern ("T"++name,ets)," -> Just ",generatePattern ("M"++name,ets)]
+                            Just $ T.concat["        Internal ",generatePattern (T.concat ["T",name],ets)," -> Just ",generatePattern (T.concat ["M",name],ets)]
                     in T.unlines
                     [
                         T.concat ["module ",name,".Static.Update exposing(..)"]
@@ -414,10 +397,10 @@ generate extraTypes fp net =
                     ]
             
                 placeMap :: M.Map T.Text Place
-                placeMap = M.fromList $ map (\(pl@(Place n _ _ _ _ _)) -> (n,pl)) places
+                placeMap = M.fromList $ map (\(pl@(Place n _ _ _ _)) -> (n,pl)) places
 
                 getPlace :: T.Text -> Place
-                getPlace name = M.findWithDefault (Place "" [] [] [] Nothing (Nothing,Nothing)) name placeMap
+                getPlace name = M.findWithDefault (Place "" [] [] [] Nothing) name placeMap
 
                 hiddenInit = T.unlines
                     [
@@ -448,7 +431,7 @@ generate extraTypes fp net =
                     ,   T.unlines $ map (generateEncoder Elm) $ M.elems extraTypes
                     ]
 
-                wOutgoingClientTransitions = map (\(n,t) -> ("T"++n,t)) $ map trans2constr (outgoingClientTransitions True)
+                wOutgoingClientTransitions = map (\(n,t) -> (T.concat["T",n],t)) $ map trans2constr (outgoingClientTransitions True)
                 outgoingTransitions = CustomT "OutgoingTransition" wOutgoingClientTransitions
                 incomingClientTransitions localOnly = 
                     concat $ mapMaybe (\tr ->
@@ -460,7 +443,7 @@ generate extraTypes fp net =
                             CmdTransition constr _ _ ->
                                 Just [constr]) transitions
                 incomingTransitions localOnly = 
-                    CustomT "IncomingMessage" $ map (\(n,et) -> ("M"++n,et)) (incomingClientTransitions localOnly)
+                    CustomT "IncomingMessage" $ map (\(n,et) -> (T.concat ["M",name],et)) (incomingClientTransitions localOnly)
                 decoder = T.unlines 
                     [
                         T.concat ["module ",name,".Static.Decode exposing(..)"]
@@ -547,7 +530,7 @@ generate extraTypes fp net =
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Types" <.> "elm") types
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Init" <.> "elm") hiddenInit
                 createDirectoryIfMissing True $ fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Helpers"
-                mapM_ (\(Place pName _ _ edts _ _)  -> writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "elm") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Elm name (T.unpack pName,edts) False]) places
+                mapM_ (\(Place pName _ _ edts _)  -> writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "elm") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Elm name (pName,edts) False]) places
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Encode" <.> "elm") encoder
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Decode" <.> "elm") decoder
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Wrappers" <.> "elm") wrappers

@@ -1,20 +1,25 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module TypeHelpers where
 
 import Types
+import qualified Data.Text as T
 
 msg = constructor
 request = constructor
 response = constructor
 
-constructor :: String -> [DocTypeT] -> Constructor
+constr = constructor
+
+constructor :: T.Text -> [DocTypeT] -> Constructor
 constructor name edts =
     (name, edts)
 
-dt :: TypeT -> String -> String -> DocTypeT
+dt :: TypeT -> T.Text -> T.Text -> DocTypeT
 dt et name desc =
     (et, name, desc)
 
-ct :: String -> [Constructor] -> CustomT
+ct :: T.Text -> [Constructor] -> CustomT
 ct name constrs =
     CustomT name constrs
 

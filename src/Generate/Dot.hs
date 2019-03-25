@@ -51,12 +51,12 @@ generateNetDot
                         Just (to, (msgName,edts)) ->
                             let
                                 sameTailName = 
-                                    T.concat[from,T.pack msgName,to]
+                                    T.concat[from,msgName,to]
                             in
                             T.unlines
                                 [
                                     T.concat["  ",transName,"node -> ",from,"node [arrowhead=none",",sametail=",sameTailName,"]"]
-                                ,   T.concat["  ",transName,"node -> ",to,"node [label=\"",T.pack msgName,"\"",",sametail=",sameTailName,"]"]
+                                ,   T.concat["  ",transName,"node -> ",to,"node [label=\"", msgName,"\"",",sametail=",sameTailName,"]"]
                                 ]
                         Nothing ->
                             let
@@ -71,7 +71,7 @@ generateNetDot
 
                 oneTrans :: Transition -> T.Text
                 oneTrans (Transition _ (transName,_) connections cmd) =
-                    T.unlines $ map (oneConnection $ T.pack transName) connections
+                    T.unlines $ map (oneConnection $ transName) connections
                 oneTrans (ClientTransition {}) =
                     T.unlines $ ["Not yet supported."]
                 oneTrans (CmdTransition {}) =

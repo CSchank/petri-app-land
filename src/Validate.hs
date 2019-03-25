@@ -10,24 +10,31 @@ import Data.Maybe (fromMaybe,mapMaybe)
 import Data.List ((\\))
 
 
-validateType :: String -> Bool
-validateType name@(h:rest) =
+validateType :: T.Text -> Bool
+validateType txt =
+    let
+        name@(h:rest) = T.unpack txt
+    in
     h `elem` ['A'..'Z']
 
 validateSymbol :: String -> Bool
 validateSymbol name@(h:rest) =
     h `elem` (['a'..'z'] ++ "_")
+validateSymbol "" = False
 
-validateEdt :: S.Set String -> String -> DocTypeT -> [String]
+validateEdt :: S.Set T.Text -> String -> DocTypeT -> [String]
 validateEdt ecSet note (et,"",_) = [note++": empty data name for DocTypeT with TypeT " ++ show et]
-validateEdt ecSet note (et,name@(h:rest),_) =
+validateEdt ecSet note (et,nameTxt,_) =
+    let
+        name@(h:rest) = T.unpack nameTxt
+    in
     if validateSymbol name
         then [] ++ validateEt ecSet (note++", in `"++name++"`") et
     else
         [(note++", in "++name)++": invalid name for type"]
         ++ validateEt ecSet (note++", in "++name) et
 
-validateEt :: S.Set String -> String -> TypeT -> [String]
+validateEt :: S.Set T.Text -> String -> TypeT -> [String]
 validateEt ecSet note (IntRangeT lo hi) =
     if lo > hi then [note ++ ": lower bound on IntRange should not be greater than upper bound"] else []
 validateEt ecSet note (FloatRangeT lo hi prec) = 
@@ -45,22 +52,25 @@ validateEt ecSet note (TripleT edt0 edt1 edt2) =
     validateEdt ecSet (note++", in first element of triple") edt0 ++ 
     validateEdt ecSet (note++", in second element of triple") edt1 ++ 
     validateEdt ecSet (note++", in third element of triple") edt2
-validateEt ecSet note (ListT edt) = validateEdt ecSet (note++", in list element") edt
+validateEt ecSet note (ListT dt) = validateEdt ecSet (note++", in list element") dt
 validateEt ecSet note (DictT edt0 edt1) = 
     (case edt0 of
         (TypeT _,_,_) -> [note++": Elm does not support custom types as dictionary keys"]
         _ -> [])
     ++ validateEdt ecSet (note ++ ", in dict key") edt0
     ++ validateEdt ecSet (note ++ ", in dict value") edt1
-validateEt ecSet note (TypeT name@(h:rest)) =
+validateEt ecSet note (TypeT nameTxt) =
+    let
+        name@(h:rest) = T.unpack nameTxt
+    in
     if not (h `elem` ['A'..'Z']) then
         [note++", in Type `"++name++"`: invalid name for type"]
     else [] ++
-    if not (name `S.member` ecSet) then
+    if not (nameTxt `S.member` ecSet) then
         [note++", in Type `" ++name ++ "`: custom type does not exist"]
     else []
-validateEt ecSet note (WildcardTypeT str) = [note++": in "++str++" type parameters not supported"] -- a type parameter
-validateEt ecSet note (MaybeT edt) = validateEdt ecSet (note++", in Maybe constructor") edt
+validateEt ecSet note (WildcardTypeT str) = [note++": in "++T.unpack str++" type parameters not supported"] -- a type parameter
+validateEt ecSet note (MaybeT dt) = validateEdt ecSet (note++", in Maybe constructor") dt
 validateEt ecSet note BoolT = []
 validateEt ecSet note (ResultT edt0 edt1) =
        validateEdt ecSet (note ++ ", in Error result") edt0
@@ -68,66 +78,76 @@ validateEt ecSet note (ResultT edt0 edt1) =
 validateEt ecSet note EmptyT = []
 validateEt ecSet note (ExistingT str imp) = 
     (if not $ validateType str then
-        [note++", in ExistingT type `"++str++"`: invalid name for type"]
+        [note++", in ExistingT type `"++T.unpack str++"`: invalid name for type"]
     else 
         []) ++
     if imp == "" then
-        [note++", in ExistingT type `"++str++"`: import must be non-empty and valid"]
+        [note++", in ExistingT type `"++T.unpack str++"`: import must be non-empty and valid"]
     else
         []
 validateEt ecSet note (ExistingWParamsT str params imp) = 
     (if not $ validateType str then
-        [note++", in ExistingWParamT type `"++str++"`: invalid name for type"]
+        [note++", in ExistingWParamT type `"++T.unpack str++"`: invalid name for type"]
     else 
         []) ++
     if imp == "" then
-        [note++", in ExistingWParamT type `"++str++"`: import must be non-empty and valid"]
+        [note++", in ExistingWParamT type `"++T.unpack str++"`: import must be non-empty and valid"]
     else
         [] ++
         mapMaybe (\(param, imp) -> 
             if not $ validateType param then 
-                Just $ note++", in ExistingWParamT type `"++str++"`, in type parameter `"++param++"`: invalid name for parameter"
+                Just $ note++", in ExistingWParamT type `"++T.unpack str++"`, in type parameter `"++T.unpack param++"`: invalid name for parameter"
             else if not $ validateType imp then
-                Just $ note++", in ExistingWParamT type `"++str++"`, in type parameter `"++param++"`, in import for type parameter `"++imp++"`: invalid name for import"
+                Just $ note++", in ExistingWParamT type `"++T.unpack str++"`, in type parameter `"++T.unpack param++"`, in import for type parameter `"++T.unpack imp++"`: invalid name for import"
             else
                 Nothing) params
 
-validateConstructor :: S.Set String -> String -> Constructor -> [String]
+validateConstructor :: S.Set T.Text -> String -> Constructor -> [String]
 validateConstructor ecSet note ("",edts) = 
     concat (map (validateEdt ecSet (note++", in unnamed constructor")) edts)
 validateConstructor ecSet note (name,edts) =
     if not $ validateType name then
-        [(note++", in constructor `"++name)++"`"++": invalid constructor name"] ++ 
-        concat (map (validateEdt ecSet (note++", in constructor `"++name++"`")) edts)
+        [(note++", in constructor `"++T.unpack name)++"`"++": invalid constructor name"] ++ 
+        concat (map (validateEdt ecSet (note++", in constructor `"++T.unpack name++"`")) edts)
     else
-        concat (map (validateEdt ecSet (note++", in constructor `"++name++"`")) edts)
+        concat (map (validateEdt ecSet (note++", in constructor `"++T.unpack name++"`")) edts)
 
-validateElmCustom :: S.Set String -> String -> CustomT -> [String]
+validateElmCustom :: S.Set T.Text -> String -> CustomT -> [String]
 validateElmCustom ecSet note (CustomT "" constrs) = 
     concat (map (validateConstructor ecSet (note++", in unnamed custom type")) constrs)
 validateElmCustom ecSet note (CustomT name constrs) =
     if not $ validateType name then
-        [(note++", in custom type `"++name)++"`: invalid custom type name"] ++ 
-        concatMap (validateConstructor ecSet (note++", in custom type `"++name++"`")) constrs
+        [(note++", in custom type `"++T.unpack name)++"`: invalid custom type name"] ++ 
+        concatMap (validateConstructor ecSet (note++", in custom type `"++T.unpack name++"`")) constrs
     else
-        concatMap (validateConstructor ecSet (note++", in custom type `"++name++"`")) constrs
+        concatMap (validateConstructor ecSet (note++", in custom type `"++T.unpack name++"`")) constrs
 
-validatePlace :: S.Set String -> String -> Place -> [String]
-validatePlace ecSet note (Place "" _ _ _ _ _) =
+validatePlace :: S.Set T.Text -> String -> Place -> [String]
+validatePlace ecSet note (Place "" _ _ _ _) =
     [note++": a Place has an empty name"]
-validatePlace ecSet note (Place name serverState playerState clientState mSubnet initCmds) =
+validatePlace ecSet note (Place name serverState playerState clientState initCmd) =
     let
+        cmdValidation = 
+            case initCmd of
+                Just cmd ->
+                    if not $ validateType cmd then
+                        [note++", in server command `"++T.unpack cmd++"`: invalid name for command"]
+                    else []
+                Nothing ->
+                    []
+        
         validations =
             concatMap (validateEdt ecSet (note++", in place `"++T.unpack name++"`, in server state")) serverState ++
             concatMap (validateEdt ecSet (note++", in place `"++T.unpack name++"`, in player state")) playerState ++
-            concatMap (validateEdt ecSet (note++", in place `"++T.unpack name++"`, in client state")) clientState 
+            concatMap (validateEdt ecSet (note++", in place `"++T.unpack name++"`, in client state")) clientState ++
+            cmdValidation
     in
-        if not $ validateType $ T.unpack name then
+        if not $ validateType name then
             [note++": invalid name for Place: `"++T.unpack name] ++ validations
         else
             validations
 
-validateTransition :: S.Set String -> S.Set String -> String -> Transition -> [String]
+validateTransition :: S.Set T.Text -> S.Set T.Text -> String -> Transition -> [String]
 validateTransition placeSet ecSet note (Transition _ constr@(transName,edts) fromtoLst mCmd) =
     let
         fromTos :: [(String,String)]
@@ -140,45 +160,45 @@ validateTransition placeSet ecSet note (Transition _ constr@(transName,edts) fro
 
         validateFromTo :: (T.Text, Maybe (T.Text, Constructor)) -> [String]
         validateFromTo (from,mTo) = 
-            (if not (T.unpack from `S.member` placeSet) then
+            (if not (from `S.member` placeSet) then
                 [note ++", in from transition: place `"++T.unpack from++"` does not exist"]
             else []) ++
                 (case mTo of
                     Just (to,constr) ->
-                        (if not (T.unpack to `S.member` placeSet) then
+                        (if not (to `S.member` placeSet) then
                             [note ++", in to transition: place `"++T.unpack to++"` does not exist"]
                         else [])
-                        ++ validateConstructor ecSet (note++", in transition `"++transName++"`") constr
+                        ++ validateConstructor ecSet (note++", in transition `"++T.unpack transName++"`") constr
                     Nothing -> [])
 
     in
-        validateConstructor ecSet (note++", in transition `"++transName++"`") constr ++
+        validateConstructor ecSet (note++", in transition `"++T.unpack transName++"`") constr ++
         concatMap validateFromTo fromtoLst ++
-        map (\tr -> note ++ ", in transition `"++transName++"`: duplicate transition "++show tr) duplicateFromTo
+        map (\tr -> note ++ ", in transition `"++T.unpack transName++"`: duplicate transition "++show tr) duplicateFromTo
 
 validateTransition placeSet ecSet note (ClientTransition constr@(transName,edts) placeName mCmd) =
-        validateConstructor ecSet (note++", in transition `"++transName++"`") constr ++
-        if not $ validateType (T.unpack placeName) then
-            ["invalid name for Client Transition `"++transName++"`"]
+        validateConstructor ecSet (note++", in transition `"++T.unpack transName++"`") constr ++
+        if not $ validateType placeName then
+            ["invalid name for Client Transition `"++T.unpack transName++"`"]
         else []
 
 validateTransition placeSet ecSet note (CmdTransition constr@(transName,edts) placeName cmd) =
-        validateConstructor ecSet (note++", in cmd transition `"++transName++"`") constr ++
-        if not $ validateType (T.unpack placeName) then
-            ["invalid name for Cmd Transition `"++transName++"`"]
+        validateConstructor ecSet (note++", in cmd transition `"++T.unpack transName++"`") constr ++
+        if not $ validateType placeName then
+            ["invalid name for Cmd Transition `"++T.unpack transName++"`"]
         else []
 --TODO: check if commands exist
 
 
 
-validateNet :: S.Set String -> Net -> [String]
+validateNet :: S.Set T.Text -> Net -> [String]
 validateNet ecSet (Net name startingPlace places transitions subnets) =
     let
-        placeSet = S.fromList $ map (T.unpack . getPlaceName) places
+        placeSet = S.fromList $ map getPlaceName places
         duplicateTransitions = fnub $ transitions \\ fnub transitions
         duplicatePlaces = fnub $ places \\ fnub places
         validations =
-            if not (T.unpack startingPlace `S.member` placeSet) then
+            if not (startingPlace `S.member` placeSet) then
                 ["in Net `" ++ T.unpack name ++ "`: start place `"++ T.unpack startingPlace ++"` not in place list"]
             else [] ++
             concatMap (validatePlace ecSet ("in Net `"++T.unpack name ++"`")) places ++
@@ -193,7 +213,7 @@ validateNet ecSet (Net name startingPlace places transitions subnets) =
                 []
 
     in
-        if not $ validateType $ T.unpack name then
+        if not $ validateType name then
             ["in Net `"++T.unpack name++"`: invalid name for Net"] ++ validations
         else
             validations
@@ -212,7 +232,7 @@ validateCSApp
             concatMap (validateNet ecSet) nets ++
             concatMap (validateElmCustom ecSet ("in extra types")) extraTLst
     in
-        if not (validateType $ T.unpack startNet) then
+        if not (validateType startNet) then
             ["invalid name for starting net `"++T.unpack startNet++"`"] ++ validations
         else 
             validations

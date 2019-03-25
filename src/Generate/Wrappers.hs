@@ -8,13 +8,13 @@ import Generate.Types
 import qualified Data.Map as M
 import TypeHelpers
 
-createUnwrap :: Language -> String -> String -> Constructor -> T.Text
+createUnwrap :: Language -> T.Text -> T.Text -> Constructor -> T.Text
 createUnwrap l outputType inputPrefix (n,args) =
     let
         (.::.) = if l == Haskell then " :: " else " : "
-        name = T.concat ["unwrap", T.pack n]
-        typE = T.concat [name, (.::.), T.pack n, " -> ", T.pack outputType]
-        decl = T.concat [name," ",generatePattern (n,args)," = ",generatePattern (inputPrefix++n,args)]
+        name = T.concat ["unwrap", n]
+        typE = T.concat [name, (.::.), n, " -> ", outputType]
+        decl = T.concat [name," ",generatePattern (n,args)," = ",generatePattern (T.concat[inputPrefix,n],args)]
     in
         T.unlines
             [
@@ -23,12 +23,12 @@ createUnwrap l outputType inputPrefix (n,args) =
             ,   ""
             ]
 
-createWrap :: M.Map String CustomT -> Bool -> Language -> String -> String -> Constructor -> T.Text
+createWrap :: M.Map T.Text CustomT -> Bool -> Language -> T.Text -> T.Text -> Constructor -> T.Text
 createWrap ecMap def l inputType outputPrefix (n,args) =
     let
         (.::.) = if l == Haskell then " :: " else " : "
-        name = T.concat ["wrap", T.pack n]
-        typE = T.concat [name, (.::.),T.pack inputType," -> ",T.pack n]
+        name = T.concat ["wrap",n]
+        typE = T.concat [name, (.::.),inputType," -> ",n]
         decl = T.concat [name," x__ ="]
     in
         T.unlines
@@ -36,7 +36,7 @@ createWrap ecMap def l inputType outputPrefix (n,args) =
                 typE
             ,   decl
             ,   "    case x__ of"
-            ,   T.concat["        ",generatePattern (outputPrefix++n,args)," -> ",generatePattern (n,args)]
+            ,   T.concat["        ",generatePattern (T.concat[outputPrefix,n],args)," -> ",generatePattern (n,args)]
             ,   if def then T.concat["        _ -> ",constr2Def ecMap (n,args)] else ""
             ,   ""
             ]
@@ -48,28 +48,27 @@ createTransitionUnwrap :: Bool -> Language -> Transition -> T.Text
 createTransitionUnwrap def l (Transition transType (transName,_) connections mCmd) =
     let
         (.::.) = if l == Haskell then " :: " else " : "
-        transTxt = T.pack transName
         -- FIXME: don't repeat this code
         --genConstructors ::  [T.Text]
         genFunctions (from,toLst) =
             let
-                name = T.concat ["unwrap", T.pack transName, "from",from]
-                transitionName = T.concat [T.pack transName,"from",from]
+                name = T.concat ["unwrap", transName, "from",from]
+                transitionName = T.concat [transName,"from",from]
                 typE = T.concat [name, (.::.),transitionName," -> (Player, Maybe ClientMessage)"]
                 decl = T.concat [name," trans ="]   
                 genConstructors = map (\mTo -> 
                     case mTo of 
                         Just (to,(msgName,_)) ->
                             let 
-                                (n,args) = constructor (T.unpack $ T.concat[transTxt,"_",from,"to",to]) [dt (TypeT "") "player" "", dt (TypeT msgName) "msg" ""]
+                                (n,args) = constructor (T.concat[transName,"_",from,"to",to]) [dt (TypeT "") "player" "", dt (TypeT msgName) "msg" ""]
                             in
                                 T.concat
                                     [
-                                        T.concat ["        ",generatePattern (n,args), " -> (unwrap",to,"Player player, Just $ unwrap",T.pack msgName," msg)"]
+                                        T.concat ["        ",generatePattern (n,args), " -> (unwrap",to,"Player player, Just $ unwrap",msgName," msg)"]
                                     ]
                         Nothing -> 
                             let 
-                                (n,args) = constructor (T.unpack $ T.concat[transTxt,"_Stay_",from]) [dt (TypeT "") "player" ""]
+                                (n,args) = constructor (T.concat[transName,"_Stay_",from]) [dt (TypeT "") "player" ""]
                             in
                                 T.concat
                                     [

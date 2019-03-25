@@ -63,9 +63,9 @@ generateServer gsvg rootDir fp
         types :: T.Text
         types = 
             let
-                netUnion    = ct "NetModel" $ map (\nname -> constructor (T.unpack nname) []) netNames
-                netMsgUnion = ct "NetTransition" $ map (\nname -> constructor (T.unpack nname ++ "Trans") [dt (TypeT $ T.unpack nname ++ ".Static.Types.Transition") "" ""]) netNames
-                netOutgoingMsgUnion = ct "NetOutgoingMessage" $ map (\nname -> constructor (T.unpack nname ++ "OMsg") [dt (TypeT $ T.unpack nname ++ ".Static.Types.ClientMessage") "" ""]) netNames
+                netUnion    = ct "NetModel" $ map (\nname -> constructor nname []) netNames
+                netMsgUnion = ct "NetTransition" $ map (\nname -> constructor (T.concat[nname, "Trans"]) [dt (TypeT $ T.concat[nname,".Static.Types.Transition"]) "" ""]) netNames
+                netOutgoingMsgUnion = ct "NetOutgoingMessage" $ map (\nname -> constructor (T.concat[nname,"OMsg"]) [dt (TypeT $ T.concat [nname,".Static.Types.ClientMessage"]) "" ""]) netNames
             in
             T.unlines 
             [

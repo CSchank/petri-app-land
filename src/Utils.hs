@@ -91,26 +91,26 @@ fnub = nub --S.toList . S.fromList
 getPlaceState :: Place -> Constructor
 getPlaceState p =
     case p of
-        (Place n _ s _ _ _) -> (T.unpack n,s)
+        (Place n _ s _ _) -> (n,s)
 
 getPlaceName :: Place -> T.Text
 getPlaceName p =
     case p of
-        (Place n _ _ _ _ _) -> n
+        (Place n _ _ _ _) -> n
 
 
 getPlayerState :: Place -> Constructor
 getPlayerState p =
     case p of
-        (Place n _ s _ _ _) -> (T.unpack n,s)
+        (Place n _ s _ _) -> (n,s)
         
 getNetName :: Net -> T.Text
 getNetName (Net name _ _ _ _) = name
 
 getTransitionName :: Transition -> T.Text
-getTransitionName (Transition _ (name,_) _ _) = T.pack name
-getTransitionName (ClientTransition (name,_) _ _) = T.pack name
-getTransitionName (CmdTransition (name,_) _ _) = T.pack name
+getTransitionName (Transition _ (name,_) _ _) = name
+getTransitionName (ClientTransition (name,_) _ _) = name
+getTransitionName (CmdTransition (name,_) _ _) = name
 
 findConstrImports :: Language -> Constructor -> [T.Text]
 findConstrImports l (_, ets) = 
@@ -124,11 +124,11 @@ findImports l (DictT edt0 edt1, _, _)          =
     if l == Haskell then ["import Static.Dict (Dict)"] else ["import Dict exposing (Dict)"] 
         ++ findImports l edt0 ++ findImports l edt1
 findImports l (ExistingT name imp, _, _)       = 
-    if l == Haskell then [T.concat ["import qualified ",T.pack imp, " (",T.pack name,")"]]
-    else [T.concat ["import ",T.pack imp]]
+    if l == Haskell then [T.concat ["import qualified ",imp, " (",name,")"]]
+    else [T.concat ["import ",imp]]
 findImports l (ExistingWParamsT name params imp, _, _)       = 
-    if l == Haskell then ([T.concat ["import qualified ",T.pack imp, " (",T.pack name,")"]] ++ map (\(param,mod) -> T.concat ["import qualified ",T.pack mod, " (",T.pack param,")"]) params)
-    else ([T.concat ["import ",T.pack imp]] ++ map (\(param,mod) -> T.concat ["import ",T.pack mod]) params)
+    if l == Haskell then ([T.concat ["import qualified ",imp, " (",name,")"]] ++ map (\(param,mod) -> T.concat ["import qualified ",mod, " (",param,")"]) params)
+    else ([T.concat ["import ",imp]] ++ map (\(param,mod) -> T.concat ["import ",mod]) params)
 findImports l (ResultT edt0 edt1, _, _)       = 
     (if l == Haskell then ["import Static.Result (Result(..))"] else [])
         ++ findImports l edt0 ++ findImports l edt1
