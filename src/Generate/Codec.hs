@@ -262,6 +262,7 @@ generateDecoder l (CustomT name edts) =
             error "ExistingT serialization not supported. They should only be used for place states and client- and server-only messages."
         decodeEt indt (EmptyT, _, _) = 
             error "EmptyT serialization not supported. They should only be used for place states and client- and server-only messages."
+        decoderEt _ _ = error ""
         cases = map (\(constrName,dt) -> 
                         T.concat [ "        (\"",constrName, "\"", " " .:. " rest) ->"
                                 ,"\n            (Err \"\",rest) |> \n"

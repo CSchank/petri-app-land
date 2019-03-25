@@ -443,7 +443,7 @@ generate extraTypes fp net =
                             CmdTransition constr _ _ ->
                                 Just [constr]) transitions
                 incomingTransitions localOnly = 
-                    CustomT "IncomingMessage" $ map (\(n,et) -> (T.concat ["M",name],et)) (incomingClientTransitions localOnly)
+                    CustomT "IncomingMessage" $ map (\(n,et) -> (T.concat ["M",n],et)) (incomingClientTransitions localOnly)
                 decoder = T.unlines 
                     [
                         T.concat ["module ",name,".Static.Decode exposing(..)"]
