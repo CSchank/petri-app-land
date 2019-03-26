@@ -1,10 +1,10 @@
-name:                elm-haskell-state-diagram
+name:                petri-app-land
 version:             0.1.0.0
-github:              "githubuser/elm-haskell-state-diagram"
+github:              "cschank/elm-haskell-state-diagram"
 license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2018 Author name here"
+author:              "Christopher William Schankula"
+maintainer:          "schankuc@mcmaster.ca"
+copyright:           "2018-2019 Christopher William Schankula, Christopher Anand"
 
 extra-source-files:
 - README.md
@@ -36,7 +36,7 @@ library:
     -Wincomplete-patterns
 
 executables:
-  elm-haskell-state-diagram-exe:
+  petri-app-land-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -45,10 +45,10 @@ executables:
     - -with-rtsopts=-N
     - -Wincomplete-patterns
     dependencies:
-    - elm-haskell-state-diagram
+    - petri-app-land
 
 tests:
-  elm-haskell-state-diagram-test:
+  petri-app-land-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -56,4 +56,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - elm-haskell-state-diagram
+    - petri-app-land
