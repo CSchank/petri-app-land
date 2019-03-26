@@ -8,7 +8,7 @@
     "dependencies": {
         "direct": {
             "Janiczek/cmd-extra": "1.0.0",
-            "MacCASOutreach/graphicsvg": "5.1.0",
+            "MacCASOutreach/graphicsvg": "7.0.0",
             "NoRedInk/elm-json-decode-pipeline": "1.0.0",
             "billstclair/elm-port-funnel": "1.1.2",
             "billstclair/elm-websocket-client": "3.0.0",
