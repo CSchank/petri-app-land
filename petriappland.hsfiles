@@ -98,8 +98,6 @@ exampleNet =
                     [] --player state (client state stored on server)
                     [] --client state (state stored on client)
                     Nothing
-                    (Nothing, Nothing)
-                    Nothing
 
         placeTwo =
             Place "SecondPlace"
@@ -107,28 +105,28 @@ exampleNet =
                     []
                     []
                     Nothing
-                    (Nothing, Nothing)
-                    Nothing
 
         goToTwo =                 
             Transition
+                OriginClientOnly
                 (constructor "GoToTwo" [])
-                [("FirstPlace", Just ("SecondPlace", constructor "WentToSecondPlace" []))
+                [("FirstPlace", Just ("SecondPlace", constructor "WentToSecondPlace" [], Nothing))
                 ,("SecondPlace", Nothing) --some people will stay
                 ]
                 Nothing
 
         goToOne =                 
             Transition
+                OriginClientOnly
                 (constructor "GoToOne" [])
-                [("SecondPlace", Just ("FirstPlace", constructor "WentToSecondPlace" []))
+                [("SecondPlace", Just ("FirstPlace", constructor "WentToFirstPlace" [], Nothing))
                 ,("SecondPlace", Nothing)
                 ]
                 Nothing
     in
         Net
             "MyExampleNet"  -- name of the petri net (by convention, suffixed by "Net")
-            "PlaceOne"      -- starting place when a user logs in
+            "FirstPlace"      -- starting place when a user logs in
             [placeOne
             ,placeTwo
             ]  -- list of all defined places
@@ -142,7 +140,7 @@ clientServerApp :: ClientServerApp
 clientServerApp =
     ( "MyExampleNet"            --starting net for a client
     , [exampleNet]              --all the nets in this client/server app (current only one is supported at a time)
-    , [exampleCustomType]       --extra client types used in states or messages
+    , []       --extra client types used in states or messages
     )
 
 {-# START_FILE LICENSE #-}
