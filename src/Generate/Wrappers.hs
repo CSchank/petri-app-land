@@ -58,7 +58,7 @@ createTransitionUnwrap def l (Transition transType (transName,_) connections mCm
                 decl = T.concat [name," trans ="]   
                 genConstructors = map (\mTo -> 
                     case mTo of 
-                        Just (to,(msgName,_)) ->
+                        Just (to,(msgName,_),mCmd) ->
                             let 
                                 (n,args) = constructor (T.concat[transName,"_",from,"to",to]) [dt (TypeT "") "player" "", dt (TypeT msgName) "msg" ""]
                             in

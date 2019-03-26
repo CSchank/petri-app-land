@@ -47,24 +47,30 @@ data Place =
         (Maybe ServerCmd) --initial server commands
     deriving(Eq,Ord)
 
+type Connection =
+    (T.Text                             -- from place (must appear in map above)
+        ,Maybe (T.Text                  -- to place (must appear in map above) and client message
+                , Constructor           -- message sent to client
+                , Maybe ClientCmd))     -- a client command to be issued once the message is received on the client side
+        
+
 data Transition
     = Transition
-        TransitionOrigin
-        Constructor                         --message which attempts to fire this transition (must be unique) 
-        [(T.Text                            --from place (must appear in map above)
-        ,Maybe (T.Text, Constructor))       --to place (must appear in map above) and client message
-        ]
-        (Maybe ServerCmd)              --whether to issue a command when this transition is fired
+        TransitionOrigin                -- where the transition can come from
+        Constructor                     -- message which initiates this transition (must be unique) 
+        [Connection]                    -- a list of connections involved in this transition
+        (Maybe ServerCmd)               -- whether to issue a server command when this transition is fired
     | ClientTransition
-        Constructor
-        T.Text                              -- the place at which this transition occurs
-        (Maybe ClientCmd)
-    | CmdTransition         -- a transition from a client which causes a command on the server
-        Constructor -- the message coming from the client
-        T.Text      -- the place at which this transition occurs
-        ServerCmd   -- the type of command this transition causes
+        Constructor                     -- this transition's name and data
+        T.Text                          -- the place at which this transition occurs
+        (Maybe ClientCmd)               -- whether to issue a client command when this transition is fired
+    | CmdTransition                     -- a transition from a client which causes a command on the server
+        Constructor                     -- the message coming from the client
+        T.Text                          -- the place at which this transition occurs
+        ServerCmd                       -- the type of command this transition causes
     deriving (Eq,Ord)
                       
+
 data TransitionOrigin =
         OriginClientOnly      
     |   OriginEitherPossible  -- clientId is Maybe, with Nothing in case it comes from server

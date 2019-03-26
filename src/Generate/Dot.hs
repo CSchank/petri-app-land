@@ -45,10 +45,10 @@ generateNetDot
         transitionsTxt :: T.Text
         transitionsTxt =
             let
-                oneConnection :: T.Text -> (T.Text, Maybe (T.Text, Constructor)) -> T.Text
+                oneConnection :: T.Text -> (T.Text, Maybe (T.Text, Constructor, Maybe ClientCmd)) -> T.Text
                 oneConnection transName (from,mTo) =
                     case mTo of
-                        Just (to, (msgName,edts)) ->
+                        Just (to, (msgName,edts), mCmd) ->
                             let
                                 sameTailName = 
                                     T.concat[from,msgName,to]
@@ -72,7 +72,7 @@ generateNetDot
                 oneTrans :: Transition -> T.Text
                 oneTrans (Transition _ (transName,_) connections cmd) =
                     T.unlines $ map (oneConnection $ transName) connections
-                oneTrans (ClientTransition {}) =
+                oneTrans (ClientTransition (n,et) place mCmd) =
                     T.unlines $ ["Not yet supported."]
                 oneTrans (CmdTransition {}) =
                     T.unlines $ ["Not yet supported."]
