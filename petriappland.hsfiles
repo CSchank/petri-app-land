@@ -215,7 +215,7 @@ allow-different-user: true
 #  - wai
 packages:
 - .
-- ../elm-haskell-state-diagram
+- /petri-app-land # update this with the correct path to the framework
 # Dependency packages to be pulled from upstream that are not in the resolver
 # using the same syntax as the packages field.
 # (e.g., acme-missiles-0.3)
