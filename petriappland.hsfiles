@@ -197,6 +197,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # resolver: https://example.com/snapshots/2018-01-01.yaml
 resolver: lts-13.14
 
+# allow accessing other users' stack libraries
+allow-different-user: true
+
 # User packages to be built.
 # Various formats can be used as shown in the example below.
 #
