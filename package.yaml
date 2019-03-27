@@ -7,7 +7,7 @@ maintainer:          "schankuc@mcmaster.ca"
 copyright:           "2018-2019 Christopher William Schankula, Christopher Anand"
 
 extra-source-files:
-- README.md
+- Readme.md
 - ChangeLog.md
 
 # Metadata used when publishing your package
