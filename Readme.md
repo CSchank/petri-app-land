@@ -5,13 +5,11 @@ folder is fine, as long as this repo and the one you create are in the same plac
 
 ## Specifying your app and generating the code
 
-1. Clone repo in `GitHub/elm-haskell-state-diagram`
-2. From `GitHub`, type `stack new YourProjectName elm-haskell-state-diagram/petriappland`
+1. Clone repo in `GitHub/petri-app-land`
+2. From `GitHub`, type `stack new YourProjectName petri-app-land/petriappland`
 to create a new PetriAppLand project (remember to change `YourProjectName` to whatever you 
 want). This will create a folder `GitHub/YourProjectName`.
 3. Open `src/ClientServerSpec.hs`
-	- Change `outputDirectory = "MyNewPetriProject"` if desired. This will be where the new
-	code will be generated
 	- Modify your specification how you please, adding types, places, transitions, etc.
 	- Types for the specification are in `src/Types.hs`
 	- Type helper functions are in `src/TypeHelpers.hs`

@@ -87,7 +87,7 @@ import TypeHelpers
 --directory to output the generated files
 outputDirectory = "."
 --where the generator is
-generatorRoot = "../elm-haskell-state-diagram"
+generatorRoot = "../petri-app-land"
 
 exampleNet :: Net
 exampleNet =
