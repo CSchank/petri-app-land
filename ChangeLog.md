@@ -1,3 +1,3 @@
-# Changelog for elm-haskell-state-diagram
+# Changelog for petri-app-land
 
 ## Unreleased changes
