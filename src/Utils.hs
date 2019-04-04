@@ -132,6 +132,8 @@ findImports l (ExistingWParamsT name params imp, _, _)       =
 findImports l (ResultT edt0 edt1, _, _)       = 
     (if l == Haskell then ["import Static.Result (Result(..))"] else [])
         ++ findImports l edt0 ++ findImports l edt1
+findImports l (MaybeT edt, _, _)       = 
+    findImports l edt
 findImports _ _ = []
 
 tFst :: (a,b,c) -> a

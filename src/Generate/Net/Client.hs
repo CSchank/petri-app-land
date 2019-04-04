@@ -59,7 +59,7 @@ generate extraTypes fp net =
                     let
                         transConstrs = concatMap (\(_,ets) -> ets) $ map trans2constr $ outgoingClientTransitions True
                         placeConstrs = concatMap place2edts places
-                        imports = fnub $ concatMap (findImports Elm) $ transConstrs ++ placeConstrs
+                        imports = fnub $ concatMap (findImports Elm) $ transConstrs ++ placeConstrs 
                     in
                     T.unlines $
                     [
@@ -241,9 +241,13 @@ generate extraTypes fp net =
                             ]
 
                 hiddenExtraTypes = 
+                    let
+                        imports = concatMap (findImports Elm) $ concatMap (\(CustomT _ edts) -> concatMap snd edts) $ M.elems extraTypes
+                    in
                     T.unlines
                     [
                         T.concat ["module ",name,".Static.ExtraTypes exposing(..)"]
+                    ,   T.unlines imports
                     ,   "-- extra client types"
                     ,   T.unlines $ map (generateType Elm True [DOrd,DEq,DShow] . snd) $ M.toList extraTypes
                     ,   if length extraTypes == 0 then "x = 0" else ""
@@ -440,6 +444,7 @@ generate extraTypes fp net =
                     ,   T.concat ["import ",name,".Static.ExtraTypes exposing(..)\n"]
                     ,   "import Utils.Utils exposing(..)"
                     ,   "import Static.Types"
+                    ,   "import Dict exposing(..)"
                     ,   "encodeTransition : Transition -> Maybe String"
                     ,   "encodeTransition trans ="
                     ,   "    case trans of"] ++
