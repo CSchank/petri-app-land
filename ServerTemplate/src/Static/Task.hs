@@ -1,4 +1,6 @@
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE InstanceSigs #-}
+
 
 module Static.Task where
 
@@ -111,3 +113,15 @@ foldl :: (a -> b -> a) -> a -> [Task x b] -> Task x a
 foldl fn initA tasks =
     Static.Task.sequence tasks 
         |> Static.Task.map (Prelude.foldl fn initA)
+
+instance Functor (Task e) where
+    fmap :: (a -> b) -> Task e a -> Task e b
+    fmap = Static.Task.map
+
+instance Applicative (Task e) where
+    pure = succeed
+    g <*> x = g |> andThen (<$> x)
+
+instance Monad (Task e) where
+    return = succeed
+    (>>=) = flip andThen
