@@ -16,6 +16,7 @@ import                  Utils
 import                  Generate.Net.Server
 import                  Generate.Net.Client
 import                  Generate.Plugins
+import                  Generate.Version
 import                  System.Directory
 import                  System.FilePath.Posix   ((</>),(<.>))
 import                  Data.Maybe              (mapMaybe,fromMaybe,fromJust)
@@ -198,7 +199,6 @@ generateServer gsvg rootDir fp
             ,   T.unlines $ map cmdCase netNames
             ,   "        Nothing -> return ()"
             ]
-
     in do
         createDirectoryIfMissing True (fp </> "server" </> "src" </> "Static")
         copyDirectory (rootDir </> "ServerTemplate/") (fp </> "server/")

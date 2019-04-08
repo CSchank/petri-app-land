@@ -67,10 +67,15 @@ defaultUrl : String
 defaultUrl =
     serverUrl
 
+type alias Alert =
+    {
+        name : String
+    ,   body : List (Html Msg)
+    }
 
 type alias InternalModel =
     { connectionState : State
-    , alert : Maybe (String)
+    , alert : Maybe Alert
     , log : List String
     , url : String
     , wasLoaded : Bool
@@ -156,6 +161,7 @@ type Msg
     | NewUrlChange Url.Url
     | OutgoingTrans Static.Types.NetTransition
     | IncomingMsg Static.Types.NetIncomingMessage
+    | NoOp
 
 
 
@@ -215,6 +221,7 @@ update msg model =
                     (Just str, Nothing) -> model |> wsSend str
                     (Nothing, Just nt) -> model |> withCmd (Cmd.map IncomingMsg <| newMsg nt)
                     _ -> model |> withNoCmd
+        NoOp -> model |> withNoCmd
         {-OutgoingTrans outgoingTrans ->
             case Static.Update.transitionType outgoingTrans of
                 OutgoingToServer -> 
@@ -285,20 +292,21 @@ socketHandler response state mdl =
                     { model | appModel = Tuple.first Init.init } |> withNoCmd
                 "s" -> --server is asking for version
                     model |> wsSend V.version
-                    {-case model.connectionState of
-                        NotConnected ->
-                            { model | appModel = Tuple.first Init.init, connectionState = WaitingForVersionVerification } 
-                                |> wsSend V.version
-                        ConnectionClosed ->
-                            { model | appModel = Tuple.first Init.init, connectionState = WaitingForVersionVerification } 
-                                |> wsSend V.version
-                        Connected -> 
-                            model |> withNoCmd
-                        WaitingForVersionVerification ->
-                            model |> withNoCmd-}
                 "v" -> --correct version
                     { model | appModel = Tuple.first Init.init, connectionState = Connected }
                         |> withNoCmd
+                "i" -> --incorrect version
+                    let
+                        fState = model.state
+                    in
+                    { model | connectionState = ConnectionClosed
+                            , alert = Just <| 
+                                { name = "Well, this is embarassing.... :("
+                                , body = [Html.text <| "Client-server version mismatch. If you are a user, please contact the creator of the app. Client and server versions must match in order to communicate. If you are a server admin, fix this by making sure the newest client and server versions are compiled. You might have to refresh this page.", Html.div [] [Html.text <| "(client version: " ++ V.version ++ ")"]]
+                                }
+                            , state = { fState | socket = fState.socket |> WebSocket.setAutoReopen model.key False }
+                            }
+                        |> withCmd (newMsg WSClose) 
                 _ ->
                     let
                         rincomingMsg = decodeIncomingMessage message model.appModel
@@ -356,22 +364,19 @@ closedString code wasClean expected =
 view : InternalModel -> B.Document Msg
 view model =
     { title = Static.View.title model.appModel
-    , body = case model.connectionState of 
+    , body = (case model.connectionState of 
                 NotConnected ->         [Html.text "Connecting to server....", Html.button [onClick WSConnect] [Html.text "Attempt Reconnection"]]        
                 ConnectionClosed ->     [Html.text "Lost connection. Reconnecting....", Html.button [onClick WSConnect] [Html.text "Attempt Reconnection"]]        
-                _ -> [Html.map OutgoingTrans <| Static.View.view model.appModel]
+                _ -> [Html.map OutgoingTrans <| Static.View.view model.appModel]) ++ [alert model]
              --   , text <| "Log: " ++ Debug.toString model.log   
     }
-{-
+
 alert model = 
     case model.alert of
-        Just al ->
-            Modal.config CloseEditUser
-                |> Modal.h4 [] [ Html.text "Well, this is embarassing.... :(" ]
-                |> Modal.body []
-                    [ 
-                        Html.text al
-                    ]
+        Just { name, body } ->
+            Modal.config NoOp
+                |> Modal.h4 [] [ Html.text name ]
+                |> Modal.body [] body
                 |> Modal.view Modal.shown
         Nothing ->
-            Html.div [] []-}
+            Html.div [] []

@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Generate where
 
 import Validate
@@ -5,14 +7,38 @@ import System.Console.ANSI
 import Types
 import Generate.Client
 import Generate.Server
+import Generate.Version
 import Control.Monad (unless,when)
 import System.Directory (doesDirectoryExist)
-import System.FilePath.Posix ((</>))
+import System.FilePath.Posix ((</>),(<.>))
 import System.Exit (exitFailure)
 import Generate.Dot
+import qualified Data.Text as T
+import Utils
+
+import qualified Data.Text.IO as TIO
 
 generate :: FilePath -> FilePath -> ClientServerApp -> IO ()
-generate outputDirectory rootDir clientServerApp = do
+generate outputDirectory rootDir clientServerApp = 
+    let
+        serverVersion vers =
+            T.unlines 
+            [
+                "{-# LANGUAGE OverloadedStrings #-}"
+            ,   "module Static.Version where\n"
+            ,   "import Data.Text as T"
+            ,   "version :: T.Text"
+            ,   T.concat["version = \"",vers,"\""]
+            ]
+
+        clientVersion vers =
+            T.unlines 
+            [
+                "module Static.Version exposing(version)\n"
+            ,   T.concat["version = \"",vers,"\""]
+            ]
+    in
+    do
     let errors = validateCSApp clientServerApp
     let templateDir = (rootDir </> "ClientTemplate/")
     exists <- doesDirectoryExist templateDir
@@ -48,4 +74,9 @@ generate outputDirectory rootDir clientServerApp = do
             rootDir             --True: regenerate only static files, False: regenerate static files and user files if they don't exist
             outputDirectory   --directory
             clientServerApp   --the server to generate
+    vers <- generateVersion
+    putStrLn "Writing versions"
+    TIO.writeFile (outputDirectory </> "server" </> "src" </> "Static" </> "Version" <.> "hs") $ serverVersion vers
+    TIO.writeFile (outputDirectory </> "client" </> "src" </> "Static" </> "Version" <.> "elm") $ clientVersion vers
+
     generateDot clientServerApp outputDirectory False

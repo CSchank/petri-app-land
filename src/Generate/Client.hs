@@ -15,6 +15,7 @@ import                  Types
 import                  Utils
 import                  Generate.Net.Client
 import                  Generate.Plugins
+import                  Generate.Version
 import                  System.Directory
 import                  System.FilePath.Posix   ((</>),(<.>))
 import                  Data.Maybe              (mapMaybe,fromMaybe,fromJust)
@@ -198,5 +199,5 @@ generateClient gsvg rootDir fp
         writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Update" <.> "elm") update 
         writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Subs" <.> "elm") subs 
         writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "View" <.> "elm") view 
-        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Subscriptions" <.> "elm") subs 
+        writeIfNew 0 (fp </> "client" </> "src" </> "Static" </> "Subscriptions" <.> "elm") subs
         mapM_ (Generate.Net.Client.generate extraT fp) netLst

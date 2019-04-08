@@ -30,6 +30,7 @@ import Static.Types
 import Static.Decode
 import Utils.Utils
 import Static.Init
+import Static.Version (version)
 
 
 wsApp :: TQueue CentralMessage -> WS.ServerApp
@@ -43,15 +44,15 @@ wsApp centralMessageChan pendingConn =
                   rawMsg <- WS.receiveData conn
                   Tio.putStrLn $ T.concat ["Got login message:", rawMsg]
                   
-                  case rawMsg of 
-                    "v0.1" -> do -- tell the central thread to log the user in
+                  case (rawMsg == version) of 
+                    True -> do -- tell the central thread to log the user in
                         WS.sendTextData conn ("v" :: T.Text) --tell client that its version is right
                         atomically $ writeTQueue centralMessageChan (NewUser clientMessageChan conn)
                         forever $ threadDelay 10000000000 --sleep this thread forever (we need it to keep the connection alive)
                         return ()
                     _      -> do -- user's client version does not match 
-                        WS.sendTextData conn ("v0.1" :: T.Text) --tell client that its version is wrong
-                        WS.sendClose conn ("v0.1" :: T.Text) --close the Connection
+                        WS.sendTextData conn ("i" :: T.Text) --close the Connection
+                        WS.sendClose conn ("" :: T.Text) --close the Connection
                         return ()
     in
         do
