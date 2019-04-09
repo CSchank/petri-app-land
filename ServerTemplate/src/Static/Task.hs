@@ -8,6 +8,7 @@ import Static.ServerTypes
 --import Static.Cmd
 import Utils.Utils
 import Control.Monad (foldM)
+import Control.Monad.Except
 import Data.Maybe (fromJust)
 import Data.TMap as TM
 import Static.Cmd as Cmd (Cmd(..))
@@ -125,3 +126,7 @@ instance Applicative (Task e) where
 instance Monad (Task e) where
     return = succeed
     (>>=) = flip andThen
+
+instance MonadError (Task e) where
+    throwError = fail
+    catchError = onError
