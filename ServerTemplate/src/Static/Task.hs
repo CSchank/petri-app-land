@@ -1,6 +1,8 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE InstanceSigs #-}
-
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Static.Task where
 
@@ -127,6 +129,6 @@ instance Monad (Task e) where
     return = succeed
     (>>=) = flip andThen
 
-instance MonadError (Task e) where
-    throwError = fail
-    catchError = onError
+instance MonadError e (Task e) where
+    throwError = Static.Task.fail
+    catchError = flip Static.Task.onError

@@ -25,6 +25,12 @@ map fn ra =
         Err x -> Err x
         Ok a -> Ok $ fn a
 
+mapError :: (x -> y) -> Result x a -> Result y a
+mapError fn rx =
+    case rx of
+        Ok a -> Ok a
+        Err x -> Err $ fn x 
+
 map1 :: (a -> value) -> Result x a -> Result x value
 map1 = Static.Result.map
 
