@@ -1,6 +1,8 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE InstanceSigs #-}
-
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Static.Task where
 
@@ -8,6 +10,7 @@ import Static.ServerTypes
 --import Static.Cmd
 import Utils.Utils
 import Control.Monad (foldM)
+import Control.Monad.Except
 import Data.Maybe (fromJust)
 import Data.TMap as TM
 import Static.Cmd as Cmd (Cmd(..))
@@ -125,3 +128,7 @@ instance Applicative (Task e) where
 instance Monad (Task e) where
     return = succeed
     (>>=) = flip andThen
+    
+instance MonadError e (Task e) where
+    throwError = Static.Task.fail
+    catchError = flip Static.Task.onError

@@ -19,7 +19,7 @@ rMap2 = Result.map2
 rMap3 = Result.map3
 rMap4 = Result.map4
 rMap5 = Result.map5
-
+        
 rMap6 : (a -> b -> c -> d -> e -> f -> value) -> Result x a -> Result x b -> Result x c -> Result x d -> Result x e -> Result x f -> Result x value
 rMap6 fn ra rb rc rd re rf =
     case ra of 
@@ -185,6 +185,156 @@ rMap10 fn ra rb rc rd re rf rg rh ri rj =
                                                                                 Err x -> Err x
                                                                                 Ok j -> Ok <| fn a b c d e f g h i j
 
+rMap11 : (a -> b -> c -> d -> e -> f -> g -> h -> i -> j -> k -> value)
+      -> Result x a
+      -> Result x b
+      -> Result x c
+      -> Result x d
+      -> Result x e
+      -> Result x f
+      -> Result x g
+      -> Result x h
+      -> Result x i
+      -> Result x j
+      -> Result x k    
+      -> Result x value
+rMap11 fn r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 =
+    r1 |> Result.andThen (\ok1 -> r2
+       |> Result.andThen (\ok2 -> r3
+       |> Result.andThen (\ok3 -> r4
+       |> Result.andThen (\ok4 -> r5
+       |> Result.andThen (\ok5 -> r6
+       |> Result.andThen (\ok6 -> r7
+       |> Result.andThen (\ok7 -> r8
+       |> Result.andThen (\ok8 -> r9
+       |> Result.andThen (\ok9 -> r10
+       |> Result.andThen (\ok10 -> r11
+       |> Result.andThen (\ok11 -> Ok <| fn ok1 ok2 ok3 ok4 ok5 ok6 ok7 ok8 ok9 ok10 ok11)))))))))))
+
+rMap12 : (a -> b -> c -> d -> e -> f -> g -> h -> i -> j -> k -> l -> value)
+      -> Result x a
+      -> Result x b
+      -> Result x c
+      -> Result x d
+      -> Result x e
+      -> Result x f
+      -> Result x g
+      -> Result x h
+      -> Result x i
+      -> Result x j
+      -> Result x k
+      -> Result x l   
+      -> Result x value
+rMap12 fn r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 =
+    r1 |> Result.andThen (\ok1 -> r2
+       |> Result.andThen (\ok2 -> r3
+       |> Result.andThen (\ok3 -> r4
+       |> Result.andThen (\ok4 -> r5
+       |> Result.andThen (\ok5 -> r6
+       |> Result.andThen (\ok6 -> r7
+       |> Result.andThen (\ok7 -> r8
+       |> Result.andThen (\ok8 -> r9
+       |> Result.andThen (\ok9 -> r10
+       |> Result.andThen (\ok10 -> r11
+       |> Result.andThen (\ok11 -> r12
+       |> Result.andThen (\ok12 -> Ok <| fn ok1 ok2 ok3 ok4 ok5 ok6 ok7 ok8 ok9 ok10 ok11 ok12))))))))))))
+        
+rMap13 : (a -> b -> c -> d -> e -> f -> g -> h -> i -> j -> k -> l -> m -> value)
+      -> Result x a
+      -> Result x b
+      -> Result x c
+      -> Result x d
+      -> Result x e
+      -> Result x f
+      -> Result x g
+      -> Result x h
+      -> Result x i
+      -> Result x j
+      -> Result x k
+      -> Result x l
+      -> Result x m       
+      -> Result x value
+rMap13 fn r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 =
+    r1 |> Result.andThen (\ok1 -> r2
+       |> Result.andThen (\ok2 -> r3
+       |> Result.andThen (\ok3 -> r4
+       |> Result.andThen (\ok4 -> r5
+       |> Result.andThen (\ok5 -> r6
+       |> Result.andThen (\ok6 -> r7
+       |> Result.andThen (\ok7 -> r8
+       |> Result.andThen (\ok8 -> r9
+       |> Result.andThen (\ok9 -> r10
+       |> Result.andThen (\ok10 -> r11
+       |> Result.andThen (\ok11 -> r12
+       |> Result.andThen (\ok12 -> r13
+       |> Result.andThen (\ok13 -> Ok <| fn ok1 ok2 ok3 ok4 ok5 ok6 ok7 ok8 ok9 ok10 ok11 ok12 ok13)))))))))))))
+
+rMap14 : (a -> b -> c -> d -> e -> f -> g -> h -> i -> j -> k -> l -> m -> n -> value)
+      -> Result x a
+      -> Result x b
+      -> Result x c
+      -> Result x d
+      -> Result x e
+      -> Result x f
+      -> Result x g
+      -> Result x h
+      -> Result x i
+      -> Result x j
+      -> Result x k
+      -> Result x l
+      -> Result x m
+      -> Result x n
+      -> Result x value
+rMap14 fn r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14 =
+    r1 |> Result.andThen (\ok1 -> r2
+       |> Result.andThen (\ok2 -> r3
+       |> Result.andThen (\ok3 -> r4
+       |> Result.andThen (\ok4 -> r5
+       |> Result.andThen (\ok5 -> r6
+       |> Result.andThen (\ok6 -> r7
+       |> Result.andThen (\ok7 -> r8
+       |> Result.andThen (\ok8 -> r9
+       |> Result.andThen (\ok9 -> r10
+       |> Result.andThen (\ok10 -> r11
+       |> Result.andThen (\ok11 -> r12
+       |> Result.andThen (\ok12 -> r13
+       |> Result.andThen (\ok13 -> r14                              
+       |> Result.andThen (\ok14 -> Ok <| fn ok1 ok2 ok3 ok4 ok5 ok6 ok7 ok8 ok9 ok10 ok11 ok12 ok13 ok14))))))))))))))
+
+rMap15 : (a -> b -> c -> d -> e -> f -> g -> h -> i -> j -> k -> l -> m -> n -> o -> value)
+      -> Result x a
+      -> Result x b
+      -> Result x c
+      -> Result x d
+      -> Result x e
+      -> Result x f
+      -> Result x g
+      -> Result x h
+      -> Result x i
+      -> Result x j
+      -> Result x k
+      -> Result x l
+      -> Result x m
+      -> Result x n
+      -> Result x o
+      -> Result x value
+rMap15 fn r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14 r15 =
+    r1 |> Result.andThen (\ok1 -> r2
+       |> Result.andThen (\ok2 -> r3
+       |> Result.andThen (\ok3 -> r4
+       |> Result.andThen (\ok4 -> r5
+       |> Result.andThen (\ok5 -> r6
+       |> Result.andThen (\ok6 -> r7
+       |> Result.andThen (\ok7 -> r8
+       |> Result.andThen (\ok8 -> r9
+       |> Result.andThen (\ok9 -> r10
+       |> Result.andThen (\ok10 -> r11
+       |> Result.andThen (\ok11 -> r12
+       |> Result.andThen (\ok12 -> r13
+       |> Result.andThen (\ok13 -> r14
+       |> Result.andThen (\ok14 -> r15                   
+       |> Result.andThen (\ok15 -> Ok <| fn ok1 ok2 ok3 ok4 ok5 ok6 ok7 ok8 ok9 ok10 ok11 ok12 ok13 ok14 ok15)))))))))))))))
+                              
 encodeInt : Int -> Int -> Int -> String
 encodeInt low high n =
     let
