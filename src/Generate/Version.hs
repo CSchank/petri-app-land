@@ -8,4 +8,4 @@ import Data.Text as T
 generateVersion :: IO T.Text
 generateVersion = do
     t <- Time.getPOSIXTime
-    return $ T.concat ["v", T.pack $ show (t * 10^6)]
+    return $ T.concat ["v", T.pack $ show $ round $ t * 10^6]
