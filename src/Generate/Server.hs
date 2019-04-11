@@ -55,7 +55,11 @@ generateServer gsvg rootDir fp
             ,   "import Data.Maybe (fromJust)"
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Init"]) netNames
             ,   ""
-            ,   T.concat["init = ",startNet,".Static.Init.init"]
+            ,   "init = do"
+            ,   T.concat["    ns <- ",startNet,".Static.Init.init"]
+            ,   "    Prelude.putStrLn $ \"Successfully started server.\""
+            ,   "    Prelude.putStrLn $ \"Use Ctrl+C to stop server.\""
+            ,   "    return ns"
             ,   T.concat["teardown = ",startNet,".Static.Init.teardown . fromJust . TM.lookup"]
             ,   "-- reference to the initial Net"
             ,   T.concat["initNet :: NetModel"]
