@@ -1,4 +1,4 @@
-# How to create a new PetriAppWorld
+# How to create a new PetriAppLand
 
 GitHub will be the "main" directory from which we will be working for this example. Any
 folder is fine, as long as this repo and the one you create are in the same place.
