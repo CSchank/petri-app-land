@@ -211,7 +211,7 @@ update msg model =
             let 
                 (newAppModel, mCmd) = Static.Update.update () incomingMsg model.appModel 
             in
-                { model | appModel = newAppModel } |> withNoCmd
+                { model | appModel = newAppModel } |> withCmd (Cmd.map Static.Update.outgoingToIncoming mCmd)
         OutgoingTrans trans ->
             let
                 respTxt = encodeTransition trans
