@@ -275,7 +275,7 @@ generate extraTypes fp net =
                                                 fnName = T.concat["update",from,n,to]
                                             in Just $ 
                                             T.unlines
-                                            [T.concat[fnName," : FromSuperPlace -> ",n," -> ",from," -> (",to," Cmd ",cmd,")"]
+                                            [T.concat[fnName," : FromSuperPlace -> ",n," -> ",from," -> (",to," Cmd, ",cmd,")"]
                                             ,T.concat[fnName," fsp ",generatePattern (n,et)," ",uncapitalize from," ="]
                                             ,T.concat["    todo \"Please implement update function ",fnName," for the ",name," net.\""]
                                             ]
@@ -345,7 +345,7 @@ generate extraTypes fp net =
                                                 ,generatePattern (T.concat["M",n], t)
                                                 ,", S",from," st)"
                                                 ," -> let (newModel, cmd) = update",from,n,to
-                                                ," fsp ",generatePattern (n, t)," st in (S",to," newModel, Cmd.map unwrap",cmd,")"
+                                                ," fsp ",generatePattern (n, t)," st in (S",to," newModel, Cmd.map (Internal << unwrap",cmd,") cmd)"
                                                 ]
                                         _ -> Nothing
                             in
