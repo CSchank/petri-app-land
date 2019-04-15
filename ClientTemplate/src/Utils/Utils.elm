@@ -446,3 +446,14 @@ lRange = List.range
 newMsg : msg -> Cmd msg
 newMsg msg =
     Task.perform identity (Task.succeed msg)
+
+
+type Either a b =
+      Left a
+    | Right b
+
+mapBoth : (a -> x) -> (b -> y) -> (Either a b) -> (Either x y)
+mapBoth fa fb eith = 
+    case eith of
+        Left a -> Left <| fa a
+        Right b -> Right <| fb b
