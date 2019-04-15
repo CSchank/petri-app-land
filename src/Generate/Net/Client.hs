@@ -385,12 +385,13 @@ generate extraTypes fp net =
                         ttCase (CmdTransition (name,ets) _ _) =
                             Just $ T.concat["        ",generatePattern (T.concat ["T",name],ets)," -> OutgoingToServer"]
                         o2i :: Transition -> Maybe T.Text
-                        o2i (Transition _ (name,ets) _ _) = 
-                            Nothing
+                        o2i (Transition origin (name,ets) _ _) = 
+                            Nothing--if origin == OriginServerOnly then Nothing
+                            --else Just $ T.concat["        External outT -> Right outT"]
                         o2i (CmdTransition (name,ets) _ _) = 
-                            Nothing
+                            Nothing--Just $ T.concat["        External outT -> Right outT"]
                         o2i (ClientTransition (name,ets) _ _) =
-                            Just $ T.concat["        Internal ",generatePattern (T.concat ["T",name],ets)," -> Just ",generatePattern (T.concat ["M",name],ets)]
+                            Just $ T.concat["        Internal ",generatePattern (T.concat ["T",name],ets)," -> Left <| ",generatePattern (T.concat ["M",name],ets)]
                     in T.unlines
                     [
                         T.concat ["module ",name,".Static.Update exposing(..)"]
@@ -398,6 +399,7 @@ generate extraTypes fp net =
                     ,   T.concat ["import ",name,".Static.Wrappers exposing(..)"]
                     ,   T.concat ["import ",name,".Static.FromSuperPlace exposing (FromSuperPlace)"]
                     ,   T.concat ["import ",name,".Update exposing(..)"]
+                    ,   "import Utils.Utils exposing(Either(..))"
                     ,   "import Static.Types exposing(..)"
                     ,   "import Dict"
                     ,   ""
@@ -410,13 +412,14 @@ generate extraTypes fp net =
                     ,   "transitionType oTrans ="
                     ,   "    case oTrans of"
                     ,   T.unlines $ mapMaybe ttCase transitions-}
-                    ,   "outgoingToIncoming : Transition -> Maybe IncomingMessage"
+                    ,   "outgoingToIncoming : Transition -> Either IncomingMessage Transition"
                     ,   "outgoingToIncoming trans ="
                     ,   "    case trans of"
-                    ,   T.unlines $ mapMaybe o2i internalClientTransitions
-                    ,   if length (mapMaybe o2i transitions) < length transitions then
-                            "        _ -> Nothing"
-                        else ""
+                    ,   T.unlines $ mapMaybe o2i transitions --internalClientTransitions
+                    ,   "        External outT -> Right <| External outT"
+                    --,   if length (mapMaybe o2i transitions) < length transitions then
+                    --        "        _ -> Nothing"
+                    --    else ""
                     ]
             
                 placeMap :: M.Map T.Text Place

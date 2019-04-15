@@ -28,7 +28,7 @@ import Static.Subs
 import Static.Types exposing(NetModel)
 
 import Config exposing(serverUrl)
-import Utils.Utils exposing(newMsg)
+import Utils.Utils exposing(newMsg,Either(..))
 
 import Bootstrap.Modal as Modal
 
@@ -211,15 +211,23 @@ update msg model =
             let 
                 (newAppModel, mCmd) = Static.Update.update () incomingMsg model.appModel 
             in
-                { model | appModel = newAppModel } |> withCmd (Cmd.map Static.Update.outgoingToIncoming mCmd)
+                { model | appModel = newAppModel } 
+                    |> withCmd
+                        (Cmd.map (\out -> 
+                            case Static.Update.outgoingToIncoming out of
+                                Left cmd ->
+                                    IncomingMsg cmd
+                                Right outT ->
+                                    OutgoingTrans outT
+                        ) mCmd)
         OutgoingTrans trans ->
             let
                 respTxt = encodeTransition trans
                 newTrans = Static.Update.outgoingToIncoming trans
             in
                 case (respTxt,newTrans) of
-                    (Just str, Nothing) -> model |> wsSend str
-                    (Nothing, Just nt) -> model |> withCmd (Cmd.map IncomingMsg <| newMsg nt)
+                    (Just str, Right _) -> model |> wsSend str
+                    (Nothing, Left nt) -> model |> withCmd (Cmd.map IncomingMsg <| newMsg nt)
                     _ -> model |> withNoCmd
         NoOp -> model |> withNoCmd
         {-OutgoingTrans outgoingTrans ->
