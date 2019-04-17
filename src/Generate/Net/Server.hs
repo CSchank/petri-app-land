@@ -60,11 +60,11 @@ generate extraTypes fp net =
                     let
                         fnName = T.concat ["init",name]
                         typ = case mCmd of
-                                Just cmdN -> T.concat [fnName, " :: (", capitalize name,", Cmd ",cmdN,")"]
-                                Nothing       -> T.concat [fnName, " :: ", capitalize name]
+                                []       -> T.concat [fnName, " :: ", capitalize name]
+                                cmdNs -> T.concat [fnName, " :: (", capitalize name,T.intercalate ", " $ map (\cmdN -> T.concat [" Cmd ",cmdN]) cmdNs,")"]
                         decl = case mCmd of
-                                Just _  -> T.concat [fnName, " = (",constr2Def extraTypes (name,serverPlaceState),", Cmd.none)"]
-                                Nothing -> T.concat [fnName, " = ", constr2Def extraTypes (name,serverPlaceState)]
+                                [] -> T.concat [fnName, " = ", constr2Def extraTypes (name,serverPlaceState)]
+                                cmdNs  -> T.concat [fnName, " = (",constr2Def extraTypes (name,serverPlaceState),T.intercalate "," $ replicate (length cmdNs) "Cmd.none",")"]
                     in
                         T.unlines 
                         [
@@ -117,7 +117,7 @@ generate extraTypes fp net =
                         placeOutputs :: [T.Text]
                         placeOutputs = 
                             fnub $ mapMaybe (\(_,mTo) -> fmap tFst mTo) connections
-                        constructors :: (T.Text, [Maybe (T.Text, Constructor, Maybe ClientCmd)]) -> [Constructor]
+                        constructors :: (T.Text, [Maybe (T.Text, Constructor, [ClientCmd])]) -> [Constructor]
                         constructors (from,toLst) =
                             map (\mTo -> 
                                 case mTo of 
@@ -279,7 +279,7 @@ generate extraTypes fp net =
                             ,   T.concat ["    _ -> t) (",T.intercalate "," $ replicate (length froms) "[]",") players"]
                             ]
                         splitPlayers _ = ""
-                        transCase tr@(Transition transType constr@(transName,transArgs) _ mCmd) = 
+                        transCase tr@(Transition transType constr@(transName,transArgs) _ mCmds) = 
                             let
                                 froms = fst $ fromsTos tr
                                 tos = snd $ fromsTos tr
@@ -292,9 +292,9 @@ generate extraTypes fp net =
                                         OriginClientOnly -> "(fromJust mClientID) "
                                         OriginServerOnly -> ""
                                 cmd =
-                                    case mCmd of 
-                                        Just c -> T.concat ["Just $ Cmd.map unwrap",c," cmd"]
-                                        Nothing -> "Nothing"
+                                    case mCmds of 
+                                        [] -> "Nothing"
+                                        cs -> T.intercalate ", " $ map (\c -> T.concat ["Just $ Cmd.map unwrap",c," cmd"]) cs
                                 transContr = trans2constr tr
                             in
                             T.unlines $ map (\t -> T.concat["                ",t]) $
@@ -302,11 +302,11 @@ generate extraTypes fp net =
                                 T.concat [generatePattern (T.concat["T",transName],transArgs),  "->"]
                             ,   "    let"
                             ,   T.concat["        (",T.intercalate "," $ map (\t -> T.concat[uncapitalize t,"PlayerLst"]) froms,") = split",transTxt,"Players (IM'.toList players)"]
-                            ,   case mCmd of
-                                    Just cmd -> 
-                                        T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,",cmd) = update",transTxt," tld ",clientIdTxt,"(",generatePattern transContr,")",T.replicate (length allStates) "(fromJust $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat ["(map snd ",uncapitalize t, "PlayerLst)"]) froms]
-                                    Nothing ->
+                            ,   case mCmds of
+                                    [] ->
                                         T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,") = update",transTxt," tld ",clientIdTxt,"(",generatePattern transContr,") ",T.replicate (length allStates) "((safeFromJust \"place lookup\") $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat ["(map snd ",uncapitalize t, "PlayerLst)"]) froms]
+                                    cmds -> 
+                                        T.concat ["        (",T.intercalate "," $ map uncapitalize allStates,",",T.intercalate "," fromVars,",",T.intercalate " " $ map (\n -> T.concat["cmd",T.pack $ show n]) [0..length cmds - 1],") = update",transTxt," tld ",clientIdTxt,"(",generatePattern transContr,")",T.replicate (length allStates) "(fromJust $ TM.lookup places) ", T.intercalate " " $ map (\t -> T.concat ["(map snd ",uncapitalize t, "PlayerLst)"]) froms]
                             ,   T.concat["        newPlaces = ",T.intercalate " $ " $ map (\state -> T.concat["TM.insert ",uncapitalize state]) allStates, " places"]
                             ,   T.concat["        (newPlayers, clientMessages) = unzip $ map (process",transTxt,"Player ",T.intercalate " " fromVars,") (",T.intercalate "++" $ map (\from -> T.concat["mapSnd unwrap",from,"Player ",uncapitalize from,"PlayerLst"]) froms,")"]
                             ,   "    in"
@@ -397,10 +397,10 @@ generate extraTypes fp net =
                 placeMap = M.fromList $ map (\(pl@(Place n _ _ _ _)) -> (n,pl)) places
 
                 getPlace :: T.Text -> Place
-                getPlace name = M.findWithDefault (Place "" [] [] [] Nothing) name placeMap
+                getPlace name = M.findWithDefault (Place "" [] [] [] []) name placeMap
 
                 generateTrans :: Transition -> T.Text
-                generateTrans (Transition transType (msgN,msg) connections mCmd) =
+                generateTrans (Transition transType (msgN,msg) connections cmds) =
                     let
                         pattern = generatePattern (msgN,msg)
 
@@ -452,10 +452,6 @@ generate extraTypes fp net =
                                                         typ
                                                     ,   T.concat [name," (pId, p",uncapitalize from,") = error \"Please fill in function stub.\""]
                                                     ]) (grouped connections)
-                        cmds = 
-                            case mCmd of 
-                                Just msgN -> [msgN]
-                                Nothing -> []
 
                         in T.unlines 
                         [
@@ -495,13 +491,14 @@ generate extraTypes fp net =
                     ,   "import Static.ServerTypes"
                     ,   "import qualified Data.IntMap as IM'"
                     ,   "import qualified Data.TMap as TM\n"
+                    ,   "import Data.Tuple.Select (sel1)"
                     ,   "init :: IO (NetState Player)"
                     ,   "init = do"
                     ,   "    ip <- initPlugins"
                     ,   "    return $ NetState"
                     ,   "        {"
                     ,   "          playerStates = IM'.empty"
-                    ,   T.concat["        , placeStates = ",T.concat $ map (\(Place name _ _ _ mCmd) -> T.concat["TM.insert",if isJust mCmd then T.concat[" (fst init",name] else T.concat[" init",name]," $ "]) places,"TM.empty"]
+                    ,   T.concat["        , placeStates = ",T.concat $ map (\(Place name _ _ _ cmds) -> T.concat["TM.insert",if length cmds > 0 then T.concat[" (sel1 init",name] else T.concat[" init",name]," $ "]) places,"TM.empty"]
                     ,   T.concat["        , pluginStates = ip"]
                     ,   "        }"
                     ,   "teardown :: NetState Player -> IO ()"

@@ -125,16 +125,16 @@ validateElmCustom ecSet note (CustomT name constrs) =
 validatePlace :: S.Set T.Text -> String -> Place -> [String]
 validatePlace ecSet note (Place "" _ _ _ _) =
     [note++": a Place has an empty name"]
-validatePlace ecSet note (Place name serverState playerState clientState initCmd) =
+validatePlace ecSet note (Place name serverState playerState clientState initCmds) =
     let
         cmdValidation = 
-            case initCmd of
+            concatMap (\initCmd -> case initCmd of
                 Just cmd ->
                     if not $ validateType cmd then
                         [note++", in server command `"++T.unpack cmd++"`: invalid name for command"]
                     else []
                 Nothing ->
-                    []
+                    []) initCmds
         
         validations =
             concatMap (validateEdt ecSet (note++", in place `"++T.unpack name++"`, in server state")) serverState ++

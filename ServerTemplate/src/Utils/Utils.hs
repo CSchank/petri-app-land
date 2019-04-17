@@ -16,6 +16,8 @@ import qualified Data.IntMap.Strict as IM'
 import Control.Concurrent (forkIO)
 import qualified Static.Result as Result
 
+import qualified Data.Time.Clock.POSIX         as Time
+
 
 (|>) :: a -> (a -> b) -> b
 (|>) x f = f x
@@ -146,3 +148,7 @@ mapSnd f l =
 insertList :: [(IM'.Key, a)] -> IM'.IntMap a -> IM'.IntMap a
 insertList l im =
     foldl (\m (i,a) -> IM'.insert i a m) im l
+
+
+getTime :: IO Time.POSIXTime
+getTime = Time.getPOSIXTime

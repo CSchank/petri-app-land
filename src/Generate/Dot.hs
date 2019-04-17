@@ -45,7 +45,7 @@ generateNetDot
         transitionsTxt :: T.Text
         transitionsTxt =
             let
-                oneConnection :: T.Text -> (T.Text, Maybe (T.Text, Constructor, Maybe ClientCmd)) -> T.Text
+                oneConnection :: T.Text -> (T.Text, Maybe (T.Text, Constructor, Maybe [ClientCmd])) -> T.Text
                 oneConnection transName (from,mTo) =
                     case mTo of
                         Just (to, (msgName,edts), mCmd) ->

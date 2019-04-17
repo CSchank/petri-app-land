@@ -261,7 +261,7 @@ generate extraTypes fp net =
                             let
                                 conUpFn (from,mTo) = 
                                     case mTo of
-                                        Just (to,(n,et),Nothing) -> 
+                                        Just (to,(n,et),[]) -> 
                                             let
                                                 fnName = T.concat["update",from,n,to]
                                             in Just $ 
@@ -270,34 +270,34 @@ generate extraTypes fp net =
                                             ,T.concat[fnName," fsp ",generatePattern (n,et)," ",uncapitalize from," ="]
                                             ,T.concat["    todo \"Please implement update function ",fnName," for the ",name," net.\""]
                                             ]
-                                        Just (to,(n,et),Just cmd) -> 
+                                        Just (to,(n,et),cmds) -> 
                                             let
                                                 fnName = T.concat["update",from,n,to]
                                             in Just $ 
                                             T.unlines
-                                            [T.concat[fnName," : FromSuperPlace -> ",n," -> ",from," -> (",to," Cmd, ",cmd,")"]
+                                            [T.concat[fnName," : FromSuperPlace -> ",n," -> ",from," -> (",to,", ",T.intercalate ", " $ map (\cmdN -> T.concat [" Cmd ",cmdN]) cmds,")"]
                                             ,T.concat[fnName," fsp ",generatePattern (n,et)," ",uncapitalize from," ="]
                                             ,T.concat["    todo \"Please implement update function ",fnName," for the ",name," net.\""]
                                             ]
                                         _ -> Nothing
                             in
                             T.unlines $ mapMaybe conUpFn connections 
-                        trUpFn (ClientTransition (n,et) place mCmd) =                         
+                        trUpFn (ClientTransition (n,et) place cmds) =                         
                             let
                                 fnName = T.concat["update",n,place]
                             in
-                            case mCmd of
-                                Just cmd ->
-                                    T.unlines
-                                    [T.concat[fnName," : FromSuperPlace -> ",n," -> ",place," -> (",place,", Cmd ",cmd,")"]
-                                    ,T.concat[fnName," fsp ",generatePattern (n,et)," ",uncapitalize place," ="]
-                                    ,T.concat["    (todo \"Please implement update function ",fnName," for the ",name," net.\", Cmd.none)"]
-                                    ]
-                                Nothing ->
+                            case cmds of
+                                [] ->
                                     T.unlines
                                     [T.concat[fnName," : FromSuperPlace -> ",n," -> ",place," -> ",place]
                                     ,T.concat[fnName," fsp ",generatePattern (n,et)," ",uncapitalize place," ="]
                                     ,T.concat["    todo \"Please implement update function ",fnName," for the ",name," net.\""]
+                                    ]
+                                cmds ->
+                                    T.unlines
+                                    [T.concat[fnName," : FromSuperPlace -> ",n," -> ",place," -> (",place,T.concat $ map (\t -> T.concat[", Cmd ",t]) cmds,")"]
+                                    ,T.concat[fnName," fsp ",generatePattern (n,et)," ",uncapitalize place," ="]
+                                    ,T.concat["    (todo \"Please implement update function ",fnName," for the ",name," net.\", Cmd.none)"]
                                     ]
                         trUpFn _ = ""
                     in T.unlines
@@ -350,9 +350,17 @@ generate extraTypes fp net =
                                         _ -> Nothing
                             in
                                 T.unlines $ mapMaybe connectionCase connections
-                        updateCase (ClientTransition (n,t) place mCmd) =
-                            case mCmd of 
-                                Just cmd ->
+                        updateCase (ClientTransition (n,t) place cmds) =
+                            case cmds of 
+                                [] ->
+                                    T.concat ["        ("
+                                        ,generatePattern (T.concat["M",n],t)
+                                        ,", S",place," st)"
+                                        ," -> (S",place
+                                        ," <| update", n,place
+                                        ," fsp ",generatePattern (n,t)," st, Cmd.none)"
+                                        ]
+                                cmds ->
                                     let
                                         cmdInternal = 
                                             case M.lookup cmd internalMap of
@@ -366,14 +374,6 @@ generate extraTypes fp net =
                                         ,if cmdInternal then " Internal " else " External " ," << unwrap",cmd,")"
                                         ," <| update", n,place
                                         ," fsp ",generatePattern (n,t)," st"
-                                        ]
-                                Nothing ->
-                                    T.concat ["        ("
-                                        ,generatePattern (T.concat["M",n],t)
-                                        ,", S",place," st)"
-                                        ," -> (S",place
-                                        ," <| update", n,place
-                                        ," fsp ",generatePattern (n,t)," st, Cmd.none)"
                                         ]
                         updateCase (CmdTransition {}) =
                             ""

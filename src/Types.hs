@@ -44,14 +44,14 @@ data Place =
         [DocTypeT]    --server place state
         [DocTypeT]    --player state
         [DocTypeT]    --client place state
-        (Maybe ServerCmd) --initial server commands
+        ([ServerCmd]) --initial server commands
     deriving(Eq,Ord)
 
 type Connection =
     (T.Text                             -- from place (must appear in map above)
         ,Maybe (T.Text                  -- to place (must appear in map above) and client message
                 , Constructor           -- message sent to client
-                , Maybe ClientCmd))     -- a client command to be issued once the message is received on the client side
+                , [ClientCmd]))     -- a client command to be issued once the message is received on the client side
         
 
 data Transition
@@ -59,11 +59,11 @@ data Transition
         TransitionOrigin                -- where the transition can come from
         Constructor                     -- message which initiates this transition (must be unique) 
         [Connection]                    -- a list of connections involved in this transition
-        (Maybe ServerCmd)               -- whether to issue a server command when this transition is fired
+        [ServerCmd]               -- whether to issue a server command when this transition is fired
     | ClientTransition
         Constructor                     -- this transition's name and data
         T.Text                          -- the place at which this transition occurs
-        (Maybe ClientCmd)               -- whether to issue a client command when this transition is fired
+        [ClientCmd]               -- whether to issue a client command when this transition is fired
     | CmdTransition                     -- a transition from a client which causes a command on the server
         Constructor                     -- the message coming from the client
         T.Text                          -- the place at which this transition occurs
