@@ -109,7 +109,7 @@ getNetName (Net name _ _ _ _) = name
 
 getTransitionName :: Transition -> T.Text
 getTransitionName (Transition _ (name,_) _ _) = name
-getTransitionName (ClientTransition (name,_) _ _) = name
+getTransitionName (ClientTransition (name,_) _) = name
 getTransitionName (CmdTransition (name,_) _ _) = name
 
 findConstrImports :: Language -> Constructor -> [T.Text]

@@ -51,9 +51,8 @@ type Connection =
     (T.Text                             -- from place (must appear in map above)
         ,Maybe (T.Text                  -- to place (must appear in map above) and client message
                 , Constructor           -- message sent to client
-                , Maybe ClientCmd))     -- a client command to be issued once the message is received on the client side
+                ))
         
-
 data Transition
     = Transition
         TransitionOrigin                -- where the transition can come from
@@ -63,7 +62,6 @@ data Transition
     | ClientTransition
         Constructor                     -- this transition's name and data
         T.Text                          -- the place at which this transition occurs
-        (Maybe ClientCmd)               -- whether to issue a client command when this transition is fired
     | CmdTransition                     -- a transition from a client which causes a command on the server
         Constructor                     -- the message coming from the client
         T.Text                          -- the place at which this transition occurs

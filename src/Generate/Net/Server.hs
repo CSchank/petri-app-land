@@ -101,7 +101,7 @@ generate extraTypes fp net =
                 clientMsgs = concat $ map (\tr -> case tr of
                                                     Transition _ (n,_) lstTrans _ ->
                                                                         mapMaybe (\(from,mTo) -> case mTo of 
-                                                                                Just (to,msg,_) -> Just (n,msg)
+                                                                                Just (to,msg) -> Just (n,msg)
                                                                                 Nothing -> Nothing)
                                                                                     lstTrans
                                                     CmdTransition {} -> []
@@ -116,12 +116,12 @@ generate extraTypes fp net =
                             fnub $ map (\(from,_) -> from) connections
                         placeOutputs :: [T.Text]
                         placeOutputs = 
-                            fnub $ mapMaybe (\(_,mTo) -> fmap tFst mTo) connections
-                        constructors :: (T.Text, [Maybe (T.Text, Constructor, Maybe ClientCmd)]) -> [Constructor]
+                            fnub $ mapMaybe (\(_,mTo) -> fmap fst mTo) connections
+                        constructors :: (T.Text, [Maybe (T.Text, Constructor)]) -> [Constructor]
                         constructors (from,toLst) =
                             map (\mTo -> 
                                 case mTo of 
-                                    Just (to,(msgName,_),_) -> constructor (T.concat[msgN,"_",from,"to",to]) [dt (TypeT $ T.concat [to,"Player"]) "" "", dt (TypeT msgName) "" ""]
+                                    Just (to,(msgName,_)) -> constructor (T.concat[msgN,"_",from,"to",to]) [dt (TypeT $ T.concat [to,"Player"]) "" "", dt (TypeT msgName) "" ""]
                                     _                       -> constructor (T.concat[msgN,"_Stay_",from]) [dt (TypeT $ T.concat [from,"Player"]) "" ""]
                                         ) toLst
                     in
@@ -226,7 +226,7 @@ generate extraTypes fp net =
                     fnub $ map (\(from,(to,_)) -> (from,to)) connections-}
                 fromsTos :: Transition -> ([T.Text],[T.Text])
                 fromsTos (Transition _ (transName,_) connections mCmd) =
-                    (fnub $ map (\(from,_) -> from) connections,fnub $ mapMaybe (\(from,mTo) -> if isJust mTo then fmap tFst mTo else Just from) connections)
+                    (fnub $ map (\(from,_) -> from) connections,fnub $ mapMaybe (\(from,mTo) -> if isJust mTo then fmap fst mTo else Just from) connections)
                 fromsTos (CmdTransition _ place _) =
                     ([place],[place])
                 fromsTos _ = ([],[])
@@ -409,7 +409,7 @@ generate extraTypes fp net =
                             fnub $ map (\(from,_) -> from) connections
                         placeOutputs :: [T.Text]
                         placeOutputs = 
-                            fnub $ mapMaybe (\(_,mTo) -> fmap tFst mTo) connections
+                            fnub $ mapMaybe (\(_,mTo) -> fmap fst mTo) connections
                         clientIdType = case transType of 
                             OriginEitherPossible -> "    Maybe ClientID ->\n"
                             OriginClientOnly -> "    ClientID ->\n"
@@ -440,7 +440,7 @@ generate extraTypes fp net =
                                         map (\(from,lst) -> 
                                                 let 
                                                     oneOfs = map (\mTo -> case mTo of 
-                                                        Just (to,(msg,_),mCmd) -> T.concat["(P",to,", ", msg,")"]
+                                                        Just (to,(msg,_)) -> T.concat["(P",to,", ", msg,")"]
                                                         Nothing  -> T.concat[from,"Player"]
                                                         ) lst
                                                     output = transName from msgN

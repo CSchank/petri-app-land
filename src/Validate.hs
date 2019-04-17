@@ -152,19 +152,19 @@ validateTransition placeSet ecSet note (Transition _ constr@(transName,edts) fro
     let
         fromTos :: [(String,String)]
         fromTos = 
-            map (\(from,mTo) -> (T.unpack from,T.unpack $ fromMaybe "" $ fmap tFst mTo)) fromtoLst
+            map (\(from,mTo) -> (T.unpack from,T.unpack $ fromMaybe "" $ fmap fst mTo)) fromtoLst
 
         duplicateFromTo :: [(String,String)]
         duplicateFromTo =
             fromTos \\ (S.toList $ S.fromList fromTos)
 
-        validateFromTo :: (T.Text, Maybe (T.Text, Constructor, Maybe ClientCmd)) -> [String]
+        validateFromTo :: (T.Text, Maybe (T.Text, Constructor)) -> [String]
         validateFromTo (from,mTo) = 
             (if not (from `S.member` placeSet) then
                 [note ++", in from transition: place `"++T.unpack from++"` does not exist"]
             else []) ++
                 (case mTo of
-                    Just (to,constr,mCmd) ->
+                    Just (to,constr) ->
                         (if not (to `S.member` placeSet) then
                             [note ++", in to transition: place `"++T.unpack to++"` does not exist"]
                         else [])
@@ -176,7 +176,7 @@ validateTransition placeSet ecSet note (Transition _ constr@(transName,edts) fro
         concatMap validateFromTo fromtoLst ++
         map (\tr -> note ++ ", in transition `"++T.unpack transName++"`: duplicate transition "++show tr) duplicateFromTo
 
-validateTransition placeSet ecSet note (ClientTransition constr@(transName,edts) placeName mCmd) =
+validateTransition placeSet ecSet note (ClientTransition constr@(transName,edts) placeName) =
         validateConstructor ecSet (note++", in transition `"++T.unpack transName++"`") constr ++
         if not $ validateType placeName then
             ["invalid name for Client Transition `"++T.unpack transName++"`"]
