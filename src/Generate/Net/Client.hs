@@ -278,7 +278,7 @@ generate extraTypes fp net =
                                 fnName = T.concat["update",n,place]
                             in
                                 T.unlines
-                                    [T.concat[fnName," : FromSuperPlace -> ",n," -> ",place," -> (",place,", Cmd ",to,"T.Msg)"]
+                                    [T.concat[fnName," : FromSuperPlace -> ",n," -> ",place," -> (",place,", Cmd ",place,"T.Msg)"]
                                     ,T.concat[fnName," fsp ",generatePattern (n,et)," ",uncapitalize place," ="]
                                     ,T.concat["    (todo \"Please implement update function ",fnName," for the ",name," net.\", Cmd.none)"]
                                     ]
