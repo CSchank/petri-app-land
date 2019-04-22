@@ -39,6 +39,7 @@ generate extraTypes fp net =
                                                 Just trans
                                             _ -> Nothing
                                             ) allTransitions
+                singletonTypes = filter (\(CustomT _ constrs) -> length constrs == 1) $ M.elems extraTypes
                 inits = T.unlines 
                     [
                     T.concat ["module ", name, ".Init where"]
@@ -573,9 +574,12 @@ generate extraTypes fp net =
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Templates" </> "Update" <.> "txt") update
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Templates" </> "init" <.> "txt") inits
                 writeIfNotExists (fp </> "server" </> "src" </> T.unpack name </> "Update" <.> "hs") update
+                --create helpers
                 createDirectoryIfMissing True $ fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers"
                 mapM_ (\(Place pName edts _ _ _)  -> writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Haskell name (pName,edts) False]) places
                 mapM_ (\(Place pName _ pEdts _ _) -> writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName ++ "Player" <.> "hs") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Haskell name (T.concat[pName, "Player"],pEdts) False]) places
+                mapM_ (\(CustomT cn constrs) -> writeIfNew 1 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack cn <.> "hs") $ T.unlines [generateHelper Haskell name (head constrs) False]) singletonTypes
+
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Encode" <.> "hs") encoder
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Decode" <.> "hs") decoder
                 writeIfNew 0 (fp </> "server" </> "src" </> T.unpack name </> "Static" </> "Wrappers" <.> "hs") wrappers

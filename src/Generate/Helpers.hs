@@ -10,12 +10,18 @@ import Generate.Types
 import Utils
 import                  Data.Time               (getCurrentTime)
 
-generateHelpers :: FilePath -> T.Text -> [Constructor] -> [Constructor] -> IO ()
-generateHelpers fp netName cStates sStates = do
+generateHelpers :: FilePath -> T.Text -> [Constructor] -> [Constructor] -> ExtraTypes -> IO ()
+generateHelpers fp netName cStates sStates extraTypes = 
+    let
+        singletonTypes = filter (\(CustomT _ constrs) -> length constrs == 1) extraTypes
+    in
+    do
     currentTime <- getCurrentTime
     mapM_ (\(sn,dt) -> writeIfNew 1 (fp </> "server" </> "src" </> "Static" </> "Helpers" </> T.unpack sn <.> "hs") $ T.unlines $ disclaimer currentTime : [generateHelper Haskell netName (sn,dt) False]) sStates
     mapM_ (\(sn,dt) -> writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Helpers" </> T.unpack sn <.> "elm") $ T.unlines $ disclaimer currentTime : [generateHelper Elm netName (sn,dt) False]) cStates
     mapM_ (\(sn,dt) -> writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Helpers" </> T.unpack sn ++ "Model" <.> "elm") $ T.unlines $ disclaimer currentTime : [generateHelper Elm netName (sn,dt) True]) cStates
+    mapM_ (\(CustomT cn constrs) -> writeIfNew 1 (fp </> "client" </> "src" </> "Static" </> "Helpers" </> T.unpack cn <.> "elm") $ T.unlines $ disclaimer currentTime : [generateHelper Elm netName (head constrs) True]) extraTypes
+    mapM_ (\(CustomT cn constrs) -> writeIfNew 1 (fp </> "server" </> "src" </> "Static" </> "Helpers" </> T.unpack cn <.> "hs") $ T.unlines $ disclaimer currentTime : [generateHelper Haskell netName (head constrs) True]) extraTypes
 
 generateHelper :: Language -> T.Text -> Constructor -> Bool -> T.Text
 generateHelper l netName (snTxt,edts) getOnly =

@@ -188,7 +188,9 @@ generate extraTypes fp net =
                         _ -> False
 
                 outgoingClientTransitions localExcluded = filter (outgoingFromClient localExcluded) transitions
-
+                
+                singletonTypes = filter (\(CustomT _ constrs) -> length constrs == 1) $ M.elems extraTypes
+                        
                 internalMap =
                     M.fromList $
                            map (\trans -> (getTransitionName trans, True)) internalClientTransitions
@@ -516,7 +518,10 @@ generate extraTypes fp net =
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Types" <.> "elm") types
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Init" <.> "elm") hiddenInit
                 createDirectoryIfMissing True $ fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Helpers"
+                
                 mapM_ (\(Place pName _ _ edts _)  -> writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack pName <.> "elm") $ T.unlines $ {-disclaimer currentTime :-} [generateHelper Elm name (pName,edts) False]) places
+                mapM_ (\(CustomT cn constrs) -> writeIfNew 1 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Helpers" </> T.unpack cn <.> "elm") $ T.unlines [generateHelper Elm name (head constrs) False]) singletonTypes
+                
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Encode" <.> "elm") encoder
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Decode" <.> "elm") decoder
                 writeIfNew 0 (fp </> "client" </> "src" </> T.unpack name </> "Static" </> "Wrappers" <.> "elm") wrappers
