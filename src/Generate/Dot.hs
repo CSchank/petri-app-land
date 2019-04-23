@@ -69,13 +69,19 @@ generateNetDot
                             ,   T.concat["  ",transName,"node -> ",from,"node [","sametail=",sameTailName,",","style=dashed]"]
                             ]
 
+				clientTrans :: T.Text -> T.Text -> T.Text
+                clientTrans transition place = T.concat[" ",transition,"node -> ",place,"node [color=\"blue\"]"]
+
+                cmdTrans :: T.Text -> T.Text -> T.Text
+                cmdTrans transition place = T.concat[" ",transition,"node -> ",place,"node [color=\"red\"]"]
+
                 oneTrans :: Transition -> T.Text
                 oneTrans (Transition _ (transName,_) connections cmd) =
                     T.unlines $ map (oneConnection $ transName) connections
                 oneTrans (ClientTransition (n,et) place) =
-                    T.unlines $ ["Not yet supported."]
-                oneTrans (CmdTransition {}) =
-                    T.unlines $ ["Not yet supported."]
+                    clientTrans n place
+                oneTrans (CmdTransition _ connection place) =
+                    cmdTrans connection place
 
                 allTransitions =
                     T.unlines $ map oneTrans transitions
