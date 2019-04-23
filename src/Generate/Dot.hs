@@ -69,7 +69,7 @@ generateNetDot
                             ,   T.concat["  ",transName,"node -> ",from,"node [","sametail=",sameTailName,",","style=dashed]"]
                             ]
 
-				clientTrans :: T.Text -> T.Text -> T.Text
+                clientTrans :: T.Text -> T.Text -> T.Text
                 clientTrans transition place = T.concat[" ",transition,"node -> ",place,"node [color=\"blue\"]"]
 
                 cmdTrans :: T.Text -> T.Text -> T.Text
