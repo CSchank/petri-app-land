@@ -75,7 +75,8 @@ generateNetDot
                 cmdTrans :: T.Text -> T.Text -> T.Text
                 cmdTrans transition place =
                     if (T.head transition) == '_'
-                        then T.concat[" ",transition,"_ -> ",place,"node [color=\"red\"]"]
+                        then T.concat[" ",transition,"_ [label=\"\"]\n",
+                            " ",transition,"_ -> ",place,"node [color=\"red\"]"]
                     else if (T.head place) == '_'
                         then T.concat[" ",transition,"node -> ",place,"_ [color=\"red\"]"]
                     else T.concat[" ",transition,"node -> ",place,"node [color=\"red\"]"]
