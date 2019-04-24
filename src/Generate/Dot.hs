@@ -35,7 +35,7 @@ generateNetDot
         nodes =
             let
                 placeNodes =
-                    map (\place -> T.concat["  ",getPlaceName place,"node [label=\"",getPlaceName place,"\"]"]) places
+                    map (\place -> T.concat["  ",getPlaceName place,"node [label=\"",getPlaceName place,"\",shape=circle]"]) places
                 transitionNodes =
                     map (\trans -> T.concat["  ",getTransitionName trans,"node [label=\"",getTransitionName trans,"\",shape=box]"]) transitions
             in
@@ -73,15 +73,23 @@ generateNetDot
                 clientTrans transition place = T.concat[" ",transition,"node -> ",place,"node [color=\"blue\"]"]
 
                 cmdTrans :: T.Text -> T.Text -> T.Text
-                cmdTrans transition place = T.concat[" ",transition,"node -> ",place,"node [color=\"red\"]"]
+                cmdTrans transition place =
+                    if (T.head transition) == '_'
+                        then T.concat[" ",transition,"_ [label=\"\"]\n",
+                            " ",transition,"_ -> ",place,"node [color=\"red\"]"]
+                    else if (T.head place) == '_'
+                        then T.concat[" ",transition,"node -> ",place,"_ [color=\"red\"]"]
+                    else T.concat[" ",transition,"node -> ",place,"node [color=\"red\"]"]
 
                 oneTrans :: Transition -> T.Text
                 oneTrans (Transition _ (transName,_) connections cmd) =
                     T.unlines $ map (oneConnection $ transName) connections
                 oneTrans (ClientTransition (n,et) place) =
                     clientTrans n place
-                oneTrans (CmdTransition _ connection place) =
-                    cmdTrans connection place
+                oneTrans (CmdTransition (msg,_) connection place) =
+                    T.concat [(cmdTrans connection msg),"\n",
+                              (cmdTrans (T.append "_" msg) place),"\n",
+                              (cmdTrans msg (T.append "_" msg))]
 
                 allTransitions =
                     T.unlines $ map oneTrans transitions
