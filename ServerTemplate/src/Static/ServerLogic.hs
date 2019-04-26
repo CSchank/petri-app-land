@@ -12,7 +12,7 @@ import           Data.Text              (Text)
 import           Control.Monad.IO.Class         (liftIO)
 import qualified Data.Text              as T
 import qualified Network.WebSockets     as WS
-import           Control.Concurrent     (forkIO, result)
+import           Control.Concurrent     (forkIO)
 import           Control.Concurrent.Async       (race_)
 import           Control.Exception      (finally)
 import qualified Data.Time.Clock.POSIX         as Time
