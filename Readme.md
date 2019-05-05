@@ -19,7 +19,7 @@ want). This will create a folder `YourProjectName`.
 	- Type helper functions are in `src/TypeHelpers.hs`
 4. From `YourProjectName`, run `stack build`. Fix any compiler errors you may have with your
 specification, and rebuild.
-5. When it compiled successfully (you get no errors), run `stack exec YourProjectName-exe`.
+5. When it compiled successfully (you get no errors), run `stack exec pal-exe`.
 	- This will attempt to generate code based on your specification.
 	- If errors are found, you'll have to fix them, rebuild and execute again.
 6. Once the specification generates successfully, `cd YourProjectName` into the output folder 
@@ -46,7 +46,7 @@ webserver.
 	- _No generated imports should be modified, but you can add new modules and import them,
 or import new libraries._
 	- Helper functions for models can be found in `Static/Helpers`.
-3. From the `server` directory, use `stack build` to build your client. Then use `stack exec server-exe`
+3. From the `server` directory, use `stack build` to build your client. Then use `stack exec pal-server-exe`
 to launch the server.
 4. To launch live on a server, clone the repository on your server, build the server there and run on an
 open port. You'll have to update the client's URL to point to the correct one.
