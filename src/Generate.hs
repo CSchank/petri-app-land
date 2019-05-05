@@ -39,6 +39,8 @@ generate outputDirectory rootDir clientServerApp =
             ]
     in
     do
+    putStrLn "Downloading PAL templates......"
+    loadLatestTemplates
     let errors = validateCSApp clientServerApp
     let templateDir = (rootDir </> "ClientTemplate/")
     exists <- doesDirectoryExist templateDir
