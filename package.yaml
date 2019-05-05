@@ -28,6 +28,9 @@ dependencies:
 - directory
 - process
 - ansi-terminal
+- aeson
+- zip-archive
+- http-conduit
 
 
 library:
