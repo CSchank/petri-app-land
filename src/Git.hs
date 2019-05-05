@@ -8,6 +8,7 @@ import Network.HTTP.Conduit
 import Codec.Archive.Zip
 import System.Directory
 import Control.Monad (when)
+import System.Console.ANSI
 
 newtype Zip = Zip String
     deriving (Show)
@@ -35,5 +36,8 @@ loadLatestTemplates = do
             exists <- doesDirectoryExist ".templates"
             when exists $ removeDirectoryRecursive ".templates"
             renamePath root ".templates"
-        Nothing ->
-            error "could not decode latest release from GitHub"
+        Nothing -> do
+            setSGR [SetColor Foreground Vivid Red]
+            putStrLn "Error: Could not decode latest release from GitHub. You may have exceeded the API limit."
+            putStrLn "Trying to fall back on last template downloaded..."
+            setSGR [Reset]
