@@ -24,11 +24,12 @@ requestWithUA url = do
 loadLatestTemplates :: IO ()
 loadLatestTemplates = do
     request <- requestWithUA "https://api.github.com/repos/CSchank/PAL-templates/releases/latest"
+    print request
     latestRelease <- httpLBS request
     let mZip = decode $ getResponseBody latestRelease
     case mZip of
         Just (Zip url) -> do
-            zipReq <- requestWithUA "https://github.com/CSchank/PAL-templates/archive/0.0.1.zip"
+            zipReq <- requestWithUA url
             zipBody <- httpLBS zipReq
             let zip = toArchive $ getResponseBody zipBody
             let root = head $ filesInArchive zip
