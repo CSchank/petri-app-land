@@ -7,6 +7,7 @@ import Network.HTTP.Simple
 import Network.HTTP.Conduit
 import Codec.Archive.Zip
 import System.Directory
+import Control.Monad (when)
 
 newtype Zip = Zip String
     deriving (Show)
@@ -31,6 +32,8 @@ loadLatestTemplates = do
             let zip = toArchive $ getResponseBody zipBody
             let root = head $ filesInArchive zip
             extractFilesFromArchive [OptDestination "."] zip
+            exists <- doesDirectoryExist ".templates"
+            when exists $ removeDirectoryRecursive ".templates"
             renamePath root ".templates"
         Nothing ->
             error "could not decode latest release from GitHub"
