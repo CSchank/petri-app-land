@@ -15,6 +15,7 @@ import System.Exit (exitFailure)
 import Generate.Dot
 import qualified Data.Text as T
 import Utils
+import Git (loadLatestTemplates)
 
 import qualified Data.Text.IO as TIO
 
