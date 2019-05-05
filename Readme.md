@@ -3,12 +3,16 @@
 GitHub will be the "main" directory from which we will be working for this example. Any
 folder is fine, as long as this repo and the one you create are in the same place.
 
+## Prerequisites
+- Haskell stack
+- rsync utility
+
 ## Specifying your app and generating the code
 
-1. Clone repo in `GitHub/petri-app-land`
-2. From `GitHub`, type `stack new YourProjectName petri-app-land/petriappland`
+1. From a directory of your choosing, type `stack new YourProjectName github:cschank/petriappland`
 to create a new PetriAppLand project (remember to change `YourProjectName` to whatever you 
-want). This will create a folder `GitHub/YourProjectName`.
+want). This will create a folder `YourProjectName`.
+2. `cd YourProjectName`.
 3. Open `src/ClientServerSpec.hs`
 	- Modify your specification how you please, adding types, places, transitions, etc.
 	- Types for the specification are in `src/Types.hs`
