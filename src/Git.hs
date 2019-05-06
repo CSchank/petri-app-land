@@ -78,19 +78,25 @@ updatePAL = do
             if currentVersion == rel then do
                 putStrLn $ "PAL is already on the latest version (" ++ rel ++ ")"
             else do
-                putStrLn $ "You are using an older version of PAL (" ++ currentVersion ++ "). Updating to version " ++ rel ++ "..."
-                stackYaml <- T.lines <$> TIO.readFile "stack.yaml"
-                case "#PALCOMMIT" `elemIndex` stackYaml of
-                    Just line -> do
-                        let newYaml = replaceNth (line+1) (T.concat["  commit: ",T.pack rel]) stackYaml
-                        TIO.writeFile "stack.yaml" $ T.unlines newYaml
-                        putStrLn $ "stack.yaml file updated to reflect new version of PAL"
-                        TIO.writeFile ".palversion" $ T.pack rel
-                        loadTemplates rel -- download the PAL templates for this version
-                        putStrLn $ "Update complete. Version is now " ++ rel ++ "."
-                        putStrLn "Run `stack build` again to rebuild your project with the newest version of PAL."
-                    Nothing -> 
-                        return ()
+                putStrLn $ "You are using an older version of PAL (" ++ currentVersion ++ ")."
+                putStrLn $ "The newest version is " ++ rel ++ "."
+                putStrLn $ "See changelog at https://github.com/CSchank/petri-app-land/releases/tag/" ++ rel ++ "."
+                putStrLn $ "Update to version " ++ rel ++ "? (Y/N)"
+                resp <- getLine
+                if resp == "y" || resp == "Y" then do 
+                    stackYaml <- T.lines <$> TIO.readFile "stack.yaml"
+                    case "#PALCOMMIT" `elemIndex` stackYaml of
+                        Just line -> do
+                            let newYaml = replaceNth (line+1) (T.concat["  commit: ",T.pack rel]) stackYaml
+                            TIO.writeFile "stack.yaml" $ T.unlines newYaml
+                            putStrLn $ "stack.yaml file updated to reflect new version of PAL"
+                            TIO.writeFile ".palversion" $ T.pack rel
+                            loadTemplates rel -- download the PAL templates for this version
+                            putStrLn $ "Update complete. Version is now " ++ rel ++ "."
+                            putStrLn "Run `stack build` again to rebuild your project with the newest version of PAL."
+                        Nothing -> 
+                            return ()
+                else putStrLn "Update aborted. Run `stack exec pal-update` again to update."
         Nothing -> do
             setSGR [SetColor Foreground Vivid Red]
             putStrLn "Error: Could not decode latest release from GitHub. You may have exceeded the API limit."

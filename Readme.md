@@ -59,8 +59,9 @@ _Static files will be rebuilt if there are changes, so don't edit them as you wi
 #Updating your version of PAL
 1. Ensure that you have run `stack build` for your project.
 2. Run `stack exec pal-update`
-3. The newest version of PAL will be installed.
-4. Rebuild your project using `stack build` to use the newest version of PAL.
+3. If an update is available, type y/Y to install the update.
+4. The newest version of PAL and the templates will be installed.
+5. Rebuild your project using `stack build` to use the newest version of PAL.
 
 ## Compiling Net Graphs
 When you generate your code, you will be given the code to generate codegraphs with `dot`. Either run them through dot, or use the
