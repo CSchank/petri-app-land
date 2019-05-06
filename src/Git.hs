@@ -39,7 +39,7 @@ getLatestRelease repo = do
     return $ getResponseBody rel
 
 getRelease rel repo = do
-    request <- requestWithUA $ "https://api.github.com/repos/" ++ repo ++ "/releases/" ++ rel
+    request <- requestWithUA $ "https://api.github.com/repos/" ++ repo ++ "/releases/tags/" ++ rel
     rel <- httpLBS request
     return $ getResponseBody rel
 
@@ -61,7 +61,8 @@ loadTemplates version = do
         Nothing -> do
             setSGR [SetColor Foreground Vivid Red]
             putStrLn "Error: Could not retrieve release from GitHub."
-            putStrLn $ "Additional info: " ++ show latestRelease
+            putStrLn $ "Additional info: "
+            putStrLn $ "Response: " ++ show latestRelease
             putStrLn "Potential solution: Try running `stack exec pal-update` to update your project to the newest version of PAL."
             putStrLn "Another potential problem: you may have exceeded the API limit. Wait an hour before trying again."
             putStrLn "If this persists, post an issue at https://github.com/cschank/petri-app-land/issues with the label help-request."
