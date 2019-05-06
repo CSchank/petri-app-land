@@ -71,4 +71,7 @@ version of PAL:
 2. Run `stack exec pal-update`.
 3. If an update is available, type y/Y to install the update.
 4. The newest version of PAL and the templates will be installed.
-5. Regenerate your project with `stack exec pal-exe` and rebuild your project using `stack build` to use the newest version of PAL.
+5. Rebuild your PAL project specification using `stack build` and regenerate your client and server with `stack exec pal-exe` to use the newest version of PAL.
+6. Rebuild your server and client by using the directory above.
+
+Your client and server have now been updated to use the newest version of PAL!
