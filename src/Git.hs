@@ -43,6 +43,16 @@ getRelease rel repo = do
     rel <- httpLBS request
     return $ getResponseBody rel
 
+getLatestVersion :: IO (Maybe String)
+getLatestVersion = do
+    latestRelease <- getLatestRelease "cschank/petri-app-land"
+    let version = decode latestRelease :: Maybe Release
+    case version of
+        Just (Release rel) ->
+            return $ Just rel
+        Nothing ->
+            return Nothing
+
 loadTemplates :: String -> IO ()
 loadTemplates version = do
     latestRelease <- getRelease version "CSchank/PAL-templates"
@@ -69,6 +79,24 @@ loadTemplates version = do
             putStrLn "Exiting..."
             setSGR [Reset]
             exitFailure
+            setSGR [Reset]
+
+checkVersion = do
+    version <- T.unpack <$> TIO.readFile ".palversion"
+    latest <- getLatestVersion
+    case (latest, Just version == latest) of
+        (Just _, True) -> do
+            setSGR [SetColor Foreground Vivid Green]
+            putStrLn $ "Using latest PAL version (" ++ version ++ ")."
+            setSGR [Reset]
+        (Just latest, False) -> do
+            setSGR [SetColor Foreground Vivid Red]
+            putStrLn $ "PAL version " ++ latest ++ " is available. (You have "++ version ++")."
+            putStrLn "Use `stack exec pal-exe update` to update."
+            setSGR [Reset]
+        (Nothing, _) -> do
+            setSGR [SetColor Foreground Vivid Red]
+            putStrLn $ "Warning: unable to perform version check (You have "++ version ++"). Try again later."
             setSGR [Reset]
 
 -- from https://stackoverflow.com/a/5852820
