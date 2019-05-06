@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+module Generate.ReduceDotGraph where
+
 import System.IO
 import System.Environment
 import Data.List
