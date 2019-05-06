@@ -32,7 +32,7 @@ generatePlugins fp extraTypes net ps =
             ,   "import Control.Concurrent.STM (TQueue, atomically, writeTQueue)"
             ,   "import           Control.Monad          (void)"
             ,   "import Data.Maybe (fromJust)"
-            ,   "import Control.Concurrent.Thread (forkIO, result)\n"
+            ,   "import Control.Concurrent.Thread     (forkIO, result)"
             ,   T.concat $ map (\p -> case p of 
                                     Plugin n -> T.concat["import qualified Plugins.",n,"\n"]
                                     PluginGen n _ -> T.concat["import qualified Plugins.",n,"\n"]
