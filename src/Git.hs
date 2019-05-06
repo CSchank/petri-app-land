@@ -41,10 +41,9 @@ getRelease rel repo = do
     rel <- httpLBS request
     return $ getResponseBody rel
 
-loadLatestTemplates :: IO ()
-loadLatestTemplates = do
-    latestVersion <- T.unpack <$> TIO.readFile ".palversion" --getLatestRelease "CSchank/PAL-templates"
-    latestRelease <- getRelease latestVersion "CSchank/PAL-templates"
+loadTemplates :: String -> IO ()
+loadTemplates version = do
+    latestRelease <- getRelease version "CSchank/PAL-templates"
     let mZip = decode latestRelease
     case mZip of
         Just (Zip url) -> do
@@ -85,8 +84,11 @@ updatePAL = do
                     Just line -> do
                         let newYaml = replaceNth (line+1) (T.concat["  commit: ",T.pack rel]) stackYaml
                         TIO.writeFile "stack.yaml" $ T.unlines newYaml
+                        putStrLn $ "stack.yaml file updated to reflect new version of PAL"
                         TIO.writeFile ".palversion" $ T.pack rel
+                        loadTemplates rel -- download the PAL templates for this version
                         putStrLn $ "Update complete. Version is now " ++ rel ++ "."
+                        putStrLn "Run `stack build` again to rebuild your project with the newest version of PAL."
                     Nothing -> 
                         return ()
         Nothing -> do
