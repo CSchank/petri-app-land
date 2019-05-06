@@ -14,8 +14,9 @@ import System.FilePath.Posix ((</>),(<.>))
 import System.Exit (exitFailure)
 import Generate.Dot
 import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import Utils
-import Git (loadLatestTemplates)
+import Git (loadTemplates)
 
 import qualified Data.Text.IO as TIO
 
@@ -40,22 +41,16 @@ generate outputDirectory rootDir clientServerApp =
             ]
     in
     do
-    putStrLn "Downloading PAL templates......"
-    loadLatestTemplates
     let errors = validateCSApp clientServerApp
-    let templateDir = (rootDir </> "ClientTemplate/")
+    let templateDir = rootDir
     exists <- doesDirectoryExist templateDir
     unless exists $ do
         setSGR [SetColor Foreground Vivid Red]
-        putStrLn $ "Error: cannot find client template directory at `" ++ templateDir ++ "`. Please update rootDir to the proper directory."
+        putStrLn $ "PAL templates not found. Attempting download..."
+        version <- T.unpack <$> TIO.readFile ".palversion"
+        loadTemplates version
+        --putStrLn $ "Error: cannot find client template directory at `" ++ templateDir ++ "`. Please update rootDir to the proper directory."
         setSGR [Reset]
-        exitFailure
-    let templateDir = (rootDir </> "ServerTemplate/")
-    unless exists $ do
-        setSGR [SetColor Foreground Vivid Red]
-        putStrLn $ "Error: cannot find server template directory at `" ++ templateDir ++ "`. Please update rootDir to the proper directory."
-        setSGR [Reset]
-        exitFailure
 
     when (length errors > 0) $ do
         setSGR [SetColor Foreground Vivid Red]

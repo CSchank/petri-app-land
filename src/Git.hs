@@ -12,6 +12,8 @@ import System.Console.ANSI
 import qualified Data.Text.IO as TIO
 import qualified Data.Text as T
 import Data.List
+import Control.Monad (unless,when)
+import System.Exit (exitFailure)
 
 newtype Zip = Zip String
     deriving (Show)
@@ -57,8 +59,12 @@ loadTemplates version = do
             renamePath root ".templates"
         Nothing -> do
             setSGR [SetColor Foreground Vivid Red]
-            putStrLn "Error: Could not decode latest release from GitHub. You may have exceeded the API limit."
-            putStrLn "Trying to fall back on last template downloaded..."
+            putStrLn "Error: Could not retrieve release from GitHub."
+            putStrLn "Potential solution: Try running `stack exec pal-update` to update your project to the newest version of PAL."
+            putStrLn "Another potential problem: you may have exceeded the API limit. Wait an hour before trying again."
+            putStrLn "If this persists, post an issue at https://github.com/cschank/petri-app-land/issues with the label help-request."
+            putStrLn "Exiting..."
+            exitFailure
             setSGR [Reset]
 
 -- from https://stackoverflow.com/a/5852820
@@ -91,7 +97,9 @@ updatePAL = do
                             TIO.writeFile "stack.yaml" $ T.unlines newYaml
                             putStrLn $ "stack.yaml file updated to reflect new version of PAL"
                             TIO.writeFile ".palversion" $ T.pack rel
+                            putStrLn "Downloading PAL templates......"
                             loadTemplates rel -- download the PAL templates for this version
+                            putStrLn "Templates downloaded."
                             putStrLn $ "Update complete. Version is now " ++ rel ++ "."
                             putStrLn "Run `stack build` again to rebuild your project with the newest version of PAL."
                         Nothing -> 
