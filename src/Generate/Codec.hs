@@ -34,7 +34,7 @@ generateEncoder l (CustomT name edts) =
                 pHigh = T.pack $ show (round $ high*10^precision)
                 pPrec = T.pack $ show (10^precision)
             in
-                indtTxts indt $ [T.concat[n,"Txt"," = encodeInt (",pLow,") (",pHigh,") (round <| ((",n,")-(",pLow,"))*(",pPrec ,"))"]
+                indtTxts indt $ [T.concat[n,"Txt"," = encodeInt (",pLow,") (",pHigh,") (round <| (",n,")*(",pPrec,"))"]
                             ]
         encodeEt indt (StringT, n, _) =
             indtTxts indt $ [T.concat [n, if l == Haskell then "Txt = T.pack " else "Txt = ",n]]
