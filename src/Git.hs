@@ -83,7 +83,7 @@ updatePAL = do
     let mRel = decode latestRelease
     case mRel of
         Just (Release rel) -> do
-            currentVersion <- T.unpack <$> TIO.readFile ".palversion"
+            currentVersion <- T.unpack . head . T.lines <$> TIO.readFile ".palversion"
             if currentVersion == rel then do
                 putStrLn $ "PAL is already on the latest version (" ++ rel ++ ")"
             else do
