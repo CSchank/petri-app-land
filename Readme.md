@@ -56,7 +56,7 @@ To edit your specification, make changes to the spec in `ClientServerSpec.hs` an
 
 _Static files will be rebuilt if there are changes, so don't edit them as you will lose work from them._
 
-#Updating your version of PAL
+# Updating your version of PAL
 1. Ensure that you have run `stack build` for your project.
 2. Run `stack exec pal-update`
 3. If an update is available, type y/Y to install the update.
