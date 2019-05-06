@@ -96,7 +96,7 @@ checkVersion = do
             setSGR [Reset]
         (Nothing, _) -> do
             setSGR [SetColor Foreground Vivid Red]
-            putStrLn $ "Warning: unable to perform version check (You have "++ version ++"). Try again later."
+            putStrLn $ "Unable to perform version check (You have "++ version ++"). Try again later."
             setSGR [Reset]
 
 -- from https://stackoverflow.com/a/5852820
@@ -132,7 +132,8 @@ updatePAL = do
                             putStrLn $ "stack.yaml file updated to reflect new version of PAL"
                             TIO.writeFile ".palversion" $ T.pack rel
                             putStrLn $ "Update complete. Version is now " ++ rel ++ "."
-                            putStrLn "Run `stack build` again to rebuild your project with the newest version of PAL."
+                            putStrLn "Run `stack build` and `stack exec pal-exe` again to rebuild your project with the newest version of PAL."
+                            putStrLn "Then rebuild your client and server."
                         Nothing -> 
                             return ()
                 else putStrLn "Update aborted. Run `stack exec pal-update` again to update."
