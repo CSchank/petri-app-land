@@ -56,14 +56,19 @@ To edit your specification, make changes to the spec in `ClientServerSpec.hs` an
 
 _Static files will be rebuilt if there are changes, so don't edit them as you will lose work from them._
 
-# Updating your version of PAL
-1. Ensure that you have run `stack build` for your project.
-2. Run `stack exec pal-update`
-3. If an update is available, type y/Y to install the update.
-4. The newest version of PAL and the templates will be installed.
-5. Regenerate your project with `stack exec pal-exe` and rebuild your project using `stack build` to use the newest version of PAL.
-
 ## Compiling Net Graphs
 When you generate your code, you will be given the code to generate codegraphs with `dot`. Either run them through dot, or use the
 following website: https://dreampuf.github.io/GraphvizOnline/. Copy the code from the dot file in `MyNewPetriProject/Diagrams/` into 
 the website to preview it.
+
+# Updating your version of PAL
+New versions of PAL are currently posted on GitHub as releases/tags. 
+PAL contains a built-in way of updating your project to the newest version
+so you never miss out on new fixes and features! To update your project's
+version of PAL:
+
+1. Ensure that you have run `stack build` for your project (at some point in the past).
+2. Run `stack exec pal-update`.
+3. If an update is available, type y/Y to install the update.
+4. The newest version of PAL and the templates will be installed.
+5. Regenerate your project with `stack exec pal-exe` and rebuild your project using `stack build` to use the newest version of PAL.
