@@ -46,6 +46,7 @@ getRelease rel repo = do
 loadTemplates :: String -> IO ()
 loadTemplates version = do
     latestRelease <- getRelease version "CSchank/PAL-templates"
+    putStrLn $ "Downloading PAL templates " ++ version ++ "......"
     let mZip = decode latestRelease
     case mZip of
         Just (Zip url) -> do
@@ -60,10 +61,12 @@ loadTemplates version = do
         Nothing -> do
             setSGR [SetColor Foreground Vivid Red]
             putStrLn "Error: Could not retrieve release from GitHub."
+            putStrLn $ "Additional info: " ++ show latestRelease
             putStrLn "Potential solution: Try running `stack exec pal-update` to update your project to the newest version of PAL."
             putStrLn "Another potential problem: you may have exceeded the API limit. Wait an hour before trying again."
             putStrLn "If this persists, post an issue at https://github.com/cschank/petri-app-land/issues with the label help-request."
             putStrLn "Exiting..."
+            setSGR [Reset]
             exitFailure
             setSGR [Reset]
 
@@ -95,11 +98,10 @@ updatePAL = do
                         Just line -> do
                             let newYaml = replaceNth (line+1) (T.concat["  commit: ",T.pack rel]) stackYaml
                             TIO.writeFile "stack.yaml" $ T.unlines newYaml
-                            putStrLn $ "stack.yaml file updated to reflect new version of PAL"
-                            TIO.writeFile ".palversion" $ T.pack rel
-                            putStrLn "Downloading PAL templates......"
                             loadTemplates rel -- download the PAL templates for this version
                             putStrLn "Templates downloaded."
+                            putStrLn $ "stack.yaml file updated to reflect new version of PAL"
+                            TIO.writeFile ".palversion" $ T.pack rel
                             putStrLn $ "Update complete. Version is now " ++ rel ++ "."
                             putStrLn "Run `stack build` again to rebuild your project with the newest version of PAL."
                         Nothing -> 
