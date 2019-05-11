@@ -135,7 +135,7 @@ updatePAL = do
                             putStrLn "Run `stack build` and `stack exec pal-exe` again to rebuild your project with the newest version of PAL."
                             putStrLn "Then rebuild your client and server."
                         Nothing -> 
-                            return ()
+                            putStrLn "Could not find #PALCOMMIT in stack.yaml."
                 else putStrLn "Update aborted. Run `stack exec pal-update` again to update."
         Nothing -> do
             setSGR [SetColor Foreground Vivid Red]
