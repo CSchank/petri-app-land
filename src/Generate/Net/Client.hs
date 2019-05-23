@@ -68,7 +68,6 @@ generate extraTypes fp net =
                     ,   T.unlines imports
                     , ""
                     , "-- the types of all places in the net"
-                    , "type Dummy = Dummy"
                     , generateNetTypes name places -- the initial places
                     , "type Transition ="] ++
                     (if length internalClientTransitions > 0 then 
@@ -451,7 +450,7 @@ generate extraTypes fp net =
                         ,   "import Dict exposing (Dict)"
                         ,   "x = 0"
                        -- ,   T.unlines $ map (createWrap extraTypes (length places > 1) Elm "IncomingMessage" "M") incomingCM
-                       ,   T.unlines $ map (createUnwrap Elm "OutgoingTransition" "T") $ map trans2constr (outgoingClientTransitions True)
+                       ,   T.unlines $ map (createUnwrap Elm "OutgoingTransition" "T") $ map trans2constr $ outgoingClientTransitions False
                        ,   T.unlines $ map (createUnwrap Elm "InternalTransition" "T") $ map trans2constr internalClientTransitions
                        ]
                 hiddenView = 
