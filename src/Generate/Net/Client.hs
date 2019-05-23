@@ -55,9 +55,9 @@ generate extraTypes fp net =
                     , T.concat ["init = ",constr2Def extraTypes (getPlaceState $ getPlace startingPlace)]
                     ]
                 placeNames = map (\(Place name _ _ _ _) -> name) places
-                types = 
+                types =
                     let
-                        transConstrs = concatMap (\(_,ets) -> ets) $ map trans2constr $ outgoingClientTransitions True
+                        transConstrs = concatMap (snd . trans2constr) $ outgoingClientTransitions False
                         placeConstrs = concatMap place2edts places
                         imports = fnub $ concatMap (findImports Elm) $ transConstrs ++ placeConstrs 
                     in
@@ -448,9 +448,9 @@ generate extraTypes fp net =
                         ,   T.concat["import ",name,".Static.ExtraTypes exposing(..)"]
                         ,   T.concat ["import ",name,".Static.Types exposing(..)\n"]
                         ,   "import Dict exposing (Dict)"
-                        ,   "x = 0"
+                        ,   "dummyValue = 0"
                        -- ,   T.unlines $ map (createWrap extraTypes (length places > 1) Elm "IncomingMessage" "M") incomingCM
-                       ,   T.unlines $ map (createUnwrap Elm "OutgoingTransition" "T") $ map trans2constr $ outgoingClientTransitions False
+                       ,   T.unlines $ map (createUnwrap Elm "OutgoingTransition" "T") $ map trans2constr $ outgoingClientTransitions True
                        ,   T.unlines $ map (createUnwrap Elm "InternalTransition" "T") $ map trans2constr internalClientTransitions
                        ]
                 hiddenView = 
