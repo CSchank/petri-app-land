@@ -77,8 +77,9 @@ generate extraTypes fp net =
                         transitionImports = concatMap (concatMap (findImports Haskell) . snd) transConstrs
                         placeImports = concatMap (concatMap (findImports Haskell) . snd) placeStates
                         playerPlaceImports = concatMap (concatMap (findImports Haskell) . snd) placePlayerStates
+                        extraTypeImports = concatMap (findCtImports Haskell) $ M.elems extraTypes
                         imports :: [T.Text]
-                        imports = fnub $ transitionImports ++ placeImports ++ playerPlaceImports
+                        imports = fnub $ transitionImports ++ placeImports ++ playerPlaceImports ++ extraTypeImports
                     in
                     T.unlines 
                     [
@@ -130,7 +131,7 @@ generate extraTypes fp net =
                 transitionType _ = []
                 transitionTxt :: Transition -> T.Text
                 transitionTxt trans =
-                    T.unlines $ map (generateType Haskell False [DOrd,DEq,DShow]) $ transitionType trans
+                    T.unlines $ map (generateType Haskell False True [DOrd,DEq,DShow]) $ transitionType trans
 
                 transConstrs :: [Constructor]
                 transConstrs = map trans2constr transitions
@@ -142,15 +143,15 @@ generate extraTypes fp net =
                 generateNetTypes netName places = 
                     let
                         placeModel = 
-                            generateType Haskell False [DOrd,DEq,DShow] $ 
+                            generateType Haskell False True [DOrd,DEq,DShow] $
                                 CustomT netName $ map (\(Place n m _ _ _) -> (T.concat[n,"Player"],[dt (TypeT n) "" ""])) places
                         placeTypes = T.unlines $ map generatePlaceType places
                         generatePlaceType :: Place -> T.Text
                         generatePlaceType (Place name serverPlaceState playerPlaceState _ _) =
                             T.unlines
                                 [
-                                    generateType Haskell True [DOrd,DEq,DShow,DTypeable] $ CustomT name [(name, serverPlaceState)],""
-                                ,   generateType Haskell True [DOrd,DEq,DShow,DTypeable] $ CustomT (T.concat[name,"Player"]) [(T.concat[name,"Player"],playerPlaceState)],""
+                                    generateType Haskell True True [DOrd,DEq,DShow,DTypeable] $ CustomT name [(name, serverPlaceState)],""
+                                ,   generateType Haskell True True [DOrd,DEq,DShow,DTypeable] $ CustomT (T.concat[name,"Player"]) [(T.concat[name,"Player"],playerPlaceState)],""
                                 ]
                         playerUnionType = 
                             CustomT "Player" $ map (\(n,t) -> (T.concat["P",n],t)) placePlayerStates
@@ -159,8 +160,8 @@ generate extraTypes fp net =
                             let
                                 
                             in
-                                T.unlines $ map (\(_,msg@(msgN,edts)) -> generateType Haskell True [DOrd,DEq,DShow] $ CustomT msgN [msg]) clientMsgs
-                                ++ [generateType Haskell True [DOrd,DEq,DShow] clientMsg]
+                                T.unlines $ map (\(_,msg@(msgN,edts)) -> generateType Haskell True False [DOrd,DEq,DShow] $ CustomT msgN [msg]) clientMsgs
+                                ++ [generateType Haskell True False [DOrd,DEq,DShow] clientMsg]
                     in
                         T.unlines 
                             [
@@ -171,12 +172,12 @@ generate extraTypes fp net =
                             ,   "-- individual transition types"
                             ,   T.unlines $ map transitionTxt transitions
                             ,   "-- main transition types"
-                            ,   generateType Haskell True [DOrd,DEq,DShow] $ ct "Transition" $ map (\(n,t) -> (T.concat["T",n],t)) transConstrs
-                            ,   T.unlines $ map (\(n,et) -> generateType Haskell True [DOrd,DEq,DShow] $ ct n [(n,et)]) transConstrs
+                            ,   generateType Haskell True False [DOrd,DEq,DShow] $ ct "Transition" $ map (\(n,t) -> (T.concat["T",n],t)) transConstrs
+                            ,   T.unlines $ map (\(n,et) -> generateType Haskell True False [DOrd,DEq,DShow] $ ct n [(n,et)]) transConstrs
                             ,   "-- player state union type"
-                            ,   generateType Haskell False [DOrd,DEq,DShow] playerUnionType
+                            ,   generateType Haskell False False [DOrd,DEq,DShow] playerUnionType
                             ,   "-- extra server types"
-                            ,   T.unlines $ map (generateType Haskell True [DOrd,DEq,DShow] . snd) $ M.toList extraTypes
+                            ,   T.unlines $ map (generateType Haskell True True [DOrd,DEq,DShow] . snd) $ M.toList extraTypes
                             ]
 
                 --singularTransFns :: [T.Text]

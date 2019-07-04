@@ -69,11 +69,11 @@ generateClient gsvg rootDir fp
             ,   ""
             ,   "type alias TopLevelData = ()"
             ,   "-- a type identifying all of the nets in the server"
-            ,   generateType Elm False [] netUnion
+            ,   generateType Elm False True [] netUnion
             ,   "-- a union type of all the nets and their incoming transitions"
-            ,   generateType Elm False [] netMsgUnion
+            ,   generateType Elm False True [] netMsgUnion
             ,   "-- a union type of all the nets and their outgoing transitions"
-            ,   generateType Elm False [] netOutgoingMsgUnion
+            ,   generateType Elm False True [] netOutgoingMsgUnion
             ]
         decode :: T.Text
         decode = 

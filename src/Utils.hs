@@ -112,6 +112,10 @@ getTransitionName (Transition _ (name,_) _ _) = name
 getTransitionName (ClientTransition (name,_) _) = name
 getTransitionName (CmdTransition (name,_) _ _) = name
 
+findCtImports :: Language -> CustomT -> [T.Text]
+findCtImports l (CustomT _ constrs) =
+  concatMap (findConstrImports l) constrs
+
 findConstrImports :: Language -> Constructor -> [T.Text]
 findConstrImports l (_, ets) = 
     concatMap (findImports l) ets

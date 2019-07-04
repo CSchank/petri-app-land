@@ -92,7 +92,7 @@ generateEncoder l (CustomT name edts) =
                             ,T.concat["    case ",n, " of"]
                             ,T.concat["        Just ",etn," ->"]
                             ,         "            let"
-                            ,T.unlines $ encodeEt indt (et,etn,etd)
+                            ,T.unlines $ encodeEt (indt+4) (et,etn,etd)
                             ,T.concat["            in tConcat [\"J\",\"",delim,"\",",etn,"Txt]"]
                             ,         "        Nothing -> \"N\""
                             ]

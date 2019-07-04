@@ -78,11 +78,11 @@ generateServer gsvg rootDir fp
             ,   T.unlines $ map (\n -> T.concat ["import ",n,".Static.Types"]) netNames
             ,   ""
             ,   "-- a type identifying all of the nets in the server"
-            ,   generateType Haskell False [DShow,DOrd,DEq] netUnion
+            ,   generateType Haskell False True [DShow,DOrd,DEq] netUnion
             ,   "-- a union type of all the nets and their transitions"
-            ,   generateType Haskell False [DShow,DOrd,DEq] netMsgUnion
+            ,   generateType Haskell False True [DShow,DOrd,DEq] netMsgUnion
             ,   "-- a union type of all the nets and their transitions"
-            ,   generateType Haskell False [DShow,DOrd,DEq] netOutgoingMsgUnion
+            ,   generateType Haskell False True [DShow,DOrd,DEq] netOutgoingMsgUnion
             ]
         decode :: T.Text
         decode = 

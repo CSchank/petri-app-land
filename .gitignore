@@ -4,3 +4,4 @@ elm-haskell-state-diagram.cabal
 dist/
 *.cabal
 .templates
+stack.yaml.lock

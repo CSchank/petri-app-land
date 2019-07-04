@@ -20,8 +20,8 @@ deriv2Txt DTypeable = "Typeable"
 deriv2Txt (DCustom d) = d
 derivTxt deriv = T.concat ["(",T.intercalate "," $ map deriv2Txt deriv,")"]
 
-generateType :: Language -> Bool -> [Deriving] -> CustomT -> T.Text
-generateType l commentsEnabled deriv (CustomT typeName constrs) =
+generateType :: Language -> Bool -> Bool -> [Deriving] -> CustomT -> T.Text
+generateType l commentsEnabled generateDefault deriv (CustomT typeName constrs) =
     let
         typ   = if l == Haskell then "data" else "type"
 
@@ -39,6 +39,8 @@ generateType l commentsEnabled deriv (CustomT typeName constrs) =
                  , T.intercalate "\n    | " constrs2Txt
                  , if length deriv > 0 && l == Haskell then T.concat ["\n    deriving",derivTxt deriv] else ""
                  ]
+        else if generateDefault then
+        T.concat [typ, " ", typeName, " = ", typeName]
         else ""
 
 generateTypeAlias :: Language -> Bool -> [Deriving] -> String -> TypeT -> T.Text

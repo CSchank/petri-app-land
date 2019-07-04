@@ -70,7 +70,7 @@ generateDatabase ts extraTypesMap net =
                 ,   T.unlines $ map (\typ -> T.concat["deriving instance Data ",typ]) (fnub customs)
                 ,   T.unlines $ map safecopy (fnub customs)
                 ,   ""
-                ,   generateType Haskell True [DOrd,DEq,DShow,DData,DTypeable] rowT
+                ,   generateType Haskell True False [DOrd,DEq,DShow,DData,DTypeable] rowT
                 ,   safecopy name,""
                 ,   generateNewtype True [DOrd,DEq,DShow,DData,DTypeable] (T.concat[name,"Record"]) (PairT (TypeT "Index", "index", "") (TypeT name, name, ""))
                 ,   safecopy (T.concat[name,"Record"])

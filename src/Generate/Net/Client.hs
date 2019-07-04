@@ -96,7 +96,7 @@ generate extraTypes fp net =
                     ,   T.concat["import ",name,".Static.ExtraTypes exposing(..)"]
                     ,   T.unlines imports
                     ,   if length transConstrs == 0 then "x = 0" else ""
-                    ,   generateType Elm False [] $ ct "Msg" transConstrs
+                    ,   generateType Elm False True [] $ ct "Msg" transConstrs
                     ]
                 perPlaceWrappers (Place placeName _ _ _ _) = 
                     let
@@ -199,21 +199,21 @@ generate extraTypes fp net =
                 generateNetTypes netName places = 
                     let
                         placeModel = 
-                            generateType Elm False [DOrd,DEq,DShow] $ 
+                            generateType Elm False True [DOrd,DEq,DShow] $
                                 CustomT netName $ map (\(Place n _ _ _ _) -> (n,[dt (TypeT n) "" ""])) places
                         placeTypes = T.unlines $ map generatePlaceType places
                         generatePlaceType :: Place -> T.Text
                         generatePlaceType (Place name _ _ clientPlaceState _) =
                             T.unlines
                                 [
-                                    generateType Elm True [DOrd,DEq,DShow,DTypeable] $ CustomT name [(name, clientPlaceState)],""
+                                    generateType Elm True True [DOrd,DEq,DShow,DTypeable] $ CustomT name [(name, clientPlaceState)],""
                                 ]
                         clientMsgType :: T.Text
                         clientMsgType =
                             let
                                 
                             in
-                                generateType Elm True [DOrd,DEq,DShow] incomingMsg
+                                generateType Elm True True [DOrd,DEq,DShow] incomingMsg
 
                         individualMessages =
                             fnub $
@@ -231,12 +231,12 @@ generate extraTypes fp net =
                                 "-- place states"
                             ,   placeTypes
                             ,   "-- union place type"
-                            ,   generateType Elm False [] $ ct "NetState" $ map (\placeName -> constructor (T.concat["S",placeName]) [dt (TypeT placeName) "" ""]) placeNames
+                            ,   generateType Elm False True [] $ ct "NetState" $ map (\placeName -> constructor (T.concat["S",placeName]) [dt (TypeT placeName) "" ""]) placeNames
                             ,   "-- internal transition types"
-                            ,   generateType Elm False [] internalTransitions
+                            ,   generateType Elm False True [] internalTransitions
                             ,   "-- outgoing transition types"
-                            ,   generateType Elm False [] outgoingTransitions
-                            ,   T.unlines $ map (generateType Elm False []) individualMessages 
+                            ,   generateType Elm False True [] outgoingTransitions
+                            ,   T.unlines $ map (generateType Elm False True []) individualMessages
                             ,   "-- outgoing server message types"
                             ,   clientMsgType
                             ]
@@ -250,7 +250,7 @@ generate extraTypes fp net =
                         T.concat ["module ",name,".Static.ExtraTypes exposing(..)"]
                     ,   T.unlines imports
                     ,   "-- extra client types"
-                    ,   T.unlines $ map (generateType Elm True [DOrd,DEq,DShow] . snd) $ M.toList extraTypes
+                    ,   T.unlines $ map (generateType Elm True True [DOrd,DEq,DShow] . snd) $ M.toList extraTypes
                     ,   if length extraTypes == 0 then "x = 0" else ""
                     ]
                 
