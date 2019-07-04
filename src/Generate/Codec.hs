@@ -179,7 +179,11 @@ generateDecoder l (CustomT name edts) =
                             ]
         decodeEt indt (SizedStringT size, n, _) =
             error "Not implemented yet"
-        decodeEt indt (PairT (et0,n0,d0) (et1,n1,d1), n, _) =
+        decodeEt indt (PairT (et0,nn0,d0) (et1,nn1,d1), n, _) =
+            let
+              n0 = T.concat[nn0, T.pack $ show indt]
+              n1 = T.concat[nn1, T.pack $ show indt]
+            in
             indtTxts indt $ [T.concat["\\(r",T.pack $ show (indt-1),",l",T.pack $ show indt,") ->"]
                             ,"    let"
                             --parse first part of tuple
