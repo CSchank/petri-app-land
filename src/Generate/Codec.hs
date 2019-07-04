@@ -88,12 +88,13 @@ generateEncoder l (CustomT name edts) =
             indtTxts indt $ [T.concat[n,"Txt = encode",name," ",n]
                             ]
         encodeEt indt (MaybeT (et, etn, etd), n, _) =
-            indtTxts indt $ [T.concat[n, "Txt ="]
+            indtTxts indt  [T.concat[n, "Txt ="]
                             ,T.concat["    case ",n, " of"]
                             ,T.concat["        Just ",etn," ->"]
-                            ,         "            let"
-                            ,T.unlines $ encodeEt (indt+4) (et,etn,etd)
-                            ,T.concat["            in tConcat [\"J\",\"",delim,"\",",etn,"Txt]"]
+                            ,         "            let"] ++
+                            encodeEt (indt+4) (et,etn,etd)
+                            ++
+            indtTxts indt   [T.concat["            in tConcat [\"J\",\"",delim,"\",",etn,"Txt]"]
                             ,         "        Nothing -> \"N\""
                             ]
         encodeEt indt (BoolT, n, _) =
