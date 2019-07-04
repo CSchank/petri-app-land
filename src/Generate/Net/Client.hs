@@ -52,7 +52,7 @@ generate extraTypes fp net =
                     , ""
                     , "-- the initial state of the starting place"
                     , T.concat ["init : ",startingPlace]
-                    , T.concat ["init = ",constr2Def extraTypes (getPlaceState $ getPlace startingPlace)]
+                    , T.concat ["init = ",constr2Def extraTypes (getClientState $ getPlace startingPlace)]
                     ]
                 placeNames = map (\(Place name _ _ _ _) -> name) places
                 types =

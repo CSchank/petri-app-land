@@ -91,7 +91,12 @@ fnub = nub --S.toList . S.fromList
 getPlaceState :: Place -> Constructor
 getPlaceState p =
     case p of
-        (Place n _ s _ _) -> (n,s)
+        (Place n s _ _ _) -> (n,s)
+
+getClientState :: Place -> Constructor
+getClientState p =
+    case p of
+        (Place n _ _ s _) -> (n,s)
 
 getPlaceName :: Place -> T.Text
 getPlaceName p =
