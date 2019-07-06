@@ -13,7 +13,8 @@ import qualified Data.Text.IO as TIO
 import qualified Data.Text as T
 import Data.List
 import Control.Monad (unless,when)
-import System.Exit (exitFailure)
+import System.Exit (exitFailure, ExitCode(..))
+import System.Process (readProcessWithExitCode)
 
 newtype Zip = Zip String
     deriving (Show)
@@ -55,31 +56,33 @@ getLatestVersion = do
 
 loadTemplates :: String -> IO ()
 loadTemplates version = do
-    latestRelease <- getRelease version "CSchank/PAL-templates"
-    putStrLn $ "Downloading PAL templates " ++ version ++ "......"
-    let mZip = decode latestRelease
-    case mZip of
-        Just (Zip url) -> do
-            zipReq <- requestWithUA url
-            zipBody <- httpLBS zipReq
-            let zip = toArchive $ getResponseBody zipBody
-            let root = head $ filesInArchive zip
-            extractFilesFromArchive [OptDestination "."] zip
-            exists <- doesDirectoryExist ".templates"
-            when exists $ removeDirectoryRecursive ".templates"
-            renamePath root ".templates"
-        Nothing -> do
-            setSGR [SetColor Foreground Vivid Red]
-            putStrLn "Error: Could not retrieve release from GitHub."
-            putStrLn $ "Additional info: "
-            putStrLn $ "Response: " ++ show latestRelease
-            putStrLn "Potential solution: Try running `stack exec pal-update` to update your project to the newest version of PAL."
-            putStrLn "Another potential problem: you may have exceeded the API limit. Wait an hour before trying again."
-            putStrLn "If this persists, post an issue at https://github.com/cschank/petri-app-land/issues with the label help-request."
-            putStrLn "Exiting..."
-            setSGR [Reset]
-            exitFailure
-            setSGR [Reset]
+  latestRelease <- getRelease version "CSchank/PAL-templates"
+  putStrLn $ "Downloading PAL templates " ++ version ++ "......"
+  let mZip = decode latestRelease
+  case mZip of
+    Just (Zip url) -> do
+      zipReq <- requestWithUA url
+      zipBody <- httpLBS zipReq
+      let zip = toArchive $ getResponseBody zipBody
+      let root = head $ filesInArchive zip
+      extractFilesFromArchive [OptDestination "."] zip
+      exists <- doesDirectoryExist ".templates"
+      when exists $ removeDirectoryRecursive ".templates"
+      renamePath root ".templates"
+    Nothing -> do
+      setSGR [SetColor Foreground Vivid Red]
+      putStrLn "Additional info: "
+      putStrLn "Additional info: "
+      putStrLn $ "Response: " ++ show latestRelease
+      putStrLn
+        "Potential solution: Try running `stack exec pal-update` to update your project to the newest version of PAL."
+      putStrLn "Another potential problem: you may have exceeded the API limit. Wait an hour before trying again."
+      putStrLn
+        "If this persists, post an issue at https://github.com/cschank/petri-app-land/issues with the label help-request."
+      putStrLn "Exiting..."
+      setSGR [Reset]
+      exitFailure
+      setSGR [Reset]
 
 checkVersion = do
     version <- T.unpack <$> TIO.readFile ".palversion"
@@ -130,8 +133,9 @@ updatePAL = do
                 putStrLn $ "See changelog at https://github.com/CSchank/petri-app-land/releases/tag/" ++ rel ++ "."
                 putStrLn $ "Update to version " ++ rel ++ "? (Y/N)"
                 setSGR [Reset]
+
                 resp <- getLine
-                if resp == "y" || resp == "Y" then do 
+                if resp == "y" || resp == "Y" then do
                     stackYaml <- T.lines <$> TIO.readFile "stack.yaml"
                     case "#PALCOMMIT" `elemIndex` stackYaml of
                         Just line -> do
@@ -140,12 +144,26 @@ updatePAL = do
                             loadTemplates rel -- download the PAL templates for this version
                             setSGR [SetColor Foreground Vivid Green]
                             putStrLn "Templates downloaded."
-                            putStrLn $ "stack.yaml file updated to reflect new version of PAL"
+                            putStrLn "stack.yaml file updated to reflect new version of PAL"
                             TIO.writeFile ".palversion" $ T.pack rel
-                            putStrLn $ "Update complete. Version is now " ++ rel ++ "."
                             setSGR [Reset]
-                            putStrLn "Run `stack build` and `stack exec pal-exe` again to rebuild your project with the newest version of PAL."
-                            putStrLn "Then rebuild your client and server."
+                            putStrLn "Building project with newest PAL version..."
+                            (code, stdout, stderr) <- readProcessWithExitCode  "stack" ["build", "--no-terminal"] ""
+                            case code of
+                              ExitSuccess -> do
+                                setSGR [SetColor Foreground Vivid Red]
+                                putStrLn $ "Update complete. Version is now " ++ rel ++ "."
+                                putStrLn "Run `stack exec pal-exe` to rebuild your project with the newest version of PAL."
+                                putStrLn "Then rebuild your client and server."
+                                setSGR [Reset]
+                              ExitFailure _ -> do
+                                setSGR [SetColor Foreground Vivid Red]
+                                putStrLn "Unable to build your project."
+                                putStrLn "Fix errors in specification and run `stack build` again."
+                                putStrLn "Then run `stack exec pal-exe` to rebuild your project with the newest version of PAL."
+                                putStrLn "Then rebuild your client and server."
+                                setSGR [Reset]
+
                         Nothing -> do
                             setSGR [SetColor Foreground Vivid Red]
                             putStrLn "Could not find #PALCOMMIT in stack.yaml. Please replace your stack.yaml with the original one."
