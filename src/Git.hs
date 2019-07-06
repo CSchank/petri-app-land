@@ -119,13 +119,17 @@ updatePAL = do
     case mRel of
         Just (Release rel) -> do
             currentVersion <- T.unpack . head . T.lines <$> TIO.readFile ".palversion"
-            if currentVersion == rel then
+            if currentVersion == rel then do
+                setSGR [SetColor Foreground Vivid Green]
                 putStrLn $ "PAL is already on the latest version (" ++ rel ++ ")"
+                setSGR [Reset]
             else do
+                setSGR [SetColor Foreground Vivid Yellow]
                 putStrLn $ "You are using an older version of PAL (" ++ currentVersion ++ ")."
                 putStrLn $ "The newest version is " ++ rel ++ "."
                 putStrLn $ "See changelog at https://github.com/CSchank/petri-app-land/releases/tag/" ++ rel ++ "."
                 putStrLn $ "Update to version " ++ rel ++ "? (Y/N)"
+                setSGR [Reset]
                 resp <- getLine
                 if resp == "y" || resp == "Y" then do 
                     stackYaml <- T.lines <$> TIO.readFile "stack.yaml"
@@ -134,15 +138,22 @@ updatePAL = do
                             let newYaml = replaceNth (line+1) (T.concat["  commit: ",T.pack rel]) stackYaml
                             TIO.writeFile "stack.yaml" $ T.unlines newYaml
                             loadTemplates rel -- download the PAL templates for this version
+                            setSGR [SetColor Foreground Vivid Green]
                             putStrLn "Templates downloaded."
                             putStrLn $ "stack.yaml file updated to reflect new version of PAL"
                             TIO.writeFile ".palversion" $ T.pack rel
                             putStrLn $ "Update complete. Version is now " ++ rel ++ "."
+                            setSGR [Reset]
                             putStrLn "Run `stack build` and `stack exec pal-exe` again to rebuild your project with the newest version of PAL."
                             putStrLn "Then rebuild your client and server."
-                        Nothing -> 
-                            putStrLn "Could not find #PALCOMMIT in stack.yaml."
-                else putStrLn "Update aborted. Run `stack exec pal-exe update` again to update."
+                        Nothing -> do
+                            setSGR [SetColor Foreground Vivid Red]
+                            putStrLn "Could not find #PALCOMMIT in stack.yaml. Please replace your stack.yaml with the original one."
+                            setSGR [Reset]
+                else do
+                    setSGR [SetColor Foreground Vivid Green]
+                    putStrLn "Update aborted. Run `stack exec pal-exe update` again to update."
+                    setSGR [Reset]
         Nothing -> do
             setSGR [SetColor Foreground Vivid Red]
             putStrLn "Error: Could not decode latest release from GitHub. You may have exceeded the API limit."
