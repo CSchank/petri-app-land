@@ -66,15 +66,18 @@ generateEncoder l (CustomT name edts) =
                             ,T.concat ["        tConcat[fst",indtTxt,"Txt,\"",delim,"\",snd",indtTxt,"Txt,\"",delim,"\",thd",indtTxt,"Txt]"]
                             ]
         encodeEt indt (ListT (et, etn, etd), n, _) =
+            let
+              indtTxt = T.pack $ show indt
+            in
             indtTxts indt   [T.concat[n, "Txt ="]
                             ,"    let"
                             ,T.concat["        encode",n,"_ _ (str",T.pack $ show indt,",",n,"List) ="]
                             ,T.concat["            case ",n,"List of"]
-                            ,T.concat["                ",etn," " .:. " rest ->"]
+                            ,T.concat["                ",etn," " .:. " rest",indtTxt," ->"]
                             ,"                    let"] ++
                             (encodeEt (indt+6) (et, etn, etd)) ++
             indtTxts indt   ["                    in"
-                            ,T.concat["                        (tConcat [str",T.pack $ show indt,",\"",delim,"\",",etn,"Txt], rest)"]
+                            ,T.concat["                        (tConcat [str",T.pack $ show indt,",\"",delim,"\",",etn,"Txt], rest",indtTxt,")"]
                             ,T.concat["                [] -> (str",T.pack $ show indt,",",n,"List)"]
                             ,T.concat["        encode",n," ls ="]
                             ,T.concat["            lFoldl encode",n,"_ (\"\",ls) (lRange 0 (lLength ",n,"))"]
