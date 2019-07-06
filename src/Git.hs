@@ -106,6 +106,12 @@ replaceNth n newVal (x:xs)
    | n == 0 = newVal:xs
    | otherwise = x:replaceNth (n-1) newVal xs
 
+getPALVersion :: FilePath -> IO (Maybe T.Text)
+getPALVersion file = do
+  stackYaml <- T.lines <$> TIO.readFile "stack.yaml"
+  let versionIdx = "#PALCOMMIT" `elemIndex` stackYaml
+  return $ fmap (T.strip . (!!) stackYaml . (+1)) versionIdx
+
 updatePAL :: IO ()
 updatePAL = do
     latestRelease <- getLatestRelease "CSchank/petri-app-land"
@@ -113,7 +119,7 @@ updatePAL = do
     case mRel of
         Just (Release rel) -> do
             currentVersion <- T.unpack . head . T.lines <$> TIO.readFile ".palversion"
-            if currentVersion == rel then do
+            if currentVersion == rel then
                 putStrLn $ "PAL is already on the latest version (" ++ rel ++ ")"
             else do
                 putStrLn $ "You are using an older version of PAL (" ++ currentVersion ++ ")."
@@ -136,7 +142,7 @@ updatePAL = do
                             putStrLn "Then rebuild your client and server."
                         Nothing -> 
                             putStrLn "Could not find #PALCOMMIT in stack.yaml."
-                else putStrLn "Update aborted. Run `stack exec pal-update` again to update."
+                else putStrLn "Update aborted. Run `stack exec pal-exe update` again to update."
         Nothing -> do
             setSGR [SetColor Foreground Vivid Red]
             putStrLn "Error: Could not decode latest release from GitHub. You may have exceeded the API limit."
