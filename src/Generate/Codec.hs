@@ -43,6 +43,8 @@ generateEncoder l (CustomT name edts) =
         encodeEt indt (PairT (et0,n0,d0) (et1,n1,d1), n, _) =
             let
                 indtTxt = T.pack $ show indt
+                fstName = T.concat ["fst",indtTxt,case et0 of DictT _ _ -> "AsList"; _ -> "","Txt"]
+                sndName = T.concat ["snd",indtTxt,case et1 of DictT _ _ -> "AsList"; _ -> "","Txt"]
             in
             indtTxts indt   [T.concat[n, "Txt ="]
                             ,"    let"
@@ -50,11 +52,14 @@ generateEncoder l (CustomT name edts) =
                             encodeEt (indt+2) (et0,T.concat["fst",indtTxt],d0) ++
                             encodeEt (indt+2) (et1,T.concat["snd",indtTxt],d1) ++
             indtTxts indt   ["    in"
-                            ,T.concat ["        tConcat [fst",indtTxt,"Txt,\"",delim,"\",snd",indtTxt,"Txt]"]
+                            ,T.concat ["        tConcat [",fstName,",\"",delim,"\",",sndName,"]"]
                             ]
         encodeEt indt (TripleT (et0,n0,d0) (et1,n1,d1) (et2,n2,d2), n, _) =
             let
                 indtTxt = T.pack $ show indt
+                fstName = T.concat ["fst",indtTxt,case et0 of DictT _ _ -> "AsList"; _ -> "","Txt"]
+                sndName = T.concat ["snd",indtTxt,case et1 of DictT _ _ -> "AsList"; _ -> "","Txt"]
+                thdName = T.concat ["thd",indtTxt,case et2 of DictT _ _ -> "AsList"; _ -> "","Txt"]
             in
             indtTxts indt $ [T.concat[n, "Txt ="]
                             ,"    let"
@@ -63,7 +68,7 @@ generateEncoder l (CustomT name edts) =
                             ,T.unlines $ encodeEt 2 (et1,T.concat["snd",indtTxt],d1)
                             ,T.unlines $ encodeEt 2 (et2,T.concat["thd",indtTxt],d2)
                             ,"    in"
-                            ,T.concat ["        tConcat[fst",indtTxt,"Txt,\"",delim,"\",snd",indtTxt,"Txt,\"",delim,"\",thd",indtTxt,"Txt]"]
+                            ,T.concat ["        tConcat[",fstName,",\"",delim,"\",",sndName,",\"",delim,"\",",thdName,"]"]
                             ]
         encodeEt indt (ListT (et, etn, etd), n, _) =
             let
