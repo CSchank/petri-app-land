@@ -115,7 +115,7 @@ generateClient gsvg rootDir fp
                 o2iCase netName = 
                     T.unlines 
                     [
-                        T.concat["        ",netName,"Trans tr -> mapBoth ",netName,"InMsg ",netName,"Trans <| ",netName,".outgoingToIncoming tr"]
+                        T.concat["        ",netName,"Trans tr -> Maybe.map (mapBoth ",netName,"InMsg ",netName,"Trans) <| ",netName,".outgoingToIncoming tr"]
                     ]
             in
             T.unlines
@@ -131,7 +131,7 @@ generateClient gsvg rootDir fp
             ,   "    case (netInMsg,state) of"
             ,   T.unlines $ map updateCase netNames
             ,   if length netLst > 1 then "            _ -> (state, Cmd.none)" else ""
-            ,   "outgoingToIncoming : NetTransition -> Either NetIncomingMessage NetTransition"
+            ,   "outgoingToIncoming : NetTransition -> Maybe (Either NetIncomingMessage NetTransition)"
             ,   "outgoingToIncoming trans ="
             ,   "    case trans of"
             ,   T.unlines $ map o2iCase netNames

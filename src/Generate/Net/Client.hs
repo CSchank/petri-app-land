@@ -43,9 +43,17 @@ netTrans2MConstr trans =
 generate :: M.Map T.Text CustomT -> FilePath -> Net -> IO ()
 generate extraTypes fp net =
     case net of 
-        (Net name startingPlace places transitions plugins) ->
+        (Net name startingPlace places transitionsFromUser plugins) ->
             let
-                inits = T.unlines 
+                {--dummyTransitions =
+                  mapMaybe
+                    (\placeName ->
+                      if length (transFromPlace placeName transitionsFromUser) == 0 then
+                        Just (ClientTransition (msg (T.concat["Dummy",placeName]) []) placeName)
+                      else Nothing
+                    ) placeNames-}
+                transitions = transitionsFromUser -- ++ dummyTransitions
+                inits = T.unlines
                     [
                     T.concat ["module ", name, ".Init exposing(..)"]
                     ,T.concat["import ",name,".Static.Types exposing(..)"]
@@ -70,23 +78,24 @@ generate extraTypes fp net =
                     , "-- the types of all places in the net"
                     , generateNetTypes name places -- the initial places
                     , "type Transition ="] ++
-                    (if length internalClientTransitions > 0 then 
+                    (if length internalClientTransitions > 0 then
                         ["      Internal InternalTransition |"] else []) ++
                     [ "    External OutgoingTransition"
+                    , "  |  NoOp"
                     ]
-                transFromPlace :: T.Text -> [(Bool,Transition)]
-                transFromPlace place = 
+                transFromPlace :: T.Text -> [Transition] -> [(Bool,Transition)]
+                transFromPlace place =
                         mapMaybe (\tr ->
                                 case tr of
                                     Transition tt _ lstTrans _->
                                         if tt /= OriginServerOnly && any (\(from,_) -> from == place) lstTrans then Just (False,tr) else Nothing
                                     ClientTransition _ pl -> if pl == place then Just (True,tr) else Nothing
                                     CmdTransition _ pl _ -> if pl == place then Just (False,tr) else Nothing
-                            ) transitions
+                            )
                 perPlaceTypes (Place placeName _ _ _ _) = 
                     let
-                        transitions = transFromPlace placeName
-                        transConstrs = map (trans2constr . snd) transitions
+                        placeTranss = transFromPlace placeName transitions
+                        transConstrs = map (trans2constr . snd) placeTranss
                         imports = concatMap (findImports Elm) $ concatMap snd transConstrs
 
                     in
@@ -100,13 +109,13 @@ generate extraTypes fp net =
                     ]
                 perPlaceWrappers (Place placeName _ _ _ _) = 
                     let
-                        transitions = transFromPlace placeName
+                        placeTranss = transFromPlace placeName transitions
                         transConstrs = 
                             map (\(n,ets) -> 
                                 (T.concat[name,".Static.Types.",placeName,".",n],ets)) $ 
-                                map (trans2constr . snd) transitions
-                        wrappedTransConstrs = map (\(n,t) -> (T.concat["T",n],t)) $ map (trans2constr . snd) transitions
-                        internalTrans = map fst transitions
+                                map (trans2constr . snd) placeTranss
+                        wrappedTransConstrs = map (\(n,t) -> (T.concat["T",n],t)) $ map (trans2constr . snd) placeTranss
+                        internalTrans = map fst placeTranss
                         zippedTrans = zip3 transConstrs wrappedTransConstrs internalTrans
                         imports = concatMap (findImports Elm) $ concatMap snd wrappedTransConstrs
                     in
@@ -122,6 +131,9 @@ generate extraTypes fp net =
                     ,   "unwrap : Msg -> Transition"
                     ,   "unwrap msg ="
                     ,   "    case msg of"
+                    ,   if length zippedTrans == 0 then
+                          T.concat ["        ",name,".Static.Types.",placeName,".Msg -> NoOp"]
+                        else ""
                     ,   T.unlines $ map (\(tc,wtc,int) -> T.concat["        ",generatePattern tc," -> ",if int then "Internal " else "External ",generatePattern wtc]) zippedTrans
                     ]
                 perPlaceViews (Place placeName _ _ _ _) = 
@@ -372,11 +384,12 @@ generate extraTypes fp net =
                     ,   "transitionType oTrans ="
                     ,   "    case oTrans of"
                     ,   T.unlines $ mapMaybe ttCase transitions-}
-                    ,   "outgoingToIncoming : Transition -> Either IncomingMessage Transition"
+                    ,   "outgoingToIncoming : Transition -> Maybe (Either IncomingMessage Transition)"
                     ,   "outgoingToIncoming trans ="
                     ,   "    case trans of"
                     ,   T.unlines $ mapMaybe o2i transitions --internalClientTransitions
-                    ,   "        External outT -> Right <| External outT"
+                    ,   "        External outT -> Just <| Right <| External outT"
+                    ,   "        NoOp -> Nothing"
                     --,   if length (mapMaybe o2i transitions) < length transitions then
                     --        "        _ -> Nothing"
                     --    else ""
@@ -413,6 +426,7 @@ generate extraTypes fp net =
                     ,   "    case trans of"] ++
                     (if length internalClientTransitions > 0 then ["        Internal _ -> Nothing"] else [""]) ++
                     [   "        External ext -> Just <| encodeOutgoingTransition ext"
+                    ,   "        NoOp -> Nothing"
                     ,   generateEncoder Elm outgoingTransitions
                     ,   "--extra types encoders"
                     ,   T.unlines $ map (generateEncoder Elm) $ M.elems extraTypes

@@ -503,7 +503,7 @@ generate extraTypes fp net =
                     ,   "    return $ NetState"
                     ,   "        {"
                     ,   "          playerStates = IM'.empty"
-                    ,   T.concat["        , placeStates = ",T.concat $ map (\(Place name _ _ _ mCmd) -> T.concat["TM.insert",if isJust mCmd then T.concat[" (fst init",name] else T.concat[" init",name]," $ "]) places,"TM.empty"]
+                    ,   T.concat["        , placeStates = ",T.concat $ map (\(Place name _ _ _ mCmd) -> T.concat["TM.insert",if isJust mCmd then T.concat[" (fst init",name,")"] else T.concat[" init",name]," $ "]) places,"TM.empty"]
                     ,   T.concat["        , pluginStates = ip"]
                     ,   "        }"
                     ,   "teardown :: NetState Player -> IO ()"
