@@ -217,21 +217,21 @@ generateDecoder l (CustomT name edts) =
                             ,T.concat["        (",n0,",lf",T.pack $ show indt,") ="]
                             ,T.concat["            case l",T.pack $ show indt," of"]
                             ,T.concat["                (",n,"Txt " .:. " llf",T.pack $ show indt,") ->"]
-                            ,T.concat["                     (\"\",l",T.pack $ show indt,") |>"]
+                            ,T.concat["                     (Err \"\",l",T.pack $ show indt,") |>"]
                             ,T.unlines $ decodeEt (indt+5) (et0,n0,d0)
                             ,T.concat["                [] -> (Err \"Ran out of string to process while parsing ",name,"\",[])"]
                             --parse second part of tuple
                             ,T.concat["        (",n1,",ls",T.pack $ show indt,") ="]
                             ,T.concat["            case lf",T.pack $ show indt," of"]
                             ,T.concat["                (",n,"Txt " .:. " lls",T.pack $ show indt,") ->"]
-                            ,T.concat["                     (\"\",lf",T.pack $ show indt,") |>"]
+                            ,T.concat["                     (Err \"\",lf",T.pack $ show indt,") |>"]
                             ,T.unlines $ decodeEt (indt+5) (et1,n1,d1)
                             ,T.concat["                [] -> (Err \"Ran out of string to process while parsing ",name,"\",[])"]
                             --parse third part of tuple
                             ,T.concat["        (",n2,",lt",T.pack $ show indt,") ="]
                             ,T.concat["            case ls",T.pack $ show indt," of"]
                             ,T.concat["                (",n,"Txt " .:. " lls",T.pack $ show indt,") ->"]
-                            ,T.concat["                     (\"\",ls",T.pack $ show indt,") |>"]
+                            ,T.concat["                     (Err \"\",ls",T.pack $ show indt,") |>"]
                             ,T.unlines $ decodeEt (indt+5) (et2,n2,d2)
                             ,T.concat["                [] -> (Err \"Ran out of string to process while parsing ",name,"\",[])"]
                             ,T.concat["    in (Result.map3 (\\rff",T.pack $ show indt," rss",T.pack $ show indt," rtt",T.pack $ show indt," -> (rff",T.pack $ show indt,",rss",T.pack $ show indt,",rtt",T.pack $ show indt,")) ", n0," ",n1," ",n2,",lt",T.pack $ show indt,")"]
